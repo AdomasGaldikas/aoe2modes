@@ -1,0 +1,23 @@
+# Build output
+/dist/
+*.aoe2scenario.bak
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local, machine-specific overrides (game install paths etc.)
+.env
+local.toml

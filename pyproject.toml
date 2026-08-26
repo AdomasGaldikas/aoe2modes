@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aoe2modes"
+version = "0.1.0"
+description = "Build pipeline for Age of Empires II: DE custom scenarios (CBA Hero focused)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "AoE2ScenarioParser>=0.8.4,<0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+aoe2modes = "aoe2modes.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "error",
+    # AoE2ScenarioParser reads its own deprecated player-camera fields while committing.
+    "ignore::DeprecationWarning:AoE2ScenarioParser.objects.managers.player_manager",
+]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

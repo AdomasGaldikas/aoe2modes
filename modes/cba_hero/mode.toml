@@ -1,0 +1,33 @@
+[mode]
+id = "cba_hero"
+name = "CBA Hero"
+version = "0.1.0"
+description = "8-player 4v4 hero arena: one hero per player, automatic waves, castles as lives."
+authors = []
+tags = ["cba", "hero", "4v4"]
+
+[scenario]
+variant = "AOE2"
+filename = "{name} v{version}"
+
+[map]
+size = 144
+terrain = "GRASS_1"
+elevation = 1
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "IMPERIAL_AGE"
+population_cap = 200
+lock_civilization = false
+
+[players.resources]
+food = 99999
+wood = 99999
+gold = 99999
+stone = 99999
+
+[xs]
+include = ["lib/util.xs", "lib/random.xs"]
+scripts = ["xs/main.xs"]

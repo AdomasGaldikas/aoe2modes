@@ -1,0 +1,33 @@
+[mode]
+id = "cba_hero_duel"
+name = "CBA Hero Duel"
+version = "0.1.0"
+description = "1v1 sudden-death variant: one hero, one castle, waves every 12 seconds."
+authors = []
+tags = ["cba", "hero", "1v1", "duel"]
+
+[scenario]
+variant = "AOE2"
+filename = "{name} v{version}"
+
+[map]
+size = 96
+terrain = "GRASS_2"
+elevation = 1
+
+[players]
+count = 2
+teams = [[1], [2]]
+starting_age = "IMPERIAL_AGE"
+population_cap = 125
+lock_civilization = false
+
+[players.resources]
+food = 99999
+wood = 99999
+gold = 99999
+stone = 99999
+
+[xs]
+include = ["lib/util.xs", "lib/random.xs"]
+scripts = ["xs/main.xs"]
