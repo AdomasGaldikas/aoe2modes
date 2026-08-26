@@ -1,0 +1,39 @@
+# Copy this folder (or run `aoe2modes new <id>`) to start a new mode.
+# Anything that is "just settings" belongs here; anything that is logic belongs in build.py.
+
+[mode]
+id = "_template"
+name = "Template Mode"
+version = "0.1.0"
+description = "One-line summary shown by `aoe2modes list`."
+authors = []
+tags = ["template"]
+
+[scenario]
+# base = "base.aoe2scenario"   # start from an existing file instead of a blank map
+# version = "1.54"             # pin a scenario version; omit for the parser's latest
+variant = "AOE2"               # AOE2 | ROR | LEGACY
+filename = "{name} v{version}" # output stem, formatted with {id} {name} {version}
+
+[map]
+size = 120
+terrain = "GRASS_1"
+elevation = 1
+
+[players]
+count = 2
+teams = [[1], [2]]
+starting_age = "CASTLE_AGE"    # DARK_AGE | FEUDAL_AGE | CASTLE_AGE | IMPERIAL_AGE | POST_IMPERIAL_AGE
+population_cap = 200
+lock_civilization = false
+
+[players.resources]
+food = 0
+wood = 0
+gold = 0
+stone = 0
+
+[xs]
+include = []   # repo-relative, from xs/
+scripts = []   # mode-relative, e.g. ["xs/main.xs"]
+ignore_warnings = []
