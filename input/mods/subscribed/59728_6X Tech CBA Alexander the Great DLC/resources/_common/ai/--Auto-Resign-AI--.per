@@ -1,0 +1,12 @@
+(defrule
+	(true)
+=>	(up-change-name "--Auto-Resign-AI--")
+	(disable-self))
+
+(defrule
+	(game-time > 3)
+=>	(chat-to-all "I was made to resign. No wonder thou wert victorious! I shalt abdicate.")
+	;(chat-to-all-using-range 22300 22) Uncomment to use the standard AI resign speech
+	;(chat-to-all-using-id 22322)
+	(resign)
+	(disable-self))

@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 from aoe2modes import __version__, registry, toolchain
-from aoe2modes.builder import BuildError, BuildResult, build_mode, deploy
+from aoe2modes.builder import BuildError, BuildResult, build_mode, build_order, deploy
 from aoe2modes.config import ConfigError, ModeSpec
 from aoe2modes.paths import find_game_scenario_dir, paths
 
@@ -83,7 +84,7 @@ def cmd_build(args: argparse.Namespace) -> int:
 
     print(f"Building {len(specs)} mode(s)")
     failures = 0
-    for spec in specs:
+    for spec in build_order(specs):
         try:
             result = build_mode(spec, out_dir=out_dir, verbose=args.verbose, xs_check=not args.no_xs_check)
         except BuildError as exc:
@@ -134,6 +135,93 @@ def cmd_new(args: argparse.Namespace) -> int:
     print(f"Created {target}")
     print(f"Next: edit {toml_path} and {target / 'build.py'}, then run: aoe2modes build {args.mode_id}")
     return 0
+
+
+def cmd_diff(args: argparse.Namespace) -> int:
+    """Structural trigger diff between two ``.aoe2scenario`` files."""
+    from aoe2modes.lib.diff import diff_triggers, format_report, load_pair
+
+    toolchain.configure(verbose=args.verbose, xs_check=False)
+    a = Path(args.a).expanduser()
+    b = Path(args.b).expanduser()
+    scenario_a, scenario_b = load_pair(a, b)
+    report = diff_triggers(scenario_a, scenario_b)
+    # Include the parent folder in the label when two files share a stem — many
+    # of our base scenarios are named base.aoe2scenario inside their mode folder.
+    if a.stem == b.stem:
+        label_a, label_b = f"{a.parent.name}/{a.stem}", f"{b.parent.name}/{b.stem}"
+    else:
+        label_a, label_b = a.stem, b.stem
+    print(format_report(report, a_label=label_a, b_label=label_b))
+    return 0
+
+
+def cmd_decompile(args: argparse.Namespace) -> int:
+    """Turn a base scenario into regenerable Python under ``modes/<id>/generated/``.
+
+    This runs in its own process on purpose. The parser leaks version-scoped global
+    state, so the scenario being read (often v1.51) cannot coexist with the blank
+    v1.58 scenario the rebuild starts from — writing source decouples the two.
+    """
+    from AoE2ScenarioParser.scenarios.aoe2_de_scenario import AoE2DEScenario
+
+    from aoe2modes.lib.decompile import decompile
+
+    toolchain.configure(verbose=args.verbose, xs_check=False)
+
+    if args.mode:
+        spec = registry.get(args.mode, paths())
+        source = Path(args.file).expanduser() if args.file else (spec.base or spec.reference)
+        if source is None:
+            raise ConfigError(f"{spec.id}: no scenario.base in mode.toml and no file given")
+        out_dir = spec.directory / "generated"
+    else:
+        if not args.file:
+            raise ConfigError("decompile needs either --mode <id> or a scenario file")
+        source = Path(args.file).expanduser()
+        if not args.out:
+            raise ConfigError("decompile <file> needs --out <dir> (or use --mode <id>)")
+        out_dir = Path(args.out).expanduser()
+
+    scenario = AoE2DEScenario.from_file(str(source))
+    report = decompile(scenario, out_dir, source_label=source.name, chunk_size=args.chunk_size)
+    print(report.summary())
+    print()
+    print("Next: point the mode's build.py at generated.apply(ctx), drop scenario.base")
+    print("from mode.toml, then run `aoe2modes verify <mode>` to prove the rebuild matches.")
+    return 0
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    """Build a decompiled mode and prove it still matches the scenario it came from.
+
+    Read order is load-bearing. The rebuild targets the newest scenario version, so it
+    is snapshotted first; loading the older original afterwards downgrades the parser's
+    global version state and would make the newer file's fields unreadable.
+    """
+    from AoE2ScenarioParser.scenarios.aoe2_de_scenario import AoE2DEScenario
+
+    from aoe2modes.lib.verify import compare, snapshot
+
+    spec = registry.get(args.mode, paths())
+    original = Path(args.against).expanduser() if args.against else (spec.reference or spec.base)
+    if original is None:
+        raise ConfigError(
+            f"{spec.id}: nothing to verify against — pass --against <file>, or keep the "
+            "original as scenario.base while decompiling"
+        )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(args.out).expanduser() if args.out else Path(tmp)
+        result = build_mode(spec, out_dir=out_dir, verbose=args.verbose, xs_check=False)
+        print(f"built {result.output.name}: {result.triggers} triggers, {result.units} units")
+
+        rebuilt = snapshot(AoE2DEScenario.from_file(str(result.output)))
+        source = snapshot(AoE2DEScenario.from_file(str(original)))
+
+    report = compare(source, rebuilt)
+    print(report.summary())
+    return 0 if report.ok else 1
 
 
 def cmd_inspect(args: argparse.Namespace) -> int:
@@ -201,6 +289,30 @@ def build_parser() -> argparse.ArgumentParser:
     p_inspect.add_argument("file")
     p_inspect.add_argument("--triggers", action="store_true", help="also dump the trigger summary")
     p_inspect.set_defaults(func=cmd_inspect)
+
+    p_diff = subparsers.add_parser("diff", help="structural trigger diff between two scenarios")
+    p_diff.add_argument("a", help="baseline scenario")
+    p_diff.add_argument("b", help="successor scenario")
+    p_diff.set_defaults(func=cmd_diff)
+
+    p_dec = subparsers.add_parser(
+        "decompile", help="turn a scenario into regenerable Python under modes/<id>/generated/"
+    )
+    p_dec.add_argument("file", nargs="?", help="scenario to decompile (default: the mode's scenario.base)")
+    p_dec.add_argument("--mode", help="mode id to write into")
+    p_dec.add_argument("--out", help="output directory when not using --mode")
+    p_dec.add_argument(
+        "--chunk-size", type=int, default=250, help="triggers per generated part file (default: 250)"
+    )
+    p_dec.set_defaults(func=cmd_decompile)
+
+    p_verify = subparsers.add_parser(
+        "verify", help="rebuild a mode from source and diff it against its original scenario"
+    )
+    p_verify.add_argument("mode", help="mode id")
+    p_verify.add_argument("--against", help="scenario to compare with (default: the mode's original)")
+    p_verify.add_argument("--out", help="build directory (default: a temporary folder)")
+    p_verify.set_defaults(func=cmd_verify)
 
     return parser
 

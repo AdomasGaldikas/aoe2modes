@@ -97,6 +97,8 @@ class ModeSpec:
     authors: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     base: Path | None = None
+    reference: Path | None = None
+    """Original scenario a decompiled mode was generated from. Used only by ``verify``."""
     scenario_version: str | None = None
     variant: ScenarioVariant = ScenarioVariant.AOE2
     filename: str = "{name}"
@@ -162,6 +164,15 @@ def load_mode_spec(directory: Path) -> ModeSpec:
         if not base.is_file():
             raise ConfigError(f"{toml_path}: scenario.base not found at {base}")
 
+    # A decompiled mode builds from blank, so it has no `base` — but it keeps a pointer
+    # to the scenario it came from so `aoe2modes verify` can prove the rebuild matches.
+    reference_raw = scenario.get("reference")
+    reference = None
+    if reference_raw:
+        reference = (directory / reference_raw).resolve()
+        if not reference.is_file():
+            raise ConfigError(f"{toml_path}: scenario.reference not found at {reference}")
+
     map_raw = data.get("map", {})
     map_spec = MapSpec(
         size=int(map_raw.get("size", 120)),
@@ -208,6 +219,7 @@ def load_mode_spec(directory: Path) -> ModeSpec:
         authors=tuple(mode.get("authors", ())),
         tags=tuple(mode.get("tags", ())),
         base=base,
+        reference=reference,
         scenario_version=scenario.get("version"),
         variant=_enum(ScenarioVariant, scenario.get("variant", "AOE2"), "scenario.variant"),
         filename=str(scenario.get("filename", "{name}")),

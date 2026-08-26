@@ -34,7 +34,10 @@ one-command build, and the parser wins on every axis except raw speed.
 The parser also gives us the two things that make a repo like this viable:
 
 * **Round-tripping.** Read any `.aoe2scenario`, inspect it, write it back out. That is
-  how you reverse-engineer a published CBA Hero variant — see `aoe2modes inspect`.
+  how you reverse-engineer a published CBA Hero variant — and it goes further than
+  inspection: because the parser's effect and condition factories have introspectable
+  signatures, a scenario can be dumped back out as Python that rebuilds it. See
+  "Reverse-engineering an existing scenario" below.
 * **XS embedding.** See below.
 
 ## Triggers vs XS — the division that matters
@@ -88,10 +91,48 @@ that is when a companion data mod becomes necessary — and it lives outside thi
 
 ## Reverse-engineering an existing scenario
 
+Four commands take a published scenario from opaque binary to editable code.
+
 ```
 aoe2modes inspect "~/path/to/CBA Hero.aoe2scenario" --triggers
+aoe2modes diff old.aoe2scenario new.aoe2scenario
+aoe2modes decompile --mode <id>
+aoe2modes verify <id>
 ```
 
-Prints the map size, player count, unit and trigger counts, and (with `--triggers`)
-the full trigger summary. Read that, then rebuild the parts you want as Python in a
-new mode folder rather than editing the binary by hand.
+**`inspect`** prints the map size, player count, unit and trigger counts, and (with
+`--triggers`) the full trigger summary. First look at anything.
+
+**`diff`** compares two scenarios by trigger signature — name plus the sorted
+condition and effect type ids — and reports added, removed and reshaped groups. The
+fastest way to see what changed between two versions of the same mod.
+
+**`decompile`** writes the whole scenario back out as Python under
+`modes/<id>/generated/`: terrain as a run-length table, every unit with its reference
+id preserved, and every trigger as `add_trigger` / `new_condition` / `new_effect`
+calls. It works by introspecting the factory signatures — the fields a factory
+*accepts* are exactly the fields to read back — and emits only the fields that differ
+from a freshly constructed default, so an effect with sixty fields prints as three
+lines. Values resolve to named constants (`TechInfo.AZTECS.ID`, `PlayerId.SEVEN`)
+wherever they map cleanly, which is safe because every substitution preserves the
+underlying integer.
+
+**`verify`** rebuilds the decompiled mode and diffs it against the original
+content-wise. A byte compare would be useless — the rebuild targets the newest
+scenario version, so the file layout differs by construction — so both sides are
+reduced to plain-data snapshots and compared field by field. Fields the older format
+never had are reported separately from real differences.
+
+Two constraints shape this design, both from the parser:
+
+* **The version-state leak** (see `CLAUDE.md`) means a v1.51 scenario cannot be read in
+  the same process that builds a v1.58 one. `decompile` therefore *writes source* and
+  the build happens later, in its own process. `verify` reads the newer file first for
+  the same reason.
+* **Only v1.57 and v1.58 ship a blank template**, so a from-scratch rebuild cannot
+  target an older scenario version. Decompiling a v1.51 mod moves it to v1.58; the
+  game upgrades such a file on first save anyway.
+
+Decompiling is the end state — the binary stops being the source of truth and the mod
+becomes something you can grep, diff and review. Hand-rebuilding selected parts as
+Python is still fine when you only want a mechanic rather than a whole mod.

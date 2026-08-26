@@ -26,6 +26,27 @@ class BuildError(RuntimeError):
     """Raised when a mode fails to build."""
 
 
+def _version_key(spec: ModeSpec) -> tuple[int, int]:
+    """Numeric scenario version for build ordering. Blank scenarios use LATEST_VERSION."""
+    if spec.scenario_version:
+        parts = spec.scenario_version.split(".")
+        return (int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
+    return AoE2DEScenario.LATEST_VERSION
+
+
+def build_order(specs: list[ModeSpec]) -> list[ModeSpec]:
+    """Sort specs newest-first, tie-break by id.
+
+    The AoE2ScenarioParser leaks version-scoped state between scenarios loaded in the
+    same process: once you load a v1.51 file, a subsequent v1.58 ``from_default`` or
+    ``from_file`` crashes on ``execute_on_load``. Building newest-first keeps older
+    scenarios strictly downstream, which sidesteps the leak in every direction we've
+    observed. Modes with ``scenario.base`` set should declare ``scenario.version`` so
+    the sort key is accurate — see ``modes/big_ytri/mode.toml``.
+    """
+    return sorted(specs, key=lambda s: (tuple(-v for v in _version_key(s)), s.id))
+
+
 @dataclass(frozen=True)
 class BuildResult:
     spec: ModeSpec
@@ -42,7 +63,12 @@ def _load_build_module(spec: ModeSpec) -> ModuleType:
         raise BuildError(f"{spec.id}: missing build.py at {script}")
 
     module_name = f"aoe2modes._modes.{spec.id}"
-    loader_spec = importlib.util.spec_from_file_location(module_name, script)
+    # Load build.py *as a package* rooted at the mode folder, so a decompiled mode can
+    # `from .generated import apply` instead of mangling sys.path. Two modes can then
+    # both own a `generated` package without colliding.
+    loader_spec = importlib.util.spec_from_file_location(
+        module_name, script, submodule_search_locations=[str(spec.directory)]
+    )
     if loader_spec is None or loader_spec.loader is None:
         raise BuildError(f"{spec.id}: cannot import {script}")
 
@@ -88,9 +114,13 @@ def build_mode(
     ctx = BuildContext(spec=spec, scenario=scenario, repo=repo, verbose=verbose)
 
     # Declarative phase — everything mode.toml can express, applied before the
-    # mode's own code so build.py can freely override any of it.
-    terrain_lib.apply_map_spec(ctx.map_manager, spec.map)
-    players_lib.apply_players_spec(ctx.player_manager, spec.players)
+    # mode's own code so build.py can freely override any of it. Skipped when a
+    # base scenario is loaded: the base file *is* the declarative state, so
+    # reapplying defaults would wipe its map and player setup. Base-loaded modes
+    # patch state via build.py instead.
+    if spec.base is None:
+        terrain_lib.apply_map_spec(ctx.map_manager, spec.map)
+        players_lib.apply_players_spec(ctx.player_manager, spec.players)
 
     module = _load_build_module(spec)
     ctx.log(f"running {spec.id}/build.py")

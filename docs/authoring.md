@@ -7,6 +7,7 @@ modes/<mode_id>/
 ├── mode.toml     # settings: map, players, teams, resources, which XS to bundle
 ├── build.py      # logic: triggers, units, anything that needs coordinates
 ├── xs/           # this mode's XS files
+├── generated/    # decompiled modes only — see "Decompiled modes" below
 └── README.md     # what the mode is and how it plays
 ```
 
@@ -18,7 +19,8 @@ does not write Python, it belongs in `mode.toml`.
 `aoe2modes build <id>` runs, in order:
 
 1. **Load** `mode.toml` and validate it. Bad config fails here, before anything else.
-2. **Create** a scenario — blank, or read from `scenario.base` if set.
+2. **Create** a scenario — blank, or read from `scenario.base` if set. A decompiled
+   mode starts blank and rebuilds itself in step 4.
 3. **Apply the declarative block**: resize and terraform the map, set player count,
    ages, population caps, resources and diplomacy.
 4. **Run `build(ctx)`** from the mode's `build.py`. Everything from step 3 is already
@@ -50,6 +52,52 @@ Reach for `aoe2modes.lib` before writing raw parser calls:
 | `lib.heroes` | hero lines and tiers, `spawn_hero`, `upgrade_hero`, `buff`, `make_heroic` |
 | `lib.variables` | the trigger variables XS and triggers share |
 | `lib.xs` | placeholder substitution and bundling |
+
+## Decompiled modes
+
+A mode that started life as someone else's `.aoe2scenario` does not have to stay a
+binary. `aoe2modes decompile --mode <id>` reads the file and writes Python that
+rebuilds it:
+
+```
+modes/<mode_id>/generated/
+├── __init__.py       # apply(ctx) — runs the stages in order
+├── setup.py          # map size, players, lobby options, Messages tab
+├── terrain.py        # run-length terrain table (20736 tiles -> ~2000 runs)
+├── units.py          # every unit, reference ids preserved
+└── triggers/
+    ├── __init__.py   # part order + in-editor display order
+    └── part_000.py … # ~250 triggers each
+```
+
+`build.py` then reads:
+
+```python
+from .generated import apply as apply_generated
+
+def build(ctx: BuildContext) -> None:
+    apply_generated(ctx)
+    # mode changes go here — this runs last and wins
+```
+
+Two rules make this workable:
+
+* **Small changes go in `build.py`, after `apply_generated(ctx)`.** It runs last, so it
+  can override anything without touching generated files.
+* **`generated/` is overwritten by `decompile`.** Once you start editing it by hand,
+  stop regenerating — or move the change up into `build.py`.
+
+`mode.toml` keeps a `scenario.reference` pointing at the original file, so
+`aoe2modes verify <id>` can rebuild and diff the two content-wise. That check is what
+makes decompiling trustworthy; run it after any change to the emitter.
+
+Generated code is excluded from ruff (`extend-exclude` in `pyproject.toml`) — it is
+machine-written, with long literal lines and a deliberate star import.
+
+Stage order in `apply(ctx)` is load-bearing: the map is sized before terrain is
+painted (resizing rebuilds the terrain array), units are placed before triggers refer
+to them, and triggers are created in their original order because `activate_trigger`
+addresses them positionally.
 
 ## Sharing between modes
 

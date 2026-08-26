@@ -1,0 +1,35 @@
+[mode]
+id = "big_ytri"
+name = "CBA Hero Royal 4v4 (Big_Ytri baseline)"
+version = "0.1.0"
+description = "Verbatim rebuild of Big_Ytri's Royal 4v4 (scenario v1.51) — the reference point every Reforged variant patches from."
+authors = ["Big_Ytri (original)"]
+tags = ["cba", "hero", "4v4", "base"]
+
+[scenario]
+# No `base`: this mode is built from code in generated/, starting from a blank
+# scenario. `reference` is the original it was decompiled from — `aoe2modes verify
+# big_ytri` rebuilds and diffs against it.
+reference = "base.aoe2scenario"
+# The original is v1.51, but the parser only ships blank templates for 1.57/1.58, so
+# a from-scratch rebuild targets 1.58. Content is identical; only the file format
+# moves forward. This also keeps every mode on one version, which sidesteps the
+# parser's version-state leak during a multi-mode build.
+version = "1.58"
+filename = "{name} v{version}"
+
+# Applied before build.py, then overridden by generated/setup.py. Kept in sync so
+# `aoe2modes info` tells the truth about the mode.
+[map]
+size = 144
+terrain = "GRASS_1"
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "IMPERIAL_AGE"
+population_cap = 200
+
+[xs]
+include = []
+scripts = []

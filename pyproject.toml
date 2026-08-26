@@ -37,6 +37,10 @@ filterwarnings = [
 [tool.ruff]
 line-length = 110
 src = ["src", "tests"]
+# Machine-written by `aoe2modes decompile` — thousands of long literal lines and a
+# deliberate star import. Linting it would only ever produce noise you cannot fix
+# without editing the emitter, which is linted.
+extend-exclude = ["modes/*/generated"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

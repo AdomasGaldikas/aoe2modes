@@ -1,0 +1,31 @@
+[mode]
+id = "evolution_alpha"
+name = "CBA Hero Reforged Evolution Alpha"
+version = "0.1.0"
+description = "First improved variant — compacted trigger set (1988 vs Big_Ytri's 2993) on the same 144x144 arena."
+authors = ["Big_Ytri (original)", "reforged"]
+tags = ["cba", "hero", "4v4", "reforged"]
+
+[scenario]
+# No `base`: this mode is built from code in generated/, starting from a blank
+# scenario. `reference` is the original it was decompiled from — `aoe2modes verify
+# evolution_alpha` rebuilds and diffs against it.
+reference = "base.aoe2scenario"
+version = "1.58"
+filename = "{name} v{version}"
+
+# Applied before build.py, then overridden by generated/setup.py. Kept in sync so
+# `aoe2modes info` tells the truth about the mode.
+[map]
+size = 144
+terrain = "GRASS_1"
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "IMPERIAL_AGE"
+population_cap = 200
+
+[xs]
+include = []
+scripts = []

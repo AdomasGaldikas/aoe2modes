@@ -1,0 +1,88 @@
+triggers        big_ytri/base: 2993   evolution_alpha/base: 1988
+unchanged sigs  1616
+removed sigs    1377
+added sigs      372
+
+REMOVED (in big_ytri/base only)
+  x16  '5000 ----------------- By: Milhao'      c=2  e=4 
+  x8   '50 kills'                               c=1  e=2 
+  x8   '100 kills'                              c=1  e=2 
+  x8   '200 kills'                              c=1  e=2 
+  x8   '300 kills'                              c=1  e=2 
+  x8   '400 kills'                              c=1  e=2 
+  x8   '500 kills'                              c=1  e=2 
+  x8   '600 kills'                              c=1  e=2 
+  x8   '700 kills'                              c=1  e=2 
+  x8   '800 kills'                              c=1  e=2 
+  x8   '900 kills'                              c=1  e=2 
+  x8   '1575 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1600 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1625 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1650 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1675 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1700 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1725 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1750 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1775 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1800 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1825 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1850 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1875 ----------------- By: Milhao'      c=1  e=2 
+  x8   '1900 ----------------- By: Milhao'      c=1  e=2 
+  ... 279 more distinct signatures
+
+ADDED   (in evolution_alpha/base only)
+  x16  '5000 ----------------- By: System'      c=2  e=4 
+  x8   '2000 ---------------- By: System'       c=1  e=3 
+  x8   '3500 ----------------- By: System'      c=1  e=2 
+  x8   '3500 ----------------- By: System'      c=2  e=4 
+  x8   '5000 ----------------- By: System'      c=1  e=3 
+  x3   'p2 -------------------- By: System'     c=0  e=0 
+  x3   'p5 --------------------- By: System'    c=0  e=0 
+  x3   'p6 -------------------- By: System'     c=0  e=0 
+  x3   'p7 -------------------- By: System'     c=0  e=0 
+  x3   'p8 -------------------- By: System'     c=0  e=0 
+  x3   '-------------------- ---- By: System'   c=0  e=0 
+  x2   'p3 -------------------- By: System'     c=0  e=0 
+  x2   'p4 -------------------- By: System'     c=0  e=0 
+  x1   'feudal ups (p1)'                        c=2  e=9 
+  x1   'feudal ups (p2)'                        c=2  e=9 
+  x1   'feudal ups (p3)'                        c=2  e=9 
+  x1   'feudal ups (p4)'                        c=2  e=9 
+  x1   'feudal ups (p5)'                        c=2  e=9 
+  x1   'feudal ups (p6)'                        c=2  e=9 
+  x1   'feudal ups (p7)'                        c=2  e=9 
+  x1   'feudal ups (p8)'                        c=2  e=9 
+  x1   '==Rename======'                         c=0  e=48
+  x1   'units (p1)'                             c=1  e=3 
+  x1   'units (p2)'                             c=1  e=3 
+  x1   'units (p3)'                             c=1  e=3 
+  ... 290 more distinct signatures
+
+RESHAPED (same name, different count per name)
+  '1000 ----------------- '                big_ytri/base: 9   evolution_alpha/base: 8
+  '200 ------------------ '                big_ytri/base: 9   evolution_alpha/base: 8
+  '200 kills'                              big_ytri/base: 40   evolution_alpha/base: 32
+  '300 kills'                              big_ytri/base: 96   evolution_alpha/base: 88
+  '400 ------------------ '                big_ytri/base: 9   evolution_alpha/base: 8
+  '400 kills'                              big_ytri/base: 16   evolution_alpha/base: 8
+  '500 kills'                              big_ytri/base: 40   evolution_alpha/base: 32
+  '600 ------------------ '                big_ytri/base: 8   evolution_alpha/base: 7
+  '600 kills'                              big_ytri/base: 24   evolution_alpha/base: 16
+  '700 kills'                              big_ytri/base: 16   evolution_alpha/base: 8
+  'remove (p1)'                            big_ytri/base: 2   evolution_alpha/base: 1
+  'remove (p2)'                            big_ytri/base: 2   evolution_alpha/base: 1
+  'remove (p3)'                            big_ytri/base: 2   evolution_alpha/base: 1
+  'remove (p4)'                            big_ytri/base: 2   evolution_alpha/base: 1
+  'remove (p5)'                            big_ytri/base: 2   evolution_alpha/base: 1
+  'remove (p6)'                            big_ytri/base: 2   evolution_alpha/base: 1
+  'remove (p7)'                            big_ytri/base: 2   evolution_alpha/base: 1
+  'remove (p8)'                            big_ytri/base: 2   evolution_alpha/base: 1
+  'warn (p1)'                              big_ytri/base: 2   evolution_alpha/base: 1
+  'warn (p2)'                              big_ytri/base: 2   evolution_alpha/base: 1
+  'warn (p3)'                              big_ytri/base: 2   evolution_alpha/base: 1
+  'warn (p4)'                              big_ytri/base: 2   evolution_alpha/base: 1
+  'warn (p5)'                              big_ytri/base: 2   evolution_alpha/base: 1
+  'warn (p6)'                              big_ytri/base: 2   evolution_alpha/base: 1
+  'warn (p7)'                              big_ytri/base: 2   evolution_alpha/base: 1
+  ... 1 more reshaped names
