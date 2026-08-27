@@ -33,7 +33,7 @@ rebuild can be checked against it:
 aoe2modes verify big_ytri
 ```
 
-That compares 100,856 fields and must report `MATCH`. It also lists ~9400 field slots
+That compares 100,857 fields and must report `MATCH`. It also lists ~9400 field slots
 that exist on only one side; those are the v1.55+ additions the v1.51 original never
 had (`execute_on_load`, `caption_string`, `max_units_affected`, `disable_sound`), not
 content differences.

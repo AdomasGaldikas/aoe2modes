@@ -49,10 +49,10 @@ def apply(ctx) -> None:
     p.lock_civ = False
     p.lock_personality = False
     p.population_cap = 250
-    p.food = 1000
-    p.wood = 1000
-    p.gold = 1000
-    p.stone = 1000
+    p.food = 0
+    p.wood = 0
+    p.gold = 0
+    p.stone = 0
     p.color = ColorId.BLUE
     p.human = True
     p.civilization = Civilization.RANDOM
@@ -73,10 +73,10 @@ def apply(ctx) -> None:
     p.lock_civ = False
     p.lock_personality = False
     p.population_cap = 250
-    p.food = 1000
-    p.wood = 1000
-    p.gold = 1000
-    p.stone = 1000
+    p.food = 0
+    p.wood = 0
+    p.gold = 0
+    p.stone = 0
     p.color = ColorId.RED
     p.human = True
     p.civilization = Civilization.RANDOM
@@ -97,10 +97,10 @@ def apply(ctx) -> None:
     p.lock_civ = False
     p.lock_personality = False
     p.population_cap = 250
-    p.food = 1000
-    p.wood = 1000
-    p.gold = 1000
-    p.stone = 1000
+    p.food = 0
+    p.wood = 0
+    p.gold = 0
+    p.stone = 0
     p.color = ColorId.GREEN
     p.human = True
     p.civilization = Civilization.RANDOM
@@ -121,10 +121,10 @@ def apply(ctx) -> None:
     p.lock_civ = False
     p.lock_personality = False
     p.population_cap = 250
-    p.food = 1000
-    p.wood = 1000
-    p.gold = 1000
-    p.stone = 1000
+    p.food = 0
+    p.wood = 0
+    p.gold = 0
+    p.stone = 0
     p.color = ColorId.YELLOW
     p.human = True
     p.civilization = Civilization.RANDOM
@@ -145,10 +145,10 @@ def apply(ctx) -> None:
     p.lock_civ = False
     p.lock_personality = False
     p.population_cap = 250
-    p.food = 1000
-    p.wood = 1000
-    p.gold = 1000
-    p.stone = 1000
+    p.food = 0
+    p.wood = 0
+    p.gold = 0
+    p.stone = 0
     p.color = ColorId.AQUA
     p.human = True
     p.civilization = Civilization.RANDOM
@@ -169,10 +169,10 @@ def apply(ctx) -> None:
     p.lock_civ = False
     p.lock_personality = False
     p.population_cap = 250
-    p.food = 1000
-    p.wood = 1000
-    p.gold = 1000
-    p.stone = 1000
+    p.food = 0
+    p.wood = 0
+    p.gold = 0
+    p.stone = 0
     p.color = ColorId.PURPLE
     p.human = True
     p.civilization = Civilization.RANDOM
@@ -193,10 +193,10 @@ def apply(ctx) -> None:
     p.lock_civ = False
     p.lock_personality = False
     p.population_cap = 250
-    p.food = 1000
-    p.wood = 1000
-    p.gold = 1000
-    p.stone = 1000
+    p.food = 0
+    p.wood = 0
+    p.gold = 0
+    p.stone = 0
     p.color = ColorId.GRAY
     p.human = True
     p.civilization = Civilization.RANDOM
@@ -217,10 +217,10 @@ def apply(ctx) -> None:
     p.lock_civ = False
     p.lock_personality = False
     p.population_cap = 250
-    p.food = 1000
-    p.wood = 1000
-    p.gold = 1000
-    p.stone = 1000
+    p.food = 0
+    p.wood = 0
+    p.gold = 0
+    p.stone = 0
     p.color = ColorId.ORANGE
     p.human = True
     p.civilization = Civilization.RANDOM
@@ -237,7 +237,7 @@ def apply(ctx) -> None:
     p.diplomacy = [DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ALLY, DiplomacyState.ALLY, DiplomacyState.ALLY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY, DiplomacyState.ENEMY]
 
     # --- lobby options
-    om.victory_condition = VictoryCondition.CONQUEST
+    om.victory_condition = VictoryCondition.CUSTOM
     om.victory_score = 14000
     om.victory_years = 900
     om.victory_custom_conditions_required = False
@@ -251,9 +251,9 @@ def apply(ctx) -> None:
     om.legacy_execution_order = True
 
     # --- Messages tab
-    msg.instructions = 'CBA HERO REFORGED EVOLUTION ALPHA\r\rOBJECTIVE\rDestroy all four castles of every enemy player.\rDefend your castles and support your team.\r\rCOMBAT SCOREBOARD\rThe normal score panel shows Kills, Deaths, and confirmed unit damage.\rDMG is the cumulative HP of units you destroyed.\rResource stockpiles are kept equal, so score differences come from\rcombat and survival.\r\rHERO MILESTONES\r200 Robin Hood | 400 Theodoric | 600 Charles Martel | 800 Subotai\r1000 Genghis Khan | 2000 Super Genghis | 3500 and 5000 spawn boosts'
+    msg.instructions = 'CBA HERO REFORGED EVOLUTION ALPHA\r\rHOW TO PLAY\rUnits spawn automatically and march into the arena. Defeat enemy units to unlock stronger heroes. Protect your four Castles and destroy every enemy Castle to win.\r\rTEAMS\rBlue, Red, Green, and Yellow face Teal, Purple, Gray, and Orange. Close any unused slots, but keep at least one occupied color on each side.\r\rTEAM ROUTES\rA guarded rear route links allied positions. Every base has its own fortified gate onto the route, so protect it while reinforcing teammates or counterattacking.\r\rCOMBAT HUD\rThe compact panel shows live Kills and Deaths for occupied players. Resources stay at zero; available units, buildings, upgrades, and repairs are free.\r\rHERO MILESTONES\r200 Robin Hood | 400 Theodoric | 600 Charles Martel | 800 Subotai\r1000 Genghis Khan | 2000 Super Genghis | 3500 and 5000 spawn boosts'
     msg.hints = '[KILLS NEEDED FOR HEROES]\r\r200 Kills: Robin Hood\r400 Kills: Teodoric the Godo\r600 Kills: Charles Martel\r800 Kills: Subotai\r1000 Kills: Genghis Khan\r2000 Kills: Super Genghis Khan\r3500 Kills: Respawn 60% + Faster\r5000 Kills: Respawn 190% + Faster\r__________________________________________\r\rCivilization Table:\r--------------------------\r\rCivilization (Ing) | Civilization (Esp) | Kills CA | Kills IA | Razings | Units | Time\r--------------------------------------------------------------------------------------------------------\rACHAEMENIDS | AQUEMÉNIDAS | 300 | 600 | 1 | 70 | 10\rARMENIANS | ARMENIOS | 300 | 600 | 2 | 80 | 8\rATHENIANS | ATENIENSES | 250 | 500 | 1 | 80 | 10\rAZTECS | AZTECAS | 250 | 500 | 2 | 92 | 8\rBENGALIS | BENGALIES | 300 | 600 | 2 | 40 | 8\rBERBERS | BEREBERES | 250 | 500 | 1 | 61 | 10\rBOHEMIANS | BOHEMIOS | 300 | 600 | 2 | 35 | 15\rBRITONS | BRITANOS | 300 | 600 | 1 | 72 | 9\rBULGARIANS | BULGAROS | 250 | 500 | 2 | 41 | 12\rBURGUNDIANS | BORGOÑESES | 300 | 600 | 2 | 60 | 8\rBURMESE | BIRMANOS | 300 | 600 | 3 | 61 | 10\rBYZANTINES | BIZANTINOS | 300 | 600 | 2 | 56 | 10\rCELTS | CELTAS | 200 | 450 | 2 | 80 | 9\rCHINESE | CHINOS | 200 | 500 | 2 | 76 | 8\rCUMANS | CUMANOS | 300 | 500 | 2 | 61 | 12\rDRAVIDIANS | DRAVÍDICOS | 300 | 600 | 2 | 60 | 8\rETHIOPIANS | ETÍOPES | 200 | 500 | 2 | 80 | 8\rFRANKS | FRANCOS | 300 | 450 | 3 | 76 | 8\rGEORGIANS | GEORGIANOS | 250 | 600 | 1 | 80 | 8\rGOTHS | GODOS | 250 | 350 | 2 | 76 | 8\rGURJARAS | GURJARAS | 300 | 750 | 3 | 41 | 11\rHINDUSTIANIS | INDOSTANOS | 300 | 600 | 3 | 60 | 12\rHUNS | HUNOS | 200 | 400 | 4 | 80 | 13\rINCA | INCAS | 250 | 350 | 2 | 77 | 8\rITALIANS | ITALIANOS | 300 | 500 | 1 | 72 | 9\rJAPANESE | JAPONESES | 300 | 600 | 3 | 80 | 9\rJURCHENS | YURCHEN | 300 | 600 | 2 | 80 | 10\rKHITANS | KITÁN | 250 | 500 | 2 | 80 | 10\rKHMER | JEMERES | 300 | 700 | 4 | 31 | 14\rKOREANS | COREANOS | 300 | 600 | 3 | 60 | 12\rLITHUANIANS | LITUANOS | 300 | 600 | 2 | 60 | 10\rMAGYARS | MAGIARES | 250 | 600 | 1 | 80 | 13\rMALAY | MALAYOS | 200 | 400 | 1 | 80 | 6\rMALIANS | MALÍ | 300 | 600 | 3 | 81 | 10\rMAYA | MAYA | 250 | 450 | 1 | 70 | 8\rMONGOLS | MONGOL | 300 | 650 | 2 | 56 | 9\rPERSIANS | PERSA | 300 | 750 | 4 | 56 | 13\rPOLES | POLACOS | 300 | 600 | 2 | 60 | 8\rPORTUGUESE | PORTUGUESES | 300 | 600 | 3 | 34 | 12\rROMANS | ROMANOS | 300 | 600 | 2 | 60 | 8\rSARACENS | SARRACENOS | 300 | 650 | 2 | 68 | 12\rSHU | SHU | 300 | 600 | 2 | 60 | 10\rSICILIANS | SICILIANO | 200 | 350 | 2 | 92 | 8\rSLAVS | ESLAVO | 300 | 600 | 2 | 56 | 10\rSPANISH | ESPAÑOL | 300 | 750 | 3 | 60 | 10\rSPARTANS | ESPARTANO | 250 | 600 | 1 | 80 | 8\rTATARS | TARTAROS | 250 | 500 | 2 | 61 | 12\rTEUTONS | TEUTON | 300 | 450 | 3 | 76 | 8\rTURKS | TURCO | 300 | 700 | 3 | 61 | 9\rVIETNAMESE | VIETNAMITA | 300 | 500 | 1 | 81 | 10\rVIKINGS | VIKINGO | 200 | 500 | 2 | 86 | 9\rWEI | WEI | 300 | 600 | 2 | 60 | 10\rWU | WU | 300 | 600 | 2 | 60 | 10\r'
-    msg.history = 'CBA Hero Reforged Evolution Alpha.\rThe native score panel is combat-focused with live K/D/DMG labels.\rThe former Objectives HUD and resource-inflated score have been removed.'
+    msg.history = 'CBA Hero Reforged Evolution Alpha.\rAutomatic armies earn stronger heroes through combat. Guard four Castles, support your allies through the fortified rear routes, and destroy every enemy Castle.'
     msg.loss = '\rKeep practicing...\r\rBy Reforged'
-    msg.scouts = 'Use the normal score panel for live Kills, Deaths, and DMG.\rThere is no Objectives overlay.\rResources are automatically equalized for every player.'
+    msg.scouts = 'Blue/Red/Green/Yellow face Teal/Purple/Gray/Orange. Close unused slots while keeping both color teams represented. Each base has a guarded gate onto its allied rear route.'
     msg.victory = '\rCongratulations! Now you are part of the CBA Hero Elite\r\rby Reforged'

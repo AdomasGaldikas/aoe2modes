@@ -1,0 +1,39 @@
+[mode]
+id = "chieftains_4v4"
+name = "CBA Hero Chieftains 4v4 2026"
+version = "2026.0.0"
+description = "Big_Ytri's Chieftains 2026, teams of four — Royal 4v4 plus the Chieftains hero roster and a team vote-kick."
+authors = ["Big_Ytri (original)"]
+tags = ["cba", "hero", "4v4", "chieftains"]
+
+[scenario]
+# No `base`: this mode is built from code in generated/, starting from a blank
+# scenario. `reference` is the original it was decompiled from — `aoe2modes verify
+# chieftains_4v4` rebuilds and diffs against it.
+reference = "base.aoe2scenario"
+# The published mod is already v1.58, so the rebuild targets the same version the
+# original used and `verify` reports zero version-only fields.
+version = "1.58"
+filename = "{name} v{version}"
+
+# Applied before build.py, then overridden by generated/setup.py. Kept in sync so
+# `aoe2modes info` tells the truth about the mode.
+[map]
+size = 144
+terrain = "GRASS_1"
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "FEUDAL_AGE"
+population_cap = 250
+
+[players.resources]
+food = 99999
+wood = 99999
+gold = 99999
+stone = 99999
+
+[xs]
+include = []
+scripts = []

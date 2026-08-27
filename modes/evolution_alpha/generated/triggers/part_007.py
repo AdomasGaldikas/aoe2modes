@@ -20,56 +20,21 @@ from AoE2ScenarioParser.datasets.units import UnitInfo  # noqa: F401
 
 
 def emit(tm) -> None:
-    """Triggers 1750..1987. Mostly: 1x 'Kick P5', 1x 'Kick P6', 1x 'Kick P7'."""
+    """Triggers 1750..1999. Mostly: 1x 'Kick P5', 1x 'Kick P6', 1x 'Kick P7'."""
     # --- #1750  Kick P5   [display 1751]
     t = tm.add_trigger('Kick P5', description_stid=0, short_description_stid=0, enabled=0)
-    t.new_effect.display_instructions(
-        source_player=PlayerId.EIGHT,
-        message='TEAL has been Vote-Kicked!!',
-        use_tag_color_for_icon=1,
-    )
-    t.new_effect.declare_victory(source_player=PlayerId.FIVE, enabled=0)
-    t.new_effect.disable_object_deletion(source_player=PlayerId.FIVE, area_x1=0, area_y1=111, area_x2=2, area_y2=111)
 
     # --- #1751  Kick P6   [display 1752]
     t = tm.add_trigger('Kick P6', description_stid=0, short_description_stid=0, enabled=0)
-    t.new_effect.display_instructions(
-        source_player=PlayerId.EIGHT,
-        message='PURPLE has been Vote-Kicked!!',
-        use_tag_color_for_icon=1,
-    )
-    t.new_effect.declare_victory(source_player=PlayerId.SIX, enabled=0)
-    t.new_effect.disable_object_deletion(source_player=PlayerId.SIX, area_x1=141, area_y1=107, area_x2=143, area_y2=107)
 
     # --- #1752  Kick P7   [display 1753]
     t = tm.add_trigger('Kick P7', description_stid=0, short_description_stid=0, enabled=0)
-    t.new_effect.display_instructions(
-        source_player=PlayerId.EIGHT,
-        message='GRAY has been Vote-Kicked!!',
-        use_tag_color_for_icon=1,
-    )
-    t.new_effect.declare_victory(source_player=PlayerId.SEVEN, enabled=0)
-    t.new_effect.disable_object_deletion(source_player=PlayerId.SEVEN, area_x1=30, area_y1=142, area_x2=32, area_y2=142)
 
     # --- #1753  Kick P1   [display 1747]
     t = tm.add_trigger('Kick P1', description_stid=0, short_description_stid=0, enabled=0)
-    t.new_effect.display_instructions(
-        source_player=PlayerId.EIGHT,
-        message='BLUE has been Vote-Kicked!!',
-        use_tag_color_for_icon=1,
-    )
-    t.new_effect.declare_victory(enabled=0)
-    t.new_effect.disable_object_deletion(area_x1=32, area_y1=0, area_x2=34, area_y2=0)
 
     # --- #1754  Kick P8   [display 1754]
     t = tm.add_trigger('Kick P8', description_stid=0, short_description_stid=0, enabled=0)
-    t.new_effect.display_instructions(
-        source_player=PlayerId.SEVEN,
-        message='ORANGE has been Vote-Kicked!!',
-        use_tag_color_for_icon=1,
-    )
-    t.new_effect.declare_victory(source_player=PlayerId.EIGHT, enabled=0)
-    t.new_effect.disable_object_deletion(source_player=PlayerId.EIGHT, area_x1=103, area_y1=142, area_x2=105, area_y2=142)
 
     # --- #1755  ..: Greece DLC :..   [display 1836]
     t = tm.add_trigger('..: Greece DLC :..', description_stid=0, short_description_stid=0)
@@ -2735,71 +2700,14 @@ def emit(tm) -> None:
         disable_sound=-1,
     )
 
-    # --- #1887  Combat Scoreboard - Live K-D-Damage   [display 1887]
-    t = tm.add_trigger('Combat Scoreboard - Live K-D-Damage', description_stid=0, short_description_stid=0, looping=1)
-    t.new_condition.player_defeated(source_player=PlayerId.GAIA, inverted=1)
+    # --- #1887  Resource Equalizer P1   [display 1887]
+    t = tm.add_trigger('Resource Equalizer P1', description_stid=0, short_description_stid=0, enabled=0, looping=1)
+    t.new_condition.player_defeated(inverted=1)
     t.new_condition.timer(timer=1)
-    t.new_effect.modify_resource(quantity=1000)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=1)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=2)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=3)
-    t.new_effect.change_player_name(message='P1 | K:<Units Killed, 1> D:<Killed by Others, 1> DMG:<Hit Points Killed, 1>')
-    t.new_effect.modify_resource(quantity=1000, source_player=PlayerId.TWO)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=1, source_player=PlayerId.TWO)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=2, source_player=PlayerId.TWO)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=3, source_player=PlayerId.TWO)
-    t.new_effect.change_player_name(
-        source_player=PlayerId.TWO,
-        message='P2 | K:<Units Killed, 2> D:<Killed by Others, 2> DMG:<Hit Points Killed, 2>',
-    )
-    t.new_effect.modify_resource(quantity=1000, source_player=PlayerId.THREE)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=1, source_player=PlayerId.THREE)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=2, source_player=PlayerId.THREE)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=3, source_player=PlayerId.THREE)
-    t.new_effect.change_player_name(
-        source_player=PlayerId.THREE,
-        message='P3 | K:<Units Killed, 3> D:<Killed by Others, 3> DMG:<Hit Points Killed, 3>',
-    )
-    t.new_effect.modify_resource(quantity=1000, source_player=PlayerId.FOUR)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=1, source_player=PlayerId.FOUR)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=2, source_player=PlayerId.FOUR)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=3, source_player=PlayerId.FOUR)
-    t.new_effect.change_player_name(
-        source_player=PlayerId.FOUR,
-        message='P4 | K:<Units Killed, 4> D:<Killed by Others, 4> DMG:<Hit Points Killed, 4>',
-    )
-    t.new_effect.modify_resource(quantity=1000, source_player=PlayerId.FIVE)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=1, source_player=PlayerId.FIVE)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=2, source_player=PlayerId.FIVE)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=3, source_player=PlayerId.FIVE)
-    t.new_effect.change_player_name(
-        source_player=PlayerId.FIVE,
-        message='P5 | K:<Units Killed, 5> D:<Killed by Others, 5> DMG:<Hit Points Killed, 5>',
-    )
-    t.new_effect.modify_resource(quantity=1000, source_player=PlayerId.SIX)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=1, source_player=PlayerId.SIX)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=2, source_player=PlayerId.SIX)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=3, source_player=PlayerId.SIX)
-    t.new_effect.change_player_name(
-        source_player=PlayerId.SIX,
-        message='P6 | K:<Units Killed, 6> D:<Killed by Others, 6> DMG:<Hit Points Killed, 6>',
-    )
-    t.new_effect.modify_resource(quantity=1000, source_player=PlayerId.SEVEN)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=1, source_player=PlayerId.SEVEN)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=2, source_player=PlayerId.SEVEN)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=3, source_player=PlayerId.SEVEN)
-    t.new_effect.change_player_name(
-        source_player=PlayerId.SEVEN,
-        message='P7 | K:<Units Killed, 7> D:<Killed by Others, 7> DMG:<Hit Points Killed, 7>',
-    )
-    t.new_effect.modify_resource(quantity=1000, source_player=PlayerId.EIGHT)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=1, source_player=PlayerId.EIGHT)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=2, source_player=PlayerId.EIGHT)
-    t.new_effect.modify_resource(quantity=1000, tribute_list=3, source_player=PlayerId.EIGHT)
-    t.new_effect.change_player_name(
-        source_player=PlayerId.EIGHT,
-        message='P8 | K:<Units Killed, 8> D:<Killed by Others, 8> DMG:<Hit Points Killed, 8>',
-    )
+    t.new_effect.modify_resource(quantity=0)
+    t.new_effect.modify_resource(quantity=0, tribute_list=1)
+    t.new_effect.modify_resource(quantity=0, tribute_list=2)
+    t.new_effect.modify_resource(quantity=0, tribute_list=3)
 
     # --- #1888  Mapuche P1   [display 1890]
     t = tm.add_trigger('Mapuche P1', description_stid=0, short_description_stid=0)
@@ -4677,3 +4585,206 @@ def emit(tm) -> None:
         location_y=119,
         disable_sound=-1,
     )
+
+    # --- #1988  Kills and Deaths   [display 1988]
+    t = tm.add_trigger('Kills and Deaths', 
+        description='KILLS / DEATHS',
+        description_stid=0,
+        display_as_objective=1,
+        short_description='KILLS / DEATHS',
+        short_description_stid=0,
+        display_on_screen=1,
+        description_order=1,
+        header=1,
+        mute_objectives=1,
+    )
+    t.new_condition.player_defeated(source_player=PlayerId.GAIA)
+
+    # --- #1989  Enforce Color Teams   [display 1989]
+    t = tm.add_trigger('Enforce Color Teams', description_stid=0, short_description_stid=0, execute_on_load=1)
+    t.new_effect.change_diplomacy(mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(target_player=PlayerId.THREE, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(target_player=PlayerId.FOUR, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(diplomacy=DiplomacyState.ENEMY, target_player=PlayerId.FIVE, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(diplomacy=DiplomacyState.ENEMY, target_player=PlayerId.SIX, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(diplomacy=DiplomacyState.ENEMY, target_player=PlayerId.SEVEN, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(diplomacy=DiplomacyState.ENEMY, target_player=PlayerId.EIGHT, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(source_player=PlayerId.TWO, target_player=PlayerId.THREE, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(source_player=PlayerId.TWO, target_player=PlayerId.FOUR, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.TWO,
+        target_player=PlayerId.FIVE,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.TWO,
+        target_player=PlayerId.SIX,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.TWO,
+        target_player=PlayerId.SEVEN,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.TWO,
+        target_player=PlayerId.EIGHT,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(source_player=PlayerId.THREE, target_player=PlayerId.FOUR, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.THREE,
+        target_player=PlayerId.FIVE,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.THREE,
+        target_player=PlayerId.SIX,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.THREE,
+        target_player=PlayerId.SEVEN,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.THREE,
+        target_player=PlayerId.EIGHT,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.FOUR,
+        target_player=PlayerId.FIVE,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.FOUR,
+        target_player=PlayerId.SIX,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.FOUR,
+        target_player=PlayerId.SEVEN,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(
+        diplomacy=DiplomacyState.ENEMY,
+        source_player=PlayerId.FOUR,
+        target_player=PlayerId.EIGHT,
+        mutual_diplomacy=1,
+    )
+    t.new_effect.change_diplomacy(source_player=PlayerId.FIVE, target_player=PlayerId.SIX, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(source_player=PlayerId.FIVE, target_player=PlayerId.SEVEN, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(source_player=PlayerId.FIVE, target_player=PlayerId.EIGHT, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(source_player=PlayerId.SIX, target_player=PlayerId.SEVEN, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(source_player=PlayerId.SIX, target_player=PlayerId.EIGHT, mutual_diplomacy=1)
+    t.new_effect.change_diplomacy(source_player=PlayerId.SEVEN, target_player=PlayerId.EIGHT, mutual_diplomacy=1)
+
+    # --- #1990  Color Team Victory P1   [display 1990]
+    t = tm.add_trigger('Color Team Victory P1', description_stid=0, short_description_stid=0)
+    t.new_condition.timer(timer=3)
+    t.new_condition.player_defeated(inverted=1)
+    t.new_condition.player_defeated(source_player=PlayerId.FIVE)
+    t.new_condition.player_defeated(source_player=PlayerId.SIX)
+    t.new_condition.player_defeated(source_player=PlayerId.SEVEN)
+    t.new_condition.player_defeated(source_player=PlayerId.EIGHT)
+    t.new_effect.declare_victory()
+
+    # --- #1991  Color Team Victory P2   [display 1991]
+    t = tm.add_trigger('Color Team Victory P2', description_stid=0, short_description_stid=0)
+    t.new_condition.timer(timer=3)
+    t.new_condition.player_defeated(source_player=PlayerId.TWO, inverted=1)
+    t.new_condition.player_defeated(source_player=PlayerId.FIVE)
+    t.new_condition.player_defeated(source_player=PlayerId.SIX)
+    t.new_condition.player_defeated(source_player=PlayerId.SEVEN)
+    t.new_condition.player_defeated(source_player=PlayerId.EIGHT)
+    t.new_effect.declare_victory(source_player=PlayerId.TWO)
+
+    # --- #1992  Color Team Victory P3   [display 1992]
+    t = tm.add_trigger('Color Team Victory P3', description_stid=0, short_description_stid=0)
+    t.new_condition.timer(timer=3)
+    t.new_condition.player_defeated(source_player=PlayerId.THREE, inverted=1)
+    t.new_condition.player_defeated(source_player=PlayerId.FIVE)
+    t.new_condition.player_defeated(source_player=PlayerId.SIX)
+    t.new_condition.player_defeated(source_player=PlayerId.SEVEN)
+    t.new_condition.player_defeated(source_player=PlayerId.EIGHT)
+    t.new_effect.declare_victory(source_player=PlayerId.THREE)
+
+    # --- #1993  Color Team Victory P4   [display 1993]
+    t = tm.add_trigger('Color Team Victory P4', description_stid=0, short_description_stid=0)
+    t.new_condition.timer(timer=3)
+    t.new_condition.player_defeated(source_player=PlayerId.FOUR, inverted=1)
+    t.new_condition.player_defeated(source_player=PlayerId.FIVE)
+    t.new_condition.player_defeated(source_player=PlayerId.SIX)
+    t.new_condition.player_defeated(source_player=PlayerId.SEVEN)
+    t.new_condition.player_defeated(source_player=PlayerId.EIGHT)
+    t.new_effect.declare_victory(source_player=PlayerId.FOUR)
+
+    # --- #1994  Color Team Victory P5   [display 1994]
+    t = tm.add_trigger('Color Team Victory P5', description_stid=0, short_description_stid=0)
+    t.new_condition.timer(timer=3)
+    t.new_condition.player_defeated(source_player=PlayerId.FIVE, inverted=1)
+    t.new_condition.player_defeated()
+    t.new_condition.player_defeated(source_player=PlayerId.TWO)
+    t.new_condition.player_defeated(source_player=PlayerId.THREE)
+    t.new_condition.player_defeated(source_player=PlayerId.FOUR)
+    t.new_effect.declare_victory(source_player=PlayerId.FIVE)
+
+    # --- #1995  Color Team Victory P6   [display 1995]
+    t = tm.add_trigger('Color Team Victory P6', description_stid=0, short_description_stid=0)
+    t.new_condition.timer(timer=3)
+    t.new_condition.player_defeated(source_player=PlayerId.SIX, inverted=1)
+    t.new_condition.player_defeated()
+    t.new_condition.player_defeated(source_player=PlayerId.TWO)
+    t.new_condition.player_defeated(source_player=PlayerId.THREE)
+    t.new_condition.player_defeated(source_player=PlayerId.FOUR)
+    t.new_effect.declare_victory(source_player=PlayerId.SIX)
+
+    # --- #1996  Color Team Victory P7   [display 1996]
+    t = tm.add_trigger('Color Team Victory P7', description_stid=0, short_description_stid=0)
+    t.new_condition.timer(timer=3)
+    t.new_condition.player_defeated(source_player=PlayerId.SEVEN, inverted=1)
+    t.new_condition.player_defeated()
+    t.new_condition.player_defeated(source_player=PlayerId.TWO)
+    t.new_condition.player_defeated(source_player=PlayerId.THREE)
+    t.new_condition.player_defeated(source_player=PlayerId.FOUR)
+    t.new_effect.declare_victory(source_player=PlayerId.SEVEN)
+
+    # --- #1997  Color Team Victory P8   [display 1997]
+    t = tm.add_trigger('Color Team Victory P8', description_stid=0, short_description_stid=0)
+    t.new_condition.timer(timer=3)
+    t.new_condition.player_defeated(source_player=PlayerId.EIGHT, inverted=1)
+    t.new_condition.player_defeated()
+    t.new_condition.player_defeated(source_player=PlayerId.TWO)
+    t.new_condition.player_defeated(source_player=PlayerId.THREE)
+    t.new_condition.player_defeated(source_player=PlayerId.FOUR)
+    t.new_effect.declare_victory(source_player=PlayerId.EIGHT)
+
+    # --- #1998  Resource Equalizer P2   [display 1998]
+    t = tm.add_trigger('Resource Equalizer P2', description_stid=0, short_description_stid=0, enabled=0, looping=1)
+    t.new_condition.player_defeated(source_player=PlayerId.TWO, inverted=1)
+    t.new_condition.timer(timer=1)
+    t.new_effect.modify_resource(quantity=0, source_player=PlayerId.TWO)
+    t.new_effect.modify_resource(quantity=0, tribute_list=1, source_player=PlayerId.TWO)
+    t.new_effect.modify_resource(quantity=0, tribute_list=2, source_player=PlayerId.TWO)
+    t.new_effect.modify_resource(quantity=0, tribute_list=3, source_player=PlayerId.TWO)
+
+    # --- #1999  Resource Equalizer P3   [display 1999]
+    t = tm.add_trigger('Resource Equalizer P3', description_stid=0, short_description_stid=0, enabled=0, looping=1)
+    t.new_condition.player_defeated(source_player=PlayerId.THREE, inverted=1)
+    t.new_condition.timer(timer=1)
+    t.new_effect.modify_resource(quantity=0, source_player=PlayerId.THREE)
+    t.new_effect.modify_resource(quantity=0, tribute_list=1, source_player=PlayerId.THREE)
+    t.new_effect.modify_resource(quantity=0, tribute_list=2, source_player=PlayerId.THREE)
+    t.new_effect.modify_resource(quantity=0, tribute_list=3, source_player=PlayerId.THREE)

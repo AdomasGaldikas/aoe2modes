@@ -104,6 +104,9 @@ def snapshot(scenario) -> dict[str, Any]:
         "units": units,
         "triggers": triggers,
         "display_order": list(tm.trigger_display_order),
+        # (id, name) pairs, in declaration order. Variable ids are what conditions and
+        # effects actually reference, so a lost id silently rewires trigger logic.
+        "variables": [(v.variable_id, v.name) for v in tm.variables],
     }
 
 
@@ -169,7 +172,7 @@ def compare(original: dict[str, Any], rebuilt: dict[str, Any]) -> VerifyReport:
     """Field-by-field comparison of two snapshots, original first."""
     cmp = _Comparer()
 
-    for key in ("map_size", "active_players", "terrain_tiles", "display_order"):
+    for key in ("map_size", "active_players", "terrain_tiles", "display_order", "variables"):
         cmp.field(key, original[key], rebuilt[key])
 
     if original["terrain"] != rebuilt["terrain"]:

@@ -66,7 +66,7 @@ modes/<mode_id>/generated/
 ├── terrain.py        # run-length terrain table (20736 tiles -> ~2000 runs)
 ├── units.py          # every unit, reference ids preserved
 └── triggers/
-    ├── __init__.py   # part order + in-editor display order
+    ├── __init__.py   # trigger variables + part order + in-editor display order
     └── part_000.py … # ~250 triggers each
 ```
 
@@ -96,8 +96,15 @@ machine-written, with long literal lines and a deliberate star import.
 
 Stage order in `apply(ctx)` is load-bearing: the map is sized before terrain is
 painted (resizing rebuilds the terrain array), units are placed before triggers refer
-to them, and triggers are created in their original order because `activate_trigger`
-addresses them positionally.
+to them, triggers are created in their original order because `activate_trigger`
+addresses them positionally, and the `VARIABLES` table in `triggers/__init__.py` is
+declared before the first trigger.
+
+Those variable ids come from the original author, not from `lib/variables`. The
+`SHARED` block there hands out 0–2 for the XS bridge, while `evolution_alpha` (the only
+decompiled mode with variables today) occupies 1–16. Adding XS to a decompiled mode
+therefore means allocating ids above whatever the dump already claims — `add_variable`
+raises on a duplicate, so the build catches it, but only after the XS side is written.
 
 ## Sharing between modes
 

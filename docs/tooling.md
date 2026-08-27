@@ -109,8 +109,8 @@ fastest way to see what changed between two versions of the same mod.
 
 **`decompile`** writes the whole scenario back out as Python under
 `modes/<id>/generated/`: terrain as a run-length table, every unit with its reference
-id preserved, and every trigger as `add_trigger` / `new_condition` / `new_effect`
-calls. It works by introspecting the factory signatures — the fields a factory
+id preserved, every declared trigger variable as an `(id, name)` pair, and every
+trigger as `add_trigger` / `new_condition` / `new_effect` calls. It works by introspecting the factory signatures — the fields a factory
 *accepts* are exactly the fields to read back — and emits only the fields that differ
 from a freshly constructed default, so an effect with sixty fields prints as three
 lines. Values resolve to named constants (`TechInfo.AZTECS.ID`, `PlayerId.SEVEN`)
@@ -122,6 +122,11 @@ content-wise. A byte compare would be useless — the rebuild targets the newest
 scenario version, so the file layout differs by construction — so both sides are
 reduced to plain-data snapshots and compared field by field. Fields the older format
 never had are reported separately from real differences.
+
+Variables are compared as part of that snapshot, and they are worth calling out: a
+condition or effect names a variable by **id**, never by name, so a lost variable
+declaration changes no trigger field and would otherwise pass every other check while
+silently rewiring the logic.
 
 Two constraints shape this design, both from the parser:
 

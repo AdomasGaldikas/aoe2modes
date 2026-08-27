@@ -1,8 +1,8 @@
 [mode]
 id = "evolution_alpha"
 name = "CBA Hero Reforged Evolution Alpha"
-version = "0.1.0"
-description = "First improved variant — compacted trigger set (1988 vs Big_Ytri's 2993) on the same 144x144 arena."
+version = "0.12.0"
+description = "AI-improved variant of Big_Ytri's Royal 4v4 — 2029 triggers backed by 16 kill/death variables instead of a hand-copied counter ladder."
 authors = ["Big_Ytri (original)", "reforged"]
 tags = ["cba", "hero", "4v4", "reforged"]
 
@@ -11,6 +11,8 @@ tags = ["cba", "hero", "4v4", "reforged"]
 # scenario. `reference` is the original it was decompiled from — `aoe2modes verify
 # evolution_alpha` rebuilds and diffs against it.
 reference = "base.aoe2scenario"
+# The v0.12.0 source is already v1.58, so unlike big_ytri there is no version gap
+# between the original and the rebuild — `verify` reports zero version-only fields.
 version = "1.58"
 filename = "{name} v{version}"
 
@@ -23,8 +25,8 @@ terrain = "GRASS_1"
 [players]
 count = 8
 teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
-starting_age = "IMPERIAL_AGE"
-population_cap = 200
+starting_age = "FEUDAL_AGE"
+population_cap = 250
 
 [xs]
 include = []

@@ -1,9 +1,9 @@
 """Evolution Alpha — rebuilt from code rather than shipped as a binary.
 
-Everything the original scenario contained now lives in ``generated/``: terrain,
-units, players, lobby options and all 1988 triggers. ``aoe2modes verify
-evolution_alpha`` rebuilds it and diffs against ``base.aoe2scenario`` to prove the
-two still match.
+Everything the v0.12.0 source contained now lives in ``generated/``: terrain, units,
+players, lobby options, the 16 kill/death trigger variables and all 2029 triggers.
+``aoe2modes verify evolution_alpha`` rebuilds it and diffs against
+``base.aoe2scenario`` to prove the two still match.
 
 Edit in one of two places:
 

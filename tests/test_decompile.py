@@ -87,3 +87,15 @@ def test_rebuild_has_no_version_gap(evolution_rebuild):
     rebuilt, original = evolution_rebuild
     report = compare(original, rebuilt)
     assert report.version_only_total == 0, dict(report.version_only)
+
+
+def test_trigger_variables_round_trip(evolution_rebuild):
+    """Variables are addressed by id, so dropping one silently rewires trigger logic.
+
+    ``evolution_alpha`` declares 16 (``kills_p1``/``deaths_p1`` ...), which the earlier
+    decompiler emitted nowhere — the rebuild came out with none and ``verify`` did not
+    notice. Both the ids and the names have to survive.
+    """
+    rebuilt, original = evolution_rebuild
+    assert original["variables"], "fixture mode no longer declares variables"
+    assert rebuilt["variables"] == original["variables"]
