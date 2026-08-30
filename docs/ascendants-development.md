@@ -1,13 +1,13 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.7** as the current
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.8** as the current
 source-verified release candidate. It is derived only from v1.0.3; older versions are
 not repair or comparison targets. Engine acceptance is still a separate step.
 
 The canonical v1.0.3 checkpoint is 99,694 bytes with SHA-256
-`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. The v1.0.7
-candidate is 89,119 bytes with SHA-256
-`28dfec1fdf2d17e6b9bf00500d1167ad4dc780f2a350f8037b1c006722c20378`.
+`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. The v1.0.8
+candidate is 120,284 bytes with SHA-256
+`e9c8760f9078903045deb82c2f5f8f70d26f5598a7ae38dc0cef187e74eef3af`.
 Its intentional trigger-graph migration and engine-reported fixes explain the changed hash.
 
 ## Two verification layers
@@ -30,13 +30,32 @@ trigger-variable ids. It then runs the final-build gameplay contract and produce
 scenario that should be tested in-game. Finally, `aoe2modes audit` checks the serialized
 output for broken references, invalid coordinates, and immediate unconditional
 victory/defeat. Potential scheduling or cleanup risks are reported as warnings for
-review. The v1.0.7 candidate currently passes with **0 errors and 0 warnings**.
+review. The v1.0.8 candidate currently passes with **0 errors and 0 warnings**.
 
 The target is entirely local. It does not use GitHub Actions or any paid CI service.
 
 The active issue inventory and manual acceptance cases are in
 [`ascendants-issue-register.md`](ascendants-issue-register.md). v1.0.3 is the sole
-comparison baseline and v1.0.7 is the only active candidate.
+comparison baseline and v1.0.8 is the only active candidate.
+
+## v1.0.8 arbitrary lobby-order repair
+
+Runtime player order follows lobby rows, not numeric colors. A full lobby can therefore
+map Yellow to runtime P3 and Green to runtime P4. The earlier compact-lobby model only
+generated mappings where the runtime number was no greater than the color number, so
+valid reversed and shuffled rows were absent from army movement, rewards, defeat,
+resignation, HUD, vote, upgrade, and hero systems.
+
+Every mapped family now contains all 64 color/runtime candidates. Castle-row owner
+detection activates exactly one candidate per occupied color, so closed or unrelated
+rows remain inert. Regression tests require the Green/P4 and Yellow/P3 pair explicitly,
+exercise all 8! full-lobby color orders, and model reversed victory ownership.
+
+Army pads are no longer eight hand-maintained tables. All 32 positions come from one P3
+row through the continuous-coordinate V2 transform, and a build-time geometry audit
+requires dry, unique, unoccupied pads that are closest to their own four Castles. Hay
+markers are assigned to the nearest Castle/pad pair and moved one cell Castle-ward;
+none can share a runtime wave-creation cell.
 
 ## v1.0.7 five-position Sheep repair
 

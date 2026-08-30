@@ -1,26 +1,26 @@
-# Ascendants v1.0.7 candidate issue register
+# Ascendants v1.0.8 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.7** is the active source-verified candidate.
+repair targets. **v1.0.8** is the active source-verified candidate.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.7 candidate is 89,119 bytes with SHA-256
-`28dfec1fdf2d17e6b9bf00500d1167ad4dc780f2a350f8037b1c006722c20378`.
+The v1.0.8 candidate is 120,284 bytes with SHA-256
+`e9c8760f9078903045deb82c2f5f8f70d26f5598a7ae38dc0cef187e74eef3af`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.7 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.8 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
 | ASC-003 | Sideways gates, wall gaps, unequal territory, wrong water, cliffs, and broken routes. | Guarded | Gate type and wall rotation are transformed by map axis; the terrain hash and all eight symmetry orbits are fixed; default cliffs are absent; allied routes and enemy-side water have explicit tests. | Walk units through every friendly gate/route and attempt every enemy bypass. |
 | ASC-004 | Full or sparse games could declare defeat immediately on launch. | Guarded | Color owners are detected from their four-Castle rows. Defeat requires a settled two-sided match, an active mapped color, and absence of its Castles. All 6,560 occupied/alive color states are modeled; the audit finds no reachable unconditional defeat. | Launch full 4v4, P1 vs P5, and a non-adjacent sparse lobby; wait at least 15 seconds. |
-| ASC-005 | P5 did not spawn in P1 vs P5; arbitrary closed slots and all civilizations must work. | Guarded | Every valid compacted color-to-world pair has a detector. XS spawns by detected world owner, and civilization ids 1–59 have explicit unit, cap, and interval mappings. | Test P1 vs P5 and P2+P4 vs P5+P8 with representative civilizations. Add mappings before enabling any later DLC civilization id. |
-| ASC-006 | Deleting rear vote markers did not kick a teammate safely. | Guarded | There are 24 two-voter detectors, 24 marker variables, 108 compact-owner deletion detectors, and 36 target resolvers. Target plus both distinct voters must be active; a side with fewer than three live colors cannot resolve a kick. | With three and four teammates, cast two votes; with two teammates, prove no kick; repeat in a sparse lobby. |
+| ASC-005 | P5 did not spawn in P1 vs P5; arbitrary closed slots and all civilizations must work. | Guarded | All 64 color-to-world candidates have Castle-row detectors. XS spawns by detected world owner, and civilization ids 1–59 have explicit unit, cap, and interval mappings. | Test P1 vs P5 and P2+P4 vs P5+P8 with representative civilizations. Add mappings before enabling any later DLC civilization id. |
+| ASC-006 | Deleting rear vote markers did not kick a teammate safely. | Guarded | There are 24 two-voter detectors, 24 marker variables, 192 runtime-owner deletion detectors, and 64 target resolvers. Target plus both distinct voters must be active; a side with fewer than three live colors cannot resolve a kick. | With three and four teammates, cast two votes; with two teammates, prove no kick; repeat in a sparse lobby. |
 | ASC-007 | Builder pairs were missing or awarded at the wrong razing threshold. | Guarded | All 59 civilization thresholds are explicit. Earned pairs are persistent and queue at `razings - threshold + 1`; the local start message reports the selected civilization's threshold. | Use Persians: first pair at 4 razings, then one pair per razing; verify another low-threshold and high-threshold civilization. |
 | ASC-008 | Resources, research, buildings, upgrades, or repairs were not free; Bombard Tower was unavailable. | Guarded | Starting stockpiles and score resources are zeroed. XS sets technology and object costs to zero at runtime, repair modifiers are zero, and Bombard Tower availability is forced for every valid owner mapping. | Open several technology/build menus for multiple civilizations and confirm every available action costs zero. |
 | ASC-009 | Starting scores differed; K/D/R was misaligned; razings/MVP were not represented. | Guarded | The right-side rows use ordered `P# | K | D | R` variables. Non-combat score attributes are neutralized and kill/death/razing values are republished from live engine attributes. | Compare all starting scores, live K/D/R updates, and post-game statistics in full and sparse games. |
@@ -29,17 +29,18 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-012 | Allied paths must be walkable and protected without opening enemy shortcuts. | Guarded | Top/bottom team causeways are land; enemy-side corridors remain water; protected wall/gate references are included in anti-delete effects. | Test allied reinforcement and enemy pathfinding from every orientation. |
 | ASC-013 | Objectives and public text must be clean and contain no development/AI references. | Resolved statically | Scenario messages are rewritten for Ascendants and serialized labels are sanitized; regression tests reject development references. | Review the lobby instructions, objectives panel, start messages, victory, and defeat text. |
 | ASC-014 | Two score numbers appeared beside a player. | Not a scenario defect | The second number is Definitive Edition's team-average display, not another custom score field. | No change unless the game offers a supported UI option to hide it. |
-| ASC-015 | Armies ordered back toward their Castles turned around at an invisible line. | Guarded | All 108 full/sparse Short, Medium, and Long route triggers require a color-specific new-wave variable set by XS only after unit creation. The selected owner route consumes the pulse once; no pulse means no task effect. | For all eight colors, let a wave leave, order it back across all four spawn pads, and confirm the manual order remains. |
+| ASC-015 | Armies ordered back toward their Castles turned around at an invisible line. | Guarded | All 192 full/sparse Short, Medium, and Long route triggers require a color-specific new-wave variable set by XS only after unit creation. The selected owner route consumes the pulse once; no pulse means no task effect. | For all eight colors, let a wave leave, order it back across all four spawn pads, and confirm the manual order remains. |
 | ASC-016 | The marked milestone shoreline rejected building placement. | Guarded | The exact 20-cell Beach ribbon is transformed eight ways into 160 unique Grass 2 cells. Tests pin its terrain, elevation, layer, symmetry, and whole-map terrain hash. | Place representative buildings throughout every repaired shore strip, including the former corners. |
 | ASC-017 | Marker ships added no value and could not be made reliable. | Resolved by removal | The serialized scenario contains zero Transport Ships. Their creation pass and all 56 marker protection effects are deleted; milestone hero creation and orders remain independently tested. | Confirm all eight shores are clear and milestone heroes still spawn normally. |
-| ASC-018 | A resigned player's units and buildings remained on the map. | Guarded | Each of the 36 valid color/runtime resignation resolvers has one full-map `REMOVE_OBJECT` effect scoped to its resolved runtime player, alongside the eliminated/active state changes. | Resign one player in full 4v4 and a compacted sparse lobby; all of that player's objects must disappear without touching anyone else. |
-| ASC-019 | None of the five Sheep positions worked reliably; 200/400+ kill heroes always took the default Medium route. | Guarded in v1.0.7 | Engine evidence disproved the narrow v1.0.6 zones. All 40 selectors now cover collision-limited approach cells, and all five regions are mutually exclusive. All 108 normal-wave and 108 milestone-hero route triggers read the same eight latched route variables. The 36 fixed-Medium Open fallbacks are absent. | For every color in full and sparse lobbies, move the Sheep to Short, Medium, Long, Closed, and Open. Normal waves and 200/400/600/800/1000/2000 heroes must follow the selected route; Closed/Open must add/remove the shore blocker without resetting that route. |
+| ASC-018 | A resigned player's units and buildings remained on the map. | Guarded | Each of the 64 color/runtime resignation resolvers has one full-map `REMOVE_OBJECT` effect scoped to its resolved runtime player, alongside the eliminated/active state changes. | Resign one player in full 4v4 and a compacted sparse lobby; all of that player's objects must disappear without touching anyone else. |
+| ASC-019 | None of the five Sheep positions worked reliably; 200/400+ kill heroes always took the default Medium route. | Guarded since v1.0.7 | Engine evidence disproved the narrow v1.0.6 zones. All 40 selectors cover collision-limited approach cells, and all five regions are mutually exclusive. All 192 normal-wave and 192 milestone-hero route triggers read the same eight latched route variables. The 36 fixed-Medium Open fallbacks are absent. | For every color in full and sparse lobbies, move the Sheep to Short, Medium, Long, Closed, and Open. Normal waves and 200/400/600/800/1000/2000 heroes must follow the selected route; Closed/Open must add/remove the shore blocker without resetting that route. |
+| ASC-020 | Green and Yellow armies spawned or routed through each other's Castle territories when their lobby rows were reversed. | Guarded in v1.0.8 | Runtime order is independent of color order. Every mapped family now covers all 64 pairs, including Green→W4 and Yellow→W3; tests exercise all 8! full-lobby orders. All 32 wave pads derive from one canonical row and are dry, unique, empty, and closest to their own Castles. Hay markers no longer occupy P4/P7 pads. | Start a full lobby with Yellow listed before Green, then other shuffled color orders. Confirm every army, route, HUD, reward, resignation, and victory result stays with its Castle territory. |
 
 ## Additional parser findings
 
-The v1.0.7 candidate passes the structural audit with **0 errors and 0 warnings**:
+The v1.0.8 candidate passes the structural audit with **0 errors and 0 warnings**:
 
-- 2,291 uniquely named, non-empty triggers and a complete display order;
+- 3,383 uniquely named, non-empty triggers and a complete display order;
 - 1,076 unique object references, all on-map, with no dangling garrisons;
 - 97 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
@@ -56,7 +57,7 @@ ever changes.
 Run the same audit after every build:
 
 ```bash
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.7.aoe2scenario"
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.8.aoe2scenario"
 ```
 
 `--strict` passes too. The normal command fails only on structural errors; strict also
@@ -71,6 +72,7 @@ cases are recorded in-game.
 | Case | Lobby | Must be observed |
 | --- | --- | --- |
 | Full initialization | P1–P4 vs P5–P8 | No early defeat; equal starts; all eight armies; complete walls and dry paths. |
+| Shuffled full lobby | Yellow listed before Green, then another nonnumeric order | Every color's army, route, HUD, rewards, resignation, and victory stay in its Castle territory. |
 | Minimum sparse | P1 vs P5 | Correct P5 ownership/spawns, no startup cleanup, normal final victory. |
 | Non-adjacent sparse | P2+P4 vs P5+P8 | Correct color bases, HUD rows, upgrades, builders, heroes, and victory owner. |
 | Vote success | Any side with at least three live colors | Two distinct teammate marker deletions defeat only the target. |

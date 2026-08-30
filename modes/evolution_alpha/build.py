@@ -59,8 +59,15 @@ PLAYERS = tuple(PlayerId.all(exclude_gaia=True))
 
 
 def _possible_world_players(color: PlayerId):
-    """Runtime slots a compacted scenario color can validly occupy."""
-    return PLAYERS[: int(color)]
+    """Runtime slots a scenario color can occupy in the lobby.
+
+    Lobby rows follow join/order choices, not numeric color order. Yellow can
+    therefore be runtime P3 while Green is runtime P4, and the same is true for
+    every other permutation. Castle-row detection selects the one real owner;
+    the generated trigger families must cover all eight candidates.
+    """
+    del color
+    return PLAYERS
 
 
 RESOURCE_STOCKPILES = (0, 1, 2, 3)  # food, wood, stone, gold
@@ -124,49 +131,16 @@ EDGE_KILL_ZONE_NAME = re.compile(r"uk[1-4] \(p[1-8]\)")
 ANTI_TREB_NAME = re.compile(r"No trebs in p([1-8]) base(?: \(p[1-8]\))?")
 LOBBY_SETTLE_SECONDS = 3
 VICTORY_RESOLVE_SECONDS = 5
+SOURCE_ARMY_SPAWN_POINTS = ((22, 48), (22, 52), (22, 55), (22, 59))
+# Army creation uses continuous unit positions, whose reflected axis is 144,
+# rather than inclusive trigger cells, whose reflected axis is 143. Deriving
+# every row from P3 prevents a hand-edited Green/Yellow or corner swap.
 SPAWN_POINTS = {
-    PlayerId.ONE: ((48, 22), (52, 22), (55, 22), (59, 22)),
-    PlayerId.TWO: ((96, 22), (92, 22), (89, 22), (85, 22)),
-    PlayerId.THREE: ((22, 48), (22, 52), (22, 55), (22, 59)),
-    PlayerId.FOUR: ((122, 48), (122, 52), (122, 55), (122, 59)),
-    PlayerId.FIVE: ((22, 96), (22, 92), (22, 89), (22, 85)),
-    PlayerId.SIX: ((122, 96), (122, 92), (122, 89), (122, 85)),
-    PlayerId.SEVEN: ((48, 122), (52, 122), (55, 122), (59, 122)),
-    PlayerId.EIGHT: ((96, 122), (92, 122), (89, 122), (85, 122)),
-}
-HAY_LOCATION_BY_CASTLE_REFERENCE = {
-    9_761: (48, 21),
-    22_013: (52, 21),
-    22_014: (55, 21),
-    22_015: (59, 21),
-    78_945: (95, 21),
-    78_946: (84, 21),
-    78_947: (88, 21),
-    78_948: (91, 21),
-    35_044: (21, 59),
-    35_045: (21, 55),
-    35_046: (21, 52),
-    35_043: (21, 48),
-    22_019: (122, 48),
-    22_020: (122, 52),
-    22_021: (122, 55),
-    22_022: (122, 59),
-    35_050: (21, 95),
-    35_049: (21, 84),
-    35_048: (21, 88),
-    35_047: (21, 91),
-    22_023: (122, 95),
-    22_024: (122, 84),
-    22_025: (122, 88),
-    22_026: (122, 91),
-    79_333: (48, 122),
-    79_334: (52, 122),
-    79_335: (55, 122),
-    79_336: (59, 122),
-    35_057: (95, 122),
-    35_055: (84, 122),
-    35_056: (88, 122),
-    35_058: (91, 122),
+    player: tuple(
+        tuple(map(int, v2_position_for_player(player, x, y)))
+        for x, y in SOURCE_ARMY_SPAWN_POINTS
+    )
+    for player in PLAYERS
 }
 BASE_CASTLE_AREAS = {
     PlayerId.ONE: (48, 19, 60, 19),
@@ -854,9 +828,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 2_290:
+    if len(ctx.tm.triggers) != 3_382:
         raise RuntimeError(
-            f"expected 2,290 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,382 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1345,10 +1319,9 @@ def _add_color_runtime_variables(ctx: BuildContext):
 def _add_color_owner_detection(ctx: BuildContext, active_variables, world_variables) -> None:
     """Latch each scenario color to the runtime owner of its Castle row.
 
-    Sparse lobbies compact occupied colors into lower runtime player numbers.
-    Detecting the actual owner of a color's fixed starting Castles avoids any
-    ambiguity in the indexing convention of ``xsGetWorldPlayerId`` and gives
-    triggers and XS one shared, map-verified mapping.
+    Lobby order and color order are independent. Detecting the actual owner of
+    a color's fixed starting Castles avoids assumptions about either ordering
+    and gives triggers and XS one shared, map-verified mapping.
     """
     configured = 0
     for color in PLAYERS:
@@ -1387,8 +1360,11 @@ def _add_color_owner_detection(ctx: BuildContext, active_variables, world_variab
             )
             detector.new_effect.deactivate_trigger(trigger_id=detector.trigger_id)
             configured += 1
-    if configured != 36:
-        raise RuntimeError(f"expected 36 color-owner detectors, configured {configured}")
+    expected = len(PLAYERS) ** 2
+    if configured != expected:
+        raise RuntimeError(
+            f"expected {expected} color-owner detectors, configured {configured}"
+        )
 
 
 def _configure_custom_team_victory(
@@ -1644,9 +1620,9 @@ def _render_color_spawn_xs() -> str:
         for attribute in SCORE_NEUTRAL_ATTRIBUTES
     )
     return f"""// Sparse-lobby color-aware army spawning.
-// DE compacts occupied colors into consecutive runtime player numbers. The
-// legacy trigger loops bind both concepts to one number; xsGetWorldPlayerId
-// provides the required color -> runtime mapping.
+// DE assigns occupied colors to runtime lobby rows whose order can differ from
+// numeric color order. Castle-row detectors write the verified mapping shared
+// by this XS and every mapped trigger family.
 
 int gCbaNextSpawnByColor = -1;
 int gCbaUnitByCiv = -1;
@@ -2358,8 +2334,14 @@ def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
         target = _unique_trigger(ctx, f"P{int(player)} King")
         _copy_v2_trigger_geometry(player, source_king, target)
 
+    unit_by_reference = {
+        unit.reference_id: unit
+        for units in ctx.um.units
+        for unit in units
+    }
     seen_hay_references = set()
     for player in PLAYERS:
+        unused_spawn_points = set(SPAWN_POINTS[player])
         for hay_index in range(1, 5):
             target = _unique_trigger(ctx, f"hay{hay_index} (p{int(player)})")
             reference_ids = {
@@ -2377,14 +2359,33 @@ def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
                     f"expected one castle reference and create effect in {target.name!r}"
                 )
             reference_id = reference_ids.pop()
-            location = HAY_LOCATION_BY_CASTLE_REFERENCE.get(reference_id)
-            if location is None:
+            castle = unit_by_reference.get(reference_id)
+            if castle is None or castle.player != player:
                 raise RuntimeError(
-                    f"unknown V2 hay castle reference {reference_id} in {target.name!r}"
+                    f"invalid P{int(player)} hay castle reference {reference_id} "
+                    f"in {target.name!r}"
                 )
-            creates[0].location_x, creates[0].location_y = location
+            spawn_x, spawn_y = min(
+                unused_spawn_points,
+                key=lambda point: (
+                    (castle.x - point[0]) ** 2 + (castle.y - point[1]) ** 2,
+                    point,
+                ),
+            )
+            unused_spawn_points.remove((spawn_x, spawn_y))
+            # Put the decorative marker one cell toward its Castle, never on
+            # the wave pad itself. The old cell transform placed all P4 and P7
+            # Hay Stacks directly on their four army creation points.
+            step_x = (castle.x > spawn_x) - (castle.x < spawn_x)
+            step_y = (castle.y > spawn_y) - (castle.y < spawn_y)
+            creates[0].location_x = spawn_x + step_x
+            creates[0].location_y = spawn_y + step_y
             seen_hay_references.add(reference_id)
-    if seen_hay_references != set(HAY_LOCATION_BY_CASTLE_REFERENCE):
+        if unused_spawn_points:
+            raise RuntimeError(
+                f"not every P{int(player)} army spawn received a hay marker"
+            )
+    if len(seen_hay_references) != len(PLAYERS) * 4:
         raise RuntimeError("not every V2 hay castle reference was assigned")
 
 
@@ -2464,6 +2465,82 @@ def _restore_mobile_distance_movers(ctx: BuildContext) -> None:
                 f"P{int(player)} distance mover {reference_id} has "
                 f"conflicting effects: {conflicts}"
             )
+
+
+def _validate_army_spawn_geometry(ctx: BuildContext) -> None:
+    """Fail the build if any color's four wave pads are unsafe or misassigned."""
+    all_spawn_points = {
+        point
+        for points in SPAWN_POINTS.values()
+        for point in points
+    }
+    expected_count = len(PLAYERS) * len(SOURCE_ARMY_SPAWN_POINTS)
+    if len(all_spawn_points) != expected_count:
+        raise RuntimeError("army spawn points overlap between color territories")
+
+    water = {int(terrain) for terrain in TerrainId.water_terrains()}
+    static_occupants = defaultdict(list)
+    for units in ctx.um.units:
+        for unit in units:
+            cell = (int(unit.x), int(unit.y))
+            if cell in all_spawn_points:
+                static_occupants[cell].append(unit.reference_id)
+    if static_occupants:
+        raise RuntimeError(
+            f"army spawn points contain static objects: {dict(static_occupants)}"
+        )
+
+    trigger_occupants = defaultdict(list)
+    for trigger in ctx.tm.triggers:
+        for effect in trigger.effects:
+            if effect.effect_type != EffectId.CREATE_OBJECT:
+                continue
+            cell = (effect.location_x, effect.location_y)
+            if cell in all_spawn_points:
+                trigger_occupants[cell].append(trigger.name)
+    if trigger_occupants:
+        raise RuntimeError(
+            "army spawn points contain trigger-created objects: "
+            f"{dict(trigger_occupants)}"
+        )
+
+    castles_by_player = {
+        player: [
+            unit
+            for unit in ctx.um.units[player]
+            if unit.unit_const == BuildingInfo.CASTLE.ID
+        ]
+        for player in PLAYERS
+    }
+    if any(len(castles) != 4 for castles in castles_by_player.values()):
+        raise RuntimeError("expected four starting Castles beside every army row")
+
+    for player, spawn_points in SPAWN_POINTS.items():
+        own_castles = castles_by_player[player]
+        other_castles = [
+            castle
+            for other_player, castles in castles_by_player.items()
+            if other_player != player
+            for castle in castles
+        ]
+        for x, y in spawn_points:
+            if ctx.mm.get_tile(x=x, y=y).terrain_id in water:
+                raise RuntimeError(
+                    f"P{int(player)} army spawn ({x}, {y}) is on water"
+                )
+            own_distance = min(
+                (castle.x - x) ** 2 + (castle.y - y) ** 2
+                for castle in own_castles
+            )
+            other_distance = min(
+                (castle.x - x) ** 2 + (castle.y - y) ** 2
+                for castle in other_castles
+            )
+            if own_distance >= other_distance:
+                raise RuntimeError(
+                    f"P{int(player)} army spawn ({x}, {y}) is closer to "
+                    "another color's Castle row"
+                )
 
 
 def _configure_sparse_center_rewards(
@@ -3760,9 +3837,10 @@ def _force_bombard_tower_unlock(ctx: BuildContext) -> None:
                 enabled=1,
             )
             configured += 1
-    if configured != 36:
+    expected = len(PLAYERS) ** 2
+    if configured != expected:
         raise RuntimeError(
-            f"expected 36 mapped Bombard Tower grants, configured {configured}"
+            f"expected {expected} mapped Bombard Tower grants, configured {configured}"
         )
 
 
@@ -3778,9 +3856,10 @@ def _finalize_occupied_slot_gates(ctx: BuildContext) -> None:
             gate.looping = 1
             gate.new_effect.deactivate_trigger(trigger_id=gate.trigger_id)
             configured += 1
-    if configured != 36:
+    expected = len(PLAYERS) ** 2
+    if configured != expected:
         raise RuntimeError(
-            f"expected 36 retrying occupied-slot gates, configured {configured}"
+            f"expected {expected} retrying occupied-slot gates, configured {configured}"
         )
 
 
@@ -4286,9 +4365,10 @@ def _add_live_white_king_kill_counters(ctx: BuildContext) -> None:
             )
             occupied.new_effect.activate_trigger(trigger_id=live_counter.trigger_id)
             configured += 1
-    if configured != 36:
+    expected = len(PLAYERS) ** 2
+    if configured != expected:
         raise RuntimeError(
-            f"expected 36 mapped White King counters, configured {configured}"
+            f"expected {expected} mapped White King counters, configured {configured}"
         )
 
 
@@ -4301,9 +4381,9 @@ def _configure_sparse_vote_kick(
 ) -> None:
     """Require two occupied teammates to delete their target vote markers.
 
-    The color activity variables are maintained by XS through
-    ``xsGetWorldPlayerId``. Requiring the target and both distinct voters to be
-    active means a side needs at least three live colors before a vote can
+    Castle-row detection establishes each color's runtime owner, and XS keeps
+    its activity flag current. Requiring the target and both distinct voters to
+    be active means a side needs at least three live colors before a vote can
     resolve. Closed slots therefore cannot create startup votes, and a side
     reduced to two colors cannot kick again.
     """
@@ -4430,9 +4510,7 @@ def _configure_sparse_vote_kick(
         marker = vote_markers[target, voter]
         marker_x = math.floor(marker.x)
         marker_y = math.floor(marker.y)
-        # A compacted color can only move downward in runtime numbering, so
-        # scenario color Pn has possible world owners W1..Wn.
-        for world_player in range(1, int(voter) + 1):
+        for world_player in _possible_world_players(voter):
             deleted = ctx.tm.add_trigger(
                 f"Vote Marker Deleted P{int(target)} V{int(voter)} W{world_player}",
                 description_stid=0,
@@ -4662,6 +4740,7 @@ def build(ctx: BuildContext) -> None:
     _retire_obsolete_public_loops(ctx)
     _neutralize_fixed_color_tags(ctx)
     _sanitize_serialized_labels(ctx)
+    _validate_army_spawn_geometry(ctx)
     for player, reference_ids in v2_report.new_wall_ids.items():
         protections = [
             effect

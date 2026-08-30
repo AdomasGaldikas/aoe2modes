@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.7
+# CBA Hero: Ascendants v1.0.8
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,11 +7,11 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.7 |
+| | Baseline | Ascendants v1.0.8 |
 | --- | --- | --- |
-| Triggers | 2,993 | 2,291 |
-| Conditions | 3,314 | 6,904 |
-| Effects | 7,814 | 6,475 |
+| Triggers | 2,993 | 3,383 |
+| Conditions | 3,314 | 11,384 |
+| Effects | 7,814 | 9,975 |
 | Units | 1,123 | 1,076 |
 | Runtime variables | 0 | 97 |
 | Scenario version | v1.51 | v1.58 |
@@ -50,12 +50,14 @@ until an occupied-player gate confirms it is present.
 
 ## Color-aware army spawning
 
-DE compacts sparse lobbies into consecutive runtime player numbers. For example,
-Teal/P5 becomes runtime P2 when only Blue and Teal are occupied. The legacy army
-loops used the color slot as the runtime player, leaving Teal without its Dravidian
-Urumi waves. Ascendants now detects the runtime owner directly from each color's
-fixed Castle row, then spawns that civilization's original unit at the correct color
-territory with the original population cap and interval. Runtime-owner move
+DE assigns occupied colors to consecutive runtime player numbers, but lobby row
+order can differ from numeric color order. For example, Teal/P5 can become runtime
+P2 in a sparse lobby, while a full lobby can put Yellow at runtime P3 and Green at
+runtime P4. The legacy army loops used the color slot as the runtime player, leaving
+some colors without waves or routing them through the wrong owner. Ascendants detects
+the runtime owner directly from each color's fixed Castle row and covers all 64
+color/runtime combinations. It then spawns that civilization's original unit at the
+correct color territory with the original population cap and interval. Runtime-owner move
 triggers send each newly created wave out of the matching base, consume a one-shot
 launch pulse, and then remain inert until the next wave. A returning army can cross
 the spawn line without the scenario overwriting the player's order. Each color's Sheep
@@ -230,6 +232,15 @@ milestone-hero order triggers now use the same latched route variables as the 10
 normal-wave routes. The 36 later fixed-Medium Open fallbacks are removed, eliminating
 the order that overrode Short or Long. The candidate has 2,291 triggers, 1,076 objects,
 6,904 conditions, 6,475 effects, and 97 variables.
+
+Version 1.0.8 removes the remaining assumption that runtime rows follow numeric color
+order. Every mapped system now covers all 64 color/runtime combinations, including
+Green at runtime P4 and Yellow at runtime P3. The four wave pads for every color are
+derived from one canonical P3 row with the continuous-coordinate V2 transforms, and
+the build rejects overlaps, water, static occupants, trigger-created occupants, or a
+pad closer to another color's Castles. All 32 decorative Hay Stacks are moved one cell
+toward their own Castle; none occupies a wave pad. The candidate has 3,383 triggers,
+1,076 objects, 11,384 conditions, 9,975 effects, and 97 variables.
 
 ## Source of truth
 
