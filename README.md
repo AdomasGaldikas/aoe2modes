@@ -35,7 +35,8 @@ Six modes ship with the repo, illustrating both authoring styles:
 Three authoring styles are supported:
 
 - **Blank build** — the mode's `build.py` generates the whole scenario from scratch, using helpers in `src/aoe2modes/lib/`. Diffable end-to-end. (`cba_hero`, `cba_hero_duel`)
-- **Decompiled** — an existing `.aoe2scenario` has been dumped to Python under `modes/<id>/generated/`, so it rebuilds from source and `aoe2modes verify` proves the output still matches. This is where a reverse-engineered mode should end up. (`big_ytri`, `evolution_alpha`, `chieftains_4v4`, `chieftains_ffa`)
+- **Decompiled** — an existing `.aoe2scenario` has been dumped to Python under `modes/<id>/generated/`, so it rebuilds from source and `aoe2modes verify` proves the output still matches. This is where a reverse-engineered mode should end up. (`big_ytri`, `chieftains_4v4`, `chieftains_ffa`)
+- **Code-defined** — the mode has outgrown its origin binary: the Python *is* the scenario, with no `scenario.base` and no `scenario.reference` to verify against. `aoe2modes audit` on the built file is the structural check. (`evolution_alpha`)
 - **Base+patch** — the mode loads a real `.aoe2scenario` binary and modifies it in place. The quick intermediate step, but the base stays an opaque blob in git. No mode uses it today.
 
 A decompiled mode rebuilds at the *current* scenario version rather than the original's, because the parser only ships blank templates for v1.57 and v1.58 — `big_ytri` moved from v1.51 to v1.58. The content is unchanged; `verify` reports the v1.55+ fields the older format never had (`execute_on_load`, `caption_string`, `max_units_affected`, `disable_sound`) separately from real differences. Ascendants starts from a v1.58 decompiled reference and then applies intentional gameplay and map patches in `build.py`; `tests/test_decompile.py` verifies the reference round trip, while `tests/test_evolution_alpha.py` verifies the final patched scenario.
@@ -63,11 +64,12 @@ Rule of thumb: **anything a non-Python-user could reasonably tune goes in `mode.
 
 ## Reverse-engineering an existing scenario
 
-Five CLI commands cover the loop from opaque binary to code-generated mode:
+Six CLI commands cover the loop from opaque binary to code-generated mode:
 
 ```bash
 aoe2modes inspect "input/CBA Hero Royal 4v4 Big_Ytri.aoe2scenario" --triggers
 aoe2modes audit "dist/CBA Hero Ascendants v1.0.8.aoe2scenario"
+aoe2modes map evolution_alpha --html dist/ascendants-map.html
 aoe2modes diff modes/big_ytri/base.aoe2scenario modes/evolution_alpha/base.aoe2scenario
 aoe2modes decompile --mode evolution_alpha        # writes modes/evolution_alpha/generated/
 pytest tests/test_decompile.py                     # prove the reference round trip
@@ -78,6 +80,11 @@ pytest tests/test_evolution_alpha.py               # verify the patched Ascendan
 - **`audit`** — fail on broken trigger/object/variable references, invalid coordinates,
   and immediate unconditional victory/defeat. Scheduling and editor risks such as
   timerless loops, unconditional cleanup, duplicate names, and empty shells are warnings.
+- **`map`** — render the map as a self-contained HTML report: a terrain view and a zone view
+  (bases, shared arena, gated areas, unreachable islands), the walkable regions with gates
+  open and with them shut, terrain and object symmetry against all eight transforms of the
+  square, per-player parity, and a distance matrix. `--png [--zones]` writes just the render.
+  `inspect` tells you what a scenario contains; `map` tells you what shape it is.
 - **`diff`** — compare two scenarios by trigger signature (name + condition/effect types) and report added / removed / reshaped groups. Fastest way to see what changed between versions of the same mode. Auto-orders newest-first (see gotcha below).
 - **`decompile`** — read a scenario back as regenerable Python under `modes/<id>/generated/`, chunked into `part_N.py` files. Works by introspecting the parser's factory signatures — the fields a factory accepts are exactly the fields to read back — and only emitting fields that differ from a freshly constructed default.
 - **`verify`** — build the decompiled mode into a tempdir, snapshot both it and the original as plain-data dicts, and diff field-by-field. Fields that exist only on the newer version go into a `version_only` bucket rather than reported as differences. This is what makes decompiling trustworthy.
@@ -89,7 +96,7 @@ The `input/` folder is where local mod dumps and scenario files go for analysis 
 ```
 aoe2modes/
 ├── src/aoe2modes/          # the CLI, builder, and shared library
-│   ├── cli.py              # build, inspect, audit, diff, decompile, verify, and deployment commands
+│   ├── cli.py              # build, inspect, audit, map, diff, decompile, verify, and deployment commands
 │   ├── builder.py          # build_mode: TOML + build.py → .aoe2scenario
 │   ├── config.py           # mode.toml schema and validation
 │   ├── context.py          # BuildContext passed to every build(ctx)
@@ -98,6 +105,7 @@ aoe2modes/
 │   ├── toolchain.py        # parser fixups (encoding, xs-check bit)
 │   └── lib/                # shared helpers: terrain, spawns, triggers, heroes, xs,
 │                           #   plus diff / decompile / verify for reverse-engineering
+│                           #   and mapview for the HTML map report
 ├── modes/                  # one folder per mode; see above
 │   └── <id>/generated/     # decompiled modes only — machine-written, excluded from ruff
 ├── xs/lib/                 # shared XS (util.xs, random.xs)

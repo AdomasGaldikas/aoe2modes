@@ -1,17 +1,21 @@
-"""CBA Hero: Ascendants — rebuilt from code rather than shipped as a binary.
+"""CBA Hero: Ascendants — a code-defined scenario, not a decompiled binary.
 
-Everything the original scenario contained now lives in ``generated/``: terrain,
-units, players, lobby options and the original triggers. Ascendants then applies
-substantial map and gameplay patches, so the public build intentionally differs from
-``base.aoe2scenario``. Use ``make check-ascendants`` to validate both source layers.
+**This code is the only source of truth.** There is no ``scenario.base`` and no
+``scenario.reference``: the ``.aoe2scenario`` in ``dist/`` is a build product, and
+nothing in the repo is verified back against a binary. ``aoe2modes decompile
+--mode evolution_alpha`` is not a valid operation here.
 
-Edit in one of two places:
+Two source layers, both hand-maintained:
 
-- **Small, local changes** go here, after ``generated.apply(ctx)``. This code runs
-  last and wins, so retuning a value or renaming a trigger needs no regeneration.
-- **Reference reconstruction changes** go into ``generated/``. Those files are
-  overwritten by ``aoe2modes decompile``; Ascendants-specific fixes belong here or
-  in a focused helper module instead.
+- ``scenario/`` lays down the arena — terrain, units, players, lobby options and the
+  legacy trigger graph inherited from CBA Hero. It began as decompiler output and is
+  now edited directly.
+- This module, plus ``v2_map.py``, runs after ``scenario.apply(ctx)`` and applies the
+  Ascendants map and gameplay layer. It runs last and wins.
+
+Put structural arena changes in ``scenario/``; put Ascendants behavior here.
+``aoe2modes audit`` on the built file is the structural check — see
+``docs/ascendants-development.md``.
 """
 
 from __future__ import annotations
@@ -52,7 +56,7 @@ from aoe2modes.lib.decompile import (
     safe_get,
 )
 
-from .generated import apply as apply_generated
+from .scenario import apply as apply_scenario_source
 from .v2_map import apply_v2_map, v2_cell_for_player, v2_position_for_player
 
 PLAYERS = tuple(PlayerId.all(exclude_gaia=True))
@@ -92,6 +96,16 @@ SCORE_NEUTRAL_ATTRIBUTES = (
     Attribute.BUILDINGS_VALUE_TOTAL,
 )
 VOTE_KICK_NAME = re.compile(r"VoteKickP([1-8])-P([1-8])-P([1-8])")
+#: Trigger-variable id map. Every block is stated here once and read by both the
+#: Python triggers and the generated XS, so the two sides cannot drift apart.
+#: ``_assert_variable_ids_are_contiguous`` checks the whole allocation after build.
+#:
+#: The builder and combat-row blocks used to be bare literals — ``int(player) - 1``
+#: and ``8 + ((n - 1) * 3)`` — repeated independently in Python and again inside the
+#: XS source string, with nothing tying them together.
+PENDING_BUILDER_VARIABLE_BASE = 0
+COMBAT_ROW_VARIABLE_BASE = 8
+COMBAT_ROW_VARIABLE_STRIDE = 3
 COLOR_ACTIVE_VARIABLE_BASE = 32
 COLOR_WORLD_VARIABLE_BASE = 40
 COLOR_ELIMINATED_VARIABLE_BASE = 48
@@ -129,6 +143,19 @@ PLAYER_COLOR_NAMES = {
 }
 EDGE_KILL_ZONE_NAME = re.compile(r"uk[1-4] \(p[1-8]\)")
 ANTI_TREB_NAME = re.compile(r"No trebs in p([1-8]) base(?: \(p[1-8]\))?")
+
+#: Legacy base-cleanup areas, stated once in the P3 source frame and mirrored to the
+#: other seven sectors by ``_mirrored_area_bounds``.
+#:
+#: These used to be eight hand-written rectangles. The anti-treb set had drifted: only
+#: one of the eight matched any mirror of another, and P4/P6/P7/P8's zones stopped at
+#: 123 while their Castle rows sit at 125, so a Trebuchet parked beside those four
+#: players' Castles was never removed while the same position in P1/P2/P3/P5's base
+#: was. Deriving both tables from one rect makes that class of asymmetry unstateable,
+#: and keeps each zone clear of its own rear route by construction (the source rect
+#: starts at x=18; the rear route land is x=14..16).
+ANTI_TREB_SOURCE_AREA = (18, 38, 25, 64)
+WALL_CLEANUP_SOURCE_AREA = (17, 43, 38, 64)
 LOBBY_SETTLE_SECONDS = 3
 VICTORY_RESOLVE_SECONDS = 5
 SOURCE_ARMY_SPAWN_POINTS = ((22, 48), (22, 52), (22, 55), (22, 59))
@@ -593,6 +620,54 @@ DISTANCE_SELECTOR_SOURCE_AREAS = {
     "herospawnclose": (4, 64, 8, 66),
 }
 LEGACY_AGE_UP_NAME = re.compile(r"\d+ kills")
+
+
+def _assert_variable_ids_are_contiguous(ctx: BuildContext) -> None:
+    """Fail the build if the variable id space has a hole, a duplicate, or a collision.
+
+    Ids are handed out by several independent passes from separate bases, and a
+    condition or effect addresses a variable by id, not by name. A collision therefore
+    rewires trigger logic without changing a single visible field, and a hole means a
+    block silently moved. Both are cheap to assert and expensive to debug in a lobby.
+    """
+    variables = ctx.tm.variables
+    ids = [variable.variable_id for variable in variables]
+    duplicates = sorted({value for value in ids if ids.count(value) > 1})
+    if duplicates:
+        by_id = defaultdict(list)
+        for variable in variables:
+            by_id[variable.variable_id].append(variable.name)
+        raise RuntimeError(
+            "trigger variable id collision: "
+            + ", ".join(f"{value} -> {by_id[value]}" for value in duplicates)
+        )
+    expected = list(range(len(ids)))
+    if sorted(ids) != expected:
+        missing = sorted(set(expected) - set(ids))
+        raise RuntimeError(
+            f"trigger variable ids must be contiguous from 0; {len(ids)} declared, "
+            f"missing {missing[:10]}, highest {max(ids) if ids else -1}"
+        )
+
+
+def _mirrored_area_bounds(
+    source_area: tuple[int, int, int, int],
+) -> dict[int, tuple[int, int, int, int]]:
+    """Mirror one P3-frame trigger area into all eight color sectors.
+
+    Trigger areas are inclusive tile rectangles, so each corner goes through
+    ``v2_cell_for_player`` and the result is re-normalised to (x1, y1, x2, y2) with
+    x1 <= x2 and y1 <= y2 — the transposing sectors swap which corner is which.
+    """
+    source_x1, source_y1, source_x2, source_y2 = source_area
+    bounds = {}
+    for player in PLAYERS:
+        corner_a = v2_cell_for_player(player, source_x1, source_y1)
+        corner_b = v2_cell_for_player(player, source_x2, source_y2)
+        x1, x2 = sorted((corner_a[0], corner_b[0]))
+        y1, y2 = sorted((corner_a[1], corner_b[1]))
+        bounds[int(player)] = (x1, y1, x2, y2)
+    return bounds
 
 
 def _unique_trigger(ctx: BuildContext, name: str):
@@ -1202,16 +1277,7 @@ def _optimize_legacy_polling(ctx: BuildContext) -> None:
 
 def _protect_rear_routes_from_legacy_base_cleanup(ctx: BuildContext) -> None:
     """Keep legacy anti-treb/front-wall cleanup away from the new rear routes."""
-    anti_treb_bounds = {
-        1: (39, 19, 66, 25),
-        2: (75, 19, 102, 26),
-        3: (18, 38, 25, 64),
-        4: (114, 38, 123, 65),
-        5: (18, 74, 24, 101),
-        6: (114, 74, 123, 101),
-        7: (39, 116, 66, 123),
-        8: (74, 116, 102, 123),
-    }
+    anti_treb_bounds = _mirrored_area_bounds(ANTI_TREB_SOURCE_AREA)
     anti_treb_count = 0
     for trigger in ctx.tm.triggers:
         match = ANTI_TREB_NAME.fullmatch(trigger.name)
@@ -1235,16 +1301,7 @@ def _protect_rear_routes_from_legacy_base_cleanup(ctx: BuildContext) -> None:
     if anti_treb_count != 64:
         raise RuntimeError(f"expected 64 anti-treb triggers, adjusted {anti_treb_count}")
 
-    wall_cleanup_bounds = {
-        1: (43, 17, 64, 38),
-        2: (79, 17, 100, 38),
-        3: (17, 43, 38, 64),
-        4: (105, 43, 126, 64),
-        5: (17, 79, 38, 100),
-        6: (105, 79, 126, 100),
-        7: (43, 105, 64, 126),
-        8: (79, 105, 100, 126),
-    }
+    wall_cleanup_bounds = _mirrored_area_bounds(WALL_CLEANUP_SOURCE_AREA)
     for player, bounds in wall_cleanup_bounds.items():
         trigger = _unique_trigger(ctx, f"Elimina Walls P{player}")
         remove_effects = [
@@ -1582,6 +1639,18 @@ def _configure_custom_team_victory(
 
 
 def _render_color_spawn_xs() -> str:
+    # The XS arrays are indexed by civilization id, so they must be sized from the
+    # tables that fill them. These used to be a hardcoded 60 in five places: adding a
+    # civilization to CIV_SPAWN_RULES would have written past the end of a size-60
+    # array at runtime, which xs-check cannot see and no test would have caught.
+    max_civilization_id = max((*CIV_SPAWN_RULES, *CIV_BUILDER_RULES))
+    civilization_array_size = max_civilization_id + 1
+    if set(CIV_SPAWN_RULES) != set(CIV_BUILDER_RULES):
+        raise RuntimeError(
+            "civilization spawn and builder tables must cover the same ids; "
+            f"symmetric difference: {sorted(set(CIV_SPAWN_RULES) ^ set(CIV_BUILDER_RULES))}"
+        )
+
     assignments = []
     for civilization, (unit_id, population_cap, interval) in CIV_SPAWN_RULES.items():
         assignments.extend(
@@ -1700,7 +1769,7 @@ void cbaQueueColorBuilders(int scenarioPlayer = 0) {{
     }}
     int previousEarnedPairs = xsArrayGetInt(gCbaEarnedBuilderPairsByColor, scenarioPlayer);
     if (earnedPairs > previousEarnedPairs) {{
-        int pendingPairs = xsTriggerVariable(scenarioPlayer - 1);
+        int pendingPairs = xsTriggerVariable({PENDING_BUILDER_VARIABLE_BASE} + scenarioPlayer - 1);
         xsSetTriggerVariable(
             scenarioPlayer - 1,
             pendingPairs + earnedPairs - previousEarnedPairs
@@ -1716,7 +1785,16 @@ void cbaAnnounceLocalBuilderGoal() {{
     }}
 
     int civilization = xsGetPlayerCivilization(localPlayer);
+    // An unmapped civilization silently produced no army and no builder pairs at all,
+    // which reads in-game as "the mode is broken" rather than "this civ is unsupported".
+    // Every id in cbaUnitByCiv is filled from CIV_SPAWN_RULES, so an id past the end of
+    // the array is a civilization released after this build was made.
     if (civilization < 1 || civilization >= xsArrayGetSize(gCbaBuilderThresholdByCiv)) {{
+        xsChatData(
+            "[CBA] Unsupported civilization (id " + civilization + "). This scenario "
+            + "maps ids 1-{max_civilization_id}; you will get no army. Pick another "
+            + "civilization, or update CIV_SPAWN_RULES and rebuild."
+        );
         return;
     }}
     int threshold = xsArrayGetInt(gCbaBuilderThresholdByCiv, civilization);
@@ -1749,7 +1827,7 @@ void cbaUpdateCombatRow(int scenarioPlayer = 0) {{
     int kills = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKills));
     int deaths = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKilledByOthers));
     int razings = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeRazings));
-    int variableBase = 8 + ((scenarioPlayer - 1) * 3);
+    int variableBase = {COMBAT_ROW_VARIABLE_BASE} + ((scenarioPlayer - 1) * {COMBAT_ROW_VARIABLE_STRIDE});
     xsSetTriggerVariable(variableBase, kills);
     xsSetTriggerVariable(variableBase + 1, deaths);
     xsSetTriggerVariable(variableBase + 2, razings);
@@ -1775,11 +1853,11 @@ void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
 
 void main() {{
     gCbaNextSpawnByColor = xsArrayCreateInt(9, 0, "cbaNextSpawnByColor");
-    gCbaUnitByCiv = xsArrayCreateInt(60, -1, "cbaUnitByCiv");
-    gCbaCapByCiv = xsArrayCreateInt(60, 0, "cbaCapByCiv");
-    gCbaIntervalByCiv = xsArrayCreateInt(60, 0, "cbaIntervalByCiv");
-    gCbaNameByCiv = xsArrayCreateString(60, "Unknown civilization", "cbaNameByCiv");
-    gCbaBuilderThresholdByCiv = xsArrayCreateInt(60, 0, "cbaBuilderThresholdByCiv");
+    gCbaUnitByCiv = xsArrayCreateInt({civilization_array_size}, -1, "cbaUnitByCiv");
+    gCbaCapByCiv = xsArrayCreateInt({civilization_array_size}, 0, "cbaCapByCiv");
+    gCbaIntervalByCiv = xsArrayCreateInt({civilization_array_size}, 0, "cbaIntervalByCiv");
+    gCbaNameByCiv = xsArrayCreateString({civilization_array_size}, "Unknown civilization", "cbaNameByCiv");
+    gCbaBuilderThresholdByCiv = xsArrayCreateInt({civilization_array_size}, 0, "cbaBuilderThresholdByCiv");
     gCbaEarnedBuilderPairsByColor = xsArrayCreateInt(
         9, 0, "cbaEarnedBuilderPairsByColor"
     );
@@ -3592,7 +3670,7 @@ def _remap_raze_villagers(
     pending_variables = {
         scenario_player: ctx.tm.add_variable(
             f"pending_builders_p{int(scenario_player)}",
-            variable_id=int(scenario_player) - 1,
+            variable_id=PENDING_BUILDER_VARIABLE_BASE + int(scenario_player) - 1,
         ).variable_id
         for scenario_player in PLAYERS
     }
@@ -4227,7 +4305,9 @@ def _add_sparse_lobby_scoreboard(
     live_rows = {}
     for player in PLAYERS:
         player_number = int(player)
-        variable_base = 8 + ((player_number - 1) * 3)
+        variable_base = COMBAT_ROW_VARIABLE_BASE + (
+            (player_number - 1) * COMBAT_ROW_VARIABLE_STRIDE
+        )
         variable_names = (
             f"p{player_number}k",
             f"p{player_number}d",
@@ -4657,7 +4737,7 @@ def _configure_sparse_vote_kick(
 
 
 def build(ctx: BuildContext) -> None:
-    apply_generated(ctx)
+    apply_scenario_source(ctx)
 
     _reset_unsafe_vote_kick(ctx)
     _remove_legacy_edge_deletion_strips(ctx)
@@ -4753,6 +4833,7 @@ def build(ctx: BuildContext) -> None:
         protections[-1].selected_object_ids.extend(reference_ids)
 
     _compact_legacy_trigger_graph(ctx)
+    _assert_variable_ids_are_contiguous(ctx)
 
     ctx.log(
         f"rebuilt from source — {len(ctx.tm.triggers)} triggers, "

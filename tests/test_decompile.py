@@ -1,8 +1,12 @@
 """The decompiler's contract: generated source must rebuild the scenario it came from.
 
-The end-to-end test deliberately uses ``evolution_alpha``. Its generated package is
-the direct decompilation of a v1.58 reference; the public Ascendants build applies
-intentional gameplay and map patches after that generated baseline.
+The end-to-end test uses ``big_ytri``, a mode that genuinely still is a decompile of
+its ``scenario.reference``. It decompiles that reference into a tempdir, rebuilds from
+the fresh output, and diffs — so it tests the decompiler, not any committed package.
+
+It deliberately does **not** use ``evolution_alpha``: Ascendants is code-defined and
+has no reference to round-trip against. Pointing this test at a mode whose committed
+source is hand-maintained would prove nothing about either the mode or the decompiler.
 """
 
 from __future__ import annotations
@@ -65,11 +69,19 @@ class TestCommentSafe:
         assert comment_safe("Wave — P3") == "Wave — P3"
 
 
+#: A mode that genuinely still is a decompile of its reference, at the current
+#: scenario version. ``big_ytri`` is deliberately not used: its reference is v1.51,
+#: and loading that after a v1.58 scenario trips the parser's version-scoped global
+#: state leak (see ``toolchain.py``).
+DECOMPILE_ROUND_TRIP_MODE = "chieftains_4v4"
+
+
 @pytest.fixture(scope="module")
-def evolution_rebuild(tmp_path_factory, repo):
-    spec = registry.get("evolution_alpha", repo)
+def decompiler_rebuild(tmp_path_factory, repo):
+    """Decompile a real reference into a tempdir, rebuild from it, and snapshot both."""
+    spec = registry.get(DECOMPILE_ROUND_TRIP_MODE, repo)
     if spec.reference is None:
-        pytest.skip("evolution_alpha has no scenario.reference to verify against")
+        pytest.skip(f"{DECOMPILE_ROUND_TRIP_MODE} has no scenario.reference to verify against")
 
     original = AoE2DEScenario.from_file(str(spec.reference))
     generated_dir = tmp_path_factory.mktemp("decompile") / "generated"
@@ -78,7 +90,7 @@ def evolution_rebuild(tmp_path_factory, repo):
     scenario = AoE2DEScenario.from_default(spec.scenario_version)
     scenario.variant = spec.variant
     ctx = BuildContext(spec=spec, scenario=scenario, repo=repo)
-    module_name = "aoe2modes._test_generated.evolution_alpha"
+    module_name = f"aoe2modes._test_generated.{DECOMPILE_ROUND_TRIP_MODE}"
     loader_spec = importlib.util.spec_from_file_location(
         module_name,
         generated_dir / "__init__.py",
@@ -93,27 +105,72 @@ def evolution_rebuild(tmp_path_factory, repo):
     return snapshot(scenario), snapshot(original)
 
 
-def test_generated_source_rebuilds_the_original(evolution_rebuild):
-    rebuilt, original = evolution_rebuild
+def test_freshly_decompiled_source_rebuilds_the_original(decompiler_rebuild):
+    rebuilt, original = decompiler_rebuild
     report = compare(original, rebuilt)
     assert report.checked > 10_000, "comparison covered suspiciously little"
     assert report.differences[:5] == []
     assert report.ok
 
 
-def test_rebuild_has_no_version_gap(evolution_rebuild):
+def test_rebuild_has_no_version_gap(decompiler_rebuild):
     """Same version on both sides, so every field should exist on both."""
-    rebuilt, original = evolution_rebuild
+    rebuilt, original = decompiler_rebuild
     report = compare(original, rebuilt)
     assert report.version_only_total == 0, dict(report.version_only)
 
 
-def test_trigger_variables_round_trip(evolution_rebuild):
+def test_ascendants_is_code_defined_not_decompiled(repo):
+    """Ascendants must not regrow a reference: its Python is the only source of truth.
+
+    A `scenario.reference` here would re-create the v1.0.8 trap, where `verify` and
+    `decompile` looked meaningful but compared the mode against one of its own old
+    build outputs.
+    """
+    spec = registry.get("evolution_alpha", repo)
+    assert spec.reference is None
+    assert spec.base is None
+    assert not (repo.modes / "evolution_alpha" / "base.aoe2scenario").exists()
+
+
+def test_trigger_variables_round_trip(tmp_path, repo):
     """Variables are addressed by id, so dropping one silently rewires trigger logic.
 
-    An earlier decompiler emitted variables nowhere, and verification did not notice.
-    Both their ids and names have to survive the round trip.
+    An earlier decompiler emitted variables nowhere and verification did not notice.
+    No mode reference in the repo declares variables any more, so this builds a
+    scenario that does — sparse, non-contiguous ids, and a condition that addresses
+    one by id — and proves ids and names both survive a decompile/rebuild cycle.
     """
-    rebuilt, original = evolution_rebuild
-    assert original["variables"], "fixture mode no longer declares variables"
-    assert rebuilt["variables"] == original["variables"]
+    source = AoE2DEScenario.from_default("1.58")
+    tm = source.trigger_manager
+    for variable_id, name in [(0, "alpha"), (7, "bravo"), (42, "charlie")]:
+        tm.add_variable(name, variable_id)
+    probe = tm.add_trigger("Probe")
+    probe.new_condition.variable_value(quantity=3, variable=42, comparison=0)
+    probe.new_effect.change_variable(quantity=1, operation=1, variable=7)
+
+    out = tmp_path / "generated"
+    decompile(source, out, source_label="synthetic")
+
+    rebuilt_scenario = AoE2DEScenario.from_default("1.58")
+    ctx = BuildContext(
+        spec=registry.get(DECOMPILE_ROUND_TRIP_MODE, repo),
+        scenario=rebuilt_scenario,
+        repo=repo,
+    )
+    module_name = "aoe2modes._test_generated.variables_probe"
+    loader_spec = importlib.util.spec_from_file_location(
+        module_name, out / "__init__.py", submodule_search_locations=[str(out)]
+    )
+    assert loader_spec is not None and loader_spec.loader is not None
+    module = importlib.util.module_from_spec(loader_spec)
+    sys.modules[module_name] = module
+    loader_spec.loader.exec_module(module)
+    module.apply(ctx)
+
+    original_snapshot = snapshot(source)
+    rebuilt_snapshot = snapshot(rebuilt_scenario)
+    assert original_snapshot["variables"], "the probe scenario declares variables"
+    assert rebuilt_snapshot["variables"] == original_snapshot["variables"]
+    # The id a condition points at must survive, not just the declaration table.
+    assert compare(original_snapshot, rebuilt_snapshot).ok

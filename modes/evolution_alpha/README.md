@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.8
+# CBA Hero: Ascendants v1.0.9
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,7 +7,7 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.8 |
+| | Baseline | Ascendants v1.0.9 |
 | --- | --- | --- |
 | Triggers | 2,993 | 3,383 |
 | Conditions | 3,314 | 11,384 |
@@ -244,11 +244,21 @@ toward their own Castle; none occupies a wave pad. The candidate has 3,383 trigg
 
 ## Source of truth
 
-`build.py` starts with `generated.apply(ctx)`, applies the gameplay compatibility
-passes, then runs `v2_map.py` and its trigger-geometry remap. `base.aoe2scenario` is
-kept as the decompiled legacy reference. Since this mode deliberately changes that
-reference, release validation uses the test suite, deterministic rebuilds, and the
-focused V2 structural checks:
+**The Python is the scenario.** There is no `scenario.base` and no
+`scenario.reference`: `dist/CBA Hero Ascendants v1.0.9.aoe2scenario` is a build
+product, and nothing here is verified back against a binary.
+
+`build.py` starts with `apply_scenario_source(ctx)` — the arena in `scenario/` — then
+applies the gameplay compatibility passes, then runs `v2_map.py` and its
+trigger-geometry remap.
+
+Up to v1.0.8 this mode carried a `base.aoe2scenario` described as "the decompiled
+legacy reference". It was not one: it was an output of an earlier Ascendants build, it
+differed from the committed source in 8,811 fields, and the test that appeared to prove
+the round trip never compared the two. v1.0.9 removes the file and the claim.
+`aoe2modes verify` and `aoe2modes decompile` do not apply to this mode.
+
+Release validation is the test suite, a deterministic rebuild, and the structural audit:
 
 ```
 make check-ascendants
@@ -256,9 +266,12 @@ make check-ascendants
 
 ## Editing
 
-Small changes go in `build.py`, after `apply_generated(ctx)` — that runs last and
-overrides anything. Structural changes go in `generated/`, but
-`aoe2modes decompile --mode evolution_alpha` overwrites those files.
+Ascendants behavior goes in `build.py` or `v2_map.py` — those run after
+`apply_scenario_source(ctx)` and override anything. Structural arena changes (terrain,
+unit placement, the legacy trigger graph) go in `scenario/`, which is ordinary
+hand-maintained source: edit it directly, and do **not** run
+`aoe2modes decompile --mode evolution_alpha`, which would overwrite it with a dump of
+one of this mode's own build outputs.
 
 ## Build
 

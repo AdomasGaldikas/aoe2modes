@@ -28,6 +28,25 @@ jobs:
       - name: Build every mode
         run: python -m aoe2modes build --all
 
+      # Ascendants has no reference to verify against, so the structural audit of the
+      # built file is its release gate. Other modes are audited too, but only
+      # informationally: chieftains_ffa inherits 24 dangling object references from the
+      # community scenario it was decompiled from, so a repo-wide gate would fail on
+      # pre-existing debt rather than on anything this pipeline produced.
+      - name: Audit Ascendants
+        run: |
+          python -m aoe2modes audit \
+            "dist/$(python -m aoe2modes info evolution_alpha --output-name).aoe2scenario"
+
+      - name: Audit every mode (informational)
+        continue-on-error: true
+        run: |
+          for scenario in dist/*.aoe2scenario; do
+            echo "::group::$scenario"
+            python -m aoe2modes audit "$scenario" || true
+            echo "::endgroup::"
+          done
+
       - name: Upload scenarios
         uses: actions/upload-artifact@v4
         with:

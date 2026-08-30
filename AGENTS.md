@@ -23,6 +23,7 @@ Setup lives in the `Makefile`; the CLI is `aoe2modes` (module: `python -m aoe2mo
 - `aoe2modes new <mode_id>` — scaffold a new mode from `modes/_template`.
 - `aoe2modes inspect <file.aoe2scenario> [--triggers]` — summarise a built scenario. First step when reverse-engineering an existing CBA Hero variant.
 - `aoe2modes diff <a.aoe2scenario> <b.aoe2scenario>` — structural trigger diff (added / removed / reshaped) between two scenarios. See `src/aoe2modes/lib/diff.py`. Auto-loads newest-first to sidestep the parser version leak below.
+- `aoe2modes map <mode_id | file.aoe2scenario> [--html out.html] [--png out.png [--zones]] [--scale N]` — render the map as a self-contained HTML report: terrain and zone views, walkable regions with gates open and shut, symmetry against all eight transforms, per-player parity and a distance matrix. See `src/aoe2modes/lib/mapview.py`.
 - `aoe2modes decompile [--mode <id> | <file> --out <dir>] [--chunk-size N]` — turn an existing scenario into regenerable Python under `generated/`. Splits triggers into `part_N.py` files sized by `--chunk-size` (default 250). See `src/aoe2modes/lib/decompile.py`.
 - `aoe2modes verify <mode_id> [--against <file>]` — rebuild a decompiled mode into a tempdir and diff its content against the original it came from. Uses `scenario.reference` in `mode.toml` by default. See `src/aoe2modes/lib/verify.py`.
 - `make test` / `pytest` — run tests. `pytest tests/test_build.py::test_cba_hero_has_one_castle_and_hero_per_player` runs a single test. `pytest -k <name>` filters by name.
@@ -47,12 +48,14 @@ The pipeline is defined in `src/aoe2modes/builder.py::build_mode`. Reading that 
 
 `config.py` header states it explicitly: **anything that is "just settings" belongs in `mode.toml`; anything that is logic belongs in `build.py`**. Don't move tunables into Python unless they can't be represented declaratively, and don't push logic into config.
 
-### Three mode flavours: blank / base+patch / decompiled
+### Four mode flavours: blank / base+patch / decompiled / code-defined
 
 - **Blank build** (`cba_hero`, `cba_hero_duel`, `_template`): no `scenario.base`. Scenario starts from `from_default()`, and the declarative phase (map + player apply) runs before `build(ctx)`. Trigger and unit content is fully authored in Python.
 - **Base+patch** (no mode uses this today; it is the intermediate step on the way to decompiled): `scenario.base = "base.aoe2scenario"`. The base file is opened via `AoE2DEScenario.from_file` and the declarative phase is **skipped** (`builder.py::build_mode` gates it on `spec.base is None`), because otherwise the TOML defaults would resize the map and wipe the base's terrain/players. All modification happens in `build.py` on top of the loaded scenario. Fast to set up, but the base stays a binary blob in git.
-- **Decompiled build** (`big_ytri`, `evolution_alpha`, `chieftains_4v4`, `chieftains_ffa`): the scenario has been dumped to Python under `modes/<id>/generated/` by `aoe2modes decompile`. `build.py` calls `generated.apply(ctx)` on a blank scenario, then adds any post-generation tweaks. `scenario.reference = "..."` in `mode.toml` points at the original scenario file. Pure decompiled modes can use `aoe2modes verify <mode>` directly; modes with intentional post-generation patches must verify the generated reference layer and final public build separately. This is the diffable, git-friendly end state; base+patch is the intermediate step.
-  A decompiled mode always rebuilds at the *current* scenario version, not the original's: the parser only ships blank templates for v1.57 and v1.58, so `big_ytri` moved from v1.51 to v1.58. Content is unchanged — `verify` buckets the v1.55+ fields the old format lacked (`execute_on_load`, `caption_string`, `max_units_affected`, `disable_sound`) as `version_only` rather than differences. Ascendants starts from a v1.58 reference and then applies substantial map and gameplay patches; `tests/test_decompile.py` proves the reference round trip and `tests/test_evolution_alpha.py` covers the final build.
+- **Decompiled build** (`big_ytri`, `chieftains_4v4`, `chieftains_ffa`): the scenario has been dumped to Python under `modes/<id>/generated/` by `aoe2modes decompile`. `build.py` calls `generated.apply(ctx)` on a blank scenario, then adds any post-generation tweaks. `scenario.reference = "..."` in `mode.toml` points at the original scenario file, and `aoe2modes verify <mode>` proves the rebuild still matches it. This is the diffable, git-friendly end state; base+patch is the intermediate step.
+- **Code-defined build** (`evolution_alpha`): started as a decompile and then outgrew it. There is no `scenario.base` and no `scenario.reference` — the Python under `modes/evolution_alpha/scenario/` plus `build.py` *is* the scenario, and the `.aoe2scenario` is purely a build product. `verify` and `decompile` do not apply; `aoe2modes audit` on the built file is the structural check. See `docs/ascendants-development.md`.
+
+A decompiled mode always rebuilds at the *current* scenario version, not the original's: the parser only ships blank templates for v1.57 and v1.58, so `big_ytri` moved from v1.51 to v1.58. Content is unchanged — `verify` buckets the v1.55+ fields the old format lacked (`execute_on_load`, `caption_string`, `max_units_affected`, `disable_sound`) as `version_only` rather than differences. `tests/test_decompile.py` proves the round trip against `chieftains_4v4`; `tests/test_evolution_alpha.py` covers the Ascendants build.
 
 **The reverse-engineering loop** (see `docs/tooling.md` for the surrounding context):
 
@@ -62,10 +65,11 @@ aoe2modes diff old.aoe2scenario new.aoe2scenario  # spot what changed between ve
 aoe2modes decompile --mode <id>            # write generated/ from the base
 # edit build.py / generated/, or add post-tweaks after generated.apply(ctx)
 aoe2modes verify <id>                      # rebuild + prove content still matches
+                                           # (not evolution_alpha — it is code-defined)
 aoe2modes build <id> --deploy              # ship
 ```
 
-Trigger variables are part of the dump: `decompile` emits a `VARIABLES` table of `(id, name)` pairs into `generated/triggers/__init__.py` and declares them before the first trigger, and `verify` compares them. Ids matter more than names — conditions and effects address a variable by id — so a dropped variable silently rewires trigger logic without changing any trigger field. A mode may also add variables after the generated layer: Ascendants' final build occupies ids 0–80. Inspect the complete build before allocating another id; never assume `lib/variables.SHARED` or the generated table owns the full range.
+Trigger variables are part of the dump: `decompile` emits a `VARIABLES` table of `(id, name)` pairs into `generated/triggers/__init__.py` and declares them before the first trigger, and `verify` compares them. Ids matter more than names — conditions and effects address a variable by id — so a dropped variable silently rewires trigger logic without changing any trigger field. A mode may also add variables in its own `build.py`: Ascendants declares all 97 of its ids there, 0–96, and asserts after the build that the id space is contiguous and collision-free. Inspect the complete build before allocating another id; never assume `lib/variables.SHARED` or a generated table owns the full range.
 
 The decompiler works because `AoE2ScenarioParser`'s effect and condition factories (`NewEffectSupport`, `NewConditionSupport`) have introspectable signatures — the fields a factory *accepts* are exactly the fields we need to read back. `decompile.py` uses `inspect.signature` to derive the schema, then emits only fields that differ from a freshly constructed default. `verify.py` reduces both scenarios to plain-data snapshots (dicts) and diffs field-by-field, with a `version_only` bucket for fields that legitimately exist on the newer rebuild but not on the older original.
 
@@ -92,6 +96,7 @@ Documented at length in `docs/tooling.md`. Short version:
 | `variables` | trigger-variable ids shared with XS |
 | `xs` | placeholder substitution and bundling |
 | `diff` | structural trigger diff between two scenarios, used by `aoe2modes diff` |
+| `mapview` | terrain/zone PNG renders plus the HTML map report behind `aoe2modes map`; region flood fill, symmetry and distance measurement |
 | `decompile` | read a scenario back as regenerable Python; factory-signature introspection derives the schema |
 | `verify` | plain-data snapshot + field diff so a decompiled rebuild can be checked against its original |
 

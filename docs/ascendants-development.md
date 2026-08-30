@@ -1,42 +1,67 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.8** as the current
-source-verified release candidate. It is derived only from v1.0.3; older versions are
-not repair or comparison targets. Engine acceptance is still a separate step.
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.9**. Engine acceptance is
+still a separate step from anything described here.
 
-The canonical v1.0.3 checkpoint is 99,694 bytes with SHA-256
-`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. The v1.0.8
-candidate is 120,284 bytes with SHA-256
-`e9c8760f9078903045deb82c2f5f8f70d26f5598a7ae38dc0cef187e74eef3af`.
-Its intentional trigger-graph migration and engine-reported fixes explain the changed hash.
+## Ascendants is code-defined
 
-## Two verification layers
+**The Python is the scenario.** There is no `scenario.base` and no
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.9.aoe2scenario` is a build
+product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
+this mode — running `decompile --mode evolution_alpha` would overwrite the source with
+a dump of one of its own outputs.
 
-Ascendants has two source layers:
+Two source layers, both hand-maintained:
 
-1. `generated/` reconstructs the old v1.58 reference in `base.aoe2scenario`.
-2. `build.py`, `v2_map.py`, and `free_costs.py` apply the Ascendants map and gameplay
-   changes after the generated layer.
+1. `scenario/` lays down the arena — terrain, units, players, lobby options, and the
+   legacy CBA Hero trigger graph. It began as decompiler output; it is now ordinary
+   source and is edited directly.
+2. `build.py` and `v2_map.py` run after `scenario.apply(ctx)` and apply the Ascendants
+   map and gameplay layer. They run last and win.
 
-Because the public build intentionally differs from the reference, do not use a raw
-`aoe2modes verify evolution_alpha` result as the release verdict. Verify both layers:
+This replaces the "two verification layers" model used up to v1.0.8. That model claimed
+`generated/` reconstructed `base.aoe2scenario` and that the round trip was proven on
+every run. Neither held: the committed package differed from the declared reference in
+8,811 fields, the reference was itself an output of an earlier Ascendants build rather
+than an upstream source, and the test that appeared to check the round trip actually
+decompiled the reference into a temporary directory and compared *that* against itself.
+v1.0.9 removes the reference, the stale binary, and the claim.
+
+### What is checked now
 
 ```bash
-make check-ascendants
+.venv/Scripts/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
+.venv/Scripts/python -m aoe2modes build evolution_alpha
+.venv/Scripts/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.9.aoe2scenario"
+.venv/Scripts/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
-The target first proves that the parser can still round-trip the reference, including
-trigger-variable ids. It then runs the final-build gameplay contract and produces the
-scenario that should be tested in-game. Finally, `aoe2modes audit` checks the serialized
-output for broken references, invalid coordinates, and immediate unconditional
-victory/defeat. Potential scheduling or cleanup risks are reported as warnings for
-review. The v1.0.8 candidate currently passes with **0 errors and 0 warnings**.
+`make check-ascendants` runs the same four steps where `make` is available. The build
+itself fails closed on drift: exact trigger-family counts, eight-way symmetry of the
+mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
+quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
+references, invalid coordinates, unreachable or unpaced loops, and immediate
+unconditional victory/defeat. v1.0.9 passes with **0 errors and 0 warnings**.
 
-The target is entirely local. It does not use GitHub Actions or any paid CI service.
+`aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
+geometry. It is not a pass/fail gate; read the report and confirm the arena still holds
+its shape. For v1.0.9 that means: all eight base pockets sealed at **285 walkable tiles**
+with every gate shut, territory **911** tiles for the four edge colors and **879** for the
+four side colors, the same walk to the centre from every base (44–45 steps, the one-step
+spread being grid parity on an even-sized map), and terrain symmetry of
+**72** mismatched tiles under the mirror group against **296** under the diagonal group.
+Those two symmetry numbers are both intentional and both explainable — 72 is the eight 3x3
+color-painted doorways, and the extra 224 is the pair of team causeways that exist on the
+top and bottom edges only, because the left and right equivalents would join enemies. A
+number that moves without a matching map change in `v2_map.py` is the signal to
+investigate.
+
+The decompiler still has a round-trip test — `tests/test_decompile.py` — but it points
+at `chieftains_4v4`, a mode that genuinely still is a decompile of its reference, plus a
+synthetic scenario that pins trigger-variable ids and names across a decompile cycle.
 
 The active issue inventory and manual acceptance cases are in
-[`ascendants-issue-register.md`](ascendants-issue-register.md). v1.0.3 is the sole
-comparison baseline and v1.0.8 is the only active candidate.
+[`ascendants-issue-register.md`](ascendants-issue-register.md).
 
 ## v1.0.8 arbitrary lobby-order repair
 
@@ -144,12 +169,15 @@ test; never guess a spawn unit, population cap, interval, or builder threshold.
 ## Fixing an issue
 
 1. Reproduce the issue in a focused test in `tests/test_evolution_alpha.py`.
-2. Locate the responsible final-build code in `build.py` or `v2_map.py`; avoid editing
-   `generated/` for an Ascendants-specific behavior.
+2. Locate the responsible code. Ascendants behavior belongs in `build.py` or
+   `v2_map.py`; edit `scenario/` only for structural arena changes (terrain, unit
+   placement, the legacy trigger graph).
 3. Make one small correction and run the focused test.
-4. Run both verification layers and build the scenario.
+4. Run the full test files and build the scenario.
 5. Use `aoe2modes inspect` or `aoe2modes diff` when the change affects trigger shape,
-   object placement, terrain, or variables.
+   object placement, terrain, or variables. Use `aoe2modes map` when it affects the
+   arena itself — walls, gates, shorelines, spawn geometry — and compare the region,
+   symmetry, and territory figures against the ones above before and after.
 6. Run `aoe2modes audit` on the built scenario. Treat an error as a blocker; review
    warnings in context because decompiled legacy triggers may intentionally reuse names.
 7. Version source-changing candidates independently; mark one publishable only after

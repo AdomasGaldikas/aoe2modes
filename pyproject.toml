@@ -40,7 +40,10 @@ src = ["src", "tests"]
 # Machine-written by `aoe2modes decompile` — thousands of long literal lines and a
 # deliberate star import. Linting it would only ever produce noise you cannot fix
 # without editing the emitter, which is linted.
-extend-exclude = ["modes/*/generated"]
+# Machine-shaped scenario source: enormous literal tables of units, terrain runs and
+# trigger definitions. `modes/evolution_alpha/scenario` is hand-maintained rather than
+# regenerated, but it has the same shape and the same reason to skip style linting.
+extend-exclude = ["modes/*/generated", "modes/evolution_alpha/scenario"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

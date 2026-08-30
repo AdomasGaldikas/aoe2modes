@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections import Counter, deque
+from collections import Counter, defaultdict, deque
 from itertools import permutations
 
 import pytest
@@ -2083,7 +2083,11 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
     xs_source = xs_trigger.effects[0].message
     assert "int currentRazings = xsCeilToInt(xsPlayerAttribute(" in xs_source
     assert "int earnedPairs = currentRazings - threshold + 1;" in xs_source
-    assert "int pendingPairs = xsTriggerVariable(scenarioPlayer - 1);" in xs_source
+    # The builder-pair block is addressed from PENDING_BUILDER_VARIABLE_BASE, which is
+    # interpolated into the XS so the Python and XS sides cannot drift apart.
+    assert re.search(
+        r"int pendingPairs = xsTriggerVariable\(\s*\d+ \+ scenarioPlayer - 1\);", xs_source
+    ), "builder-pair variable read is no longer derived from the shared base"
     assert "pendingPairs + earnedPairs - previousEarnedPairs" in xs_source
     assert "xsArraySetInt(gCbaBuilderThresholdByCiv, 8, 4);" in xs_source
     assert 'xsArraySetString(gCbaNameByCiv, 8, "Persians");' in xs_source
@@ -2091,7 +2095,12 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
     assert "xsGetPlayerCivilization(localPlayer)" in xs_source
     assert "first builder pair after" in xs_source
     assert "if (xsGetGameTime() >= 4)" in xs_source
-    assert xs_source.count("xsChatData(") == 1
+    # Exactly two local chat messages, both inside cbaAnnounceLocalBuilderGoal and
+    # mutually exclusive: the builder-goal line for a supported civilization, and the
+    # unsupported-civilization warning that replaced a silent `return`. Anything more
+    # means a message escaped into a loop and will spam the chat every tick.
+    assert xs_source.count("xsChatData(") == 2
+    assert "Unsupported civilization (id " in xs_source
     assert "xsDisableSelf();" in xs_source
     assert xs_source.count("cbaQueueColorBuilders(") == 9
     assert "xsSetTriggerVariable(worldPlayer - 1" not in xs_source
@@ -2501,19 +2510,21 @@ def test_evolution_alpha_removes_invisible_edge_deletion_strips(evolution_alpha)
     assert disabled == []
 
 
-def test_evolution_alpha_keeps_legacy_cleanup_off_rear_routes(evolution_alpha):
-    anti_treb_bounds = {
-        1: (39, 19, 66, 25),
-        2: (75, 19, 102, 26),
-        3: (18, 38, 25, 64),
-        4: (114, 38, 123, 65),
-        5: (18, 74, 24, 101),
-        6: (114, 74, 123, 101),
-        7: (39, 116, 66, 123),
-        8: (74, 116, 102, 123),
-    }
+def test_evolution_alpha_anti_treb_zones_are_mirrored_and_cover_their_castles(
+    evolution_alpha,
+):
+    """The anti-treb kill zones must be one mirror orbit, and each must reach its Castles.
+
+    This deliberately asserts the *property*, not the eight rectangles. The previous
+    version of this test restated the same literal table that build.py used, so it could
+    not fail for a wrong-but-consistent value — and it did not: only one of the eight
+    zones matched any mirror of another, and P4/P6/P7/P8's zones stopped at 123 while
+    their Castle rows sit at 125, leaving a Trebuchet parked beside those four players'
+    Castles alive while the mirror-image position in P1/P2/P3/P5's base was cleared.
+    """
     triggers = evolution_alpha.trigger_manager.triggers
-    for base_player, bounds in anti_treb_bounds.items():
+    zones = {}
+    for base_player in range(1, 9):
         matches = [
             trigger
             for trigger in triggers
@@ -2521,12 +2532,46 @@ def test_evolution_alpha_keeps_legacy_cleanup_off_rear_routes(evolution_alpha):
             or trigger.name.startswith(f"No trebs in p{base_player} base (p")
         ]
         assert len(matches) == 8
+        areas = set()
         for trigger in matches:
-            effects = [effect for effect in trigger.effects if effect.effect_type == EffectId.KILL_OBJECT]
+            effects = [
+                effect for effect in trigger.effects if effect.effect_type == EffectId.KILL_OBJECT
+            ]
             assert len(effects) == 1
             effect = effects[0]
-            assert (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2) == bounds
+            areas.add((effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2))
+        assert len(areas) == 1, f"P{base_player} anti-treb zones disagree: {areas}"
+        zones[base_player] = areas.pop()
 
+    # Every zone is the P3 zone reflected into that player's sector.
+    source = zones[3]
+    for base_player, bounds in zones.items():
+        corner_a = v2_cell_for_player(base_player, source[0], source[1])
+        corner_b = v2_cell_for_player(base_player, source[2], source[3])
+        x1, x2 = sorted((corner_a[0], corner_b[0]))
+        y1, y2 = sorted((corner_a[1], corner_b[1]))
+        assert bounds == (x1, y1, x2, y2), (
+            f"P{base_player} anti-treb zone {bounds} is not the mirror of P3's {source}"
+        )
+
+    # And each zone actually reaches the Castles it is supposed to protect.
+    castles = defaultdict(list)
+    for player in range(1, 9):
+        for unit in evolution_alpha.unit_manager.units[player]:
+            if unit.unit_const == BuildingInfo.CASTLE.ID:
+                castles[player].append((int(unit.x), int(unit.y)))
+    for base_player, (x1, y1, x2, y2) in zones.items():
+        owned = castles[base_player]
+        assert len(owned) == 4
+        covered = [c for c in owned if x1 <= c[0] <= x2 and y1 <= c[1] <= y2]
+        assert len(covered) == 4, (
+            f"P{base_player} zone {(x1, y1, x2, y2)} misses Castles "
+            f"{sorted(set(owned) - set(covered))}"
+        )
+
+
+def test_evolution_alpha_wall_cleanup_stays_off_rear_routes(evolution_alpha):
+    triggers = evolution_alpha.trigger_manager.triggers
     wall_cleanup_bounds = {
         1: (43, 17, 64, 38),
         2: (79, 17, 100, 38),

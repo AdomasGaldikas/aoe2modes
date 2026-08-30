@@ -1,20 +1,21 @@
 [mode]
 id = "evolution_alpha"
 name = "CBA Hero Ascendants"
-version = "1.0.8"
+version = "1.0.9"
 description = "A complete CBA Hero arena with automatic armies, six hero tiers, free building and research, protected team routes, live K/D/R, center rewards, and team vote-kicks."
 authors = []
 tags = ["cba", "hero", "arena", "4v4"]
 
 [scenario]
-# No `base`: this mode is built from code in generated/, starting from a blank
-# scenario. `reference` is the original it was decompiled from. The final public
-# build intentionally differs; use `make check-ascendants` for both verification layers.
-reference = "base.aoe2scenario"
+# Ascendants is code-defined: no `base` and no `reference`. The Python under
+# scenario/ plus build.py IS the scenario, and dist/*.aoe2scenario is its build
+# product. There is nothing to decompile from and nothing to verify back against,
+# so `aoe2modes verify`/`decompile` do not apply to this mode. The structural
+# check is `aoe2modes audit` on the built file — see docs/ascendants-development.md.
 version = "1.58"
 filename = "{name} v{version}"
 
-# Applied before build.py, then overridden by generated/setup.py. Kept in sync so
+# Applied before build.py, then overridden by scenario/setup.py. Kept in sync so
 # `aoe2modes info` tells the truth about the mode.
 [map]
 size = 144
@@ -26,6 +27,11 @@ teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
 starting_age = "FEUDAL_AGE"
 population_cap = 250
 
+# Empty on purpose, and `aoe2modes info` will show no XS for this mode. Ascendants
+# does not bundle .xs files from disk: build.py generates its whole XS runtime inline
+# (`_render_color_spawn_xs`) and hands it to the builder via ctx.add_xs, because the
+# civ/spawn tables that drive it are Python data. The build still lints it with
+# xs-check like any other mode.
 [xs]
 include = []
 scripts = []

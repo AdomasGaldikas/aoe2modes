@@ -77,8 +77,10 @@ class AuditReport:
         ):
             lines.append(f"{finding.severity:<7} {finding.code}: {finding.message}")
         verdict = "PASS" if self.ok else "FAIL"
+        # ASCII on purpose: this line is the command's verdict, and a Windows console on
+        # the default cp1252/cp437 codepage mangles an em dash into a replacement glyph.
         lines.append(
-            f"{verdict} — {len(self.errors)} error(s), {len(self.warnings)} warning(s)"
+            f"{verdict} - {len(self.errors)} error(s), {len(self.warnings)} warning(s)"
         )
         return "\n".join(lines)
 

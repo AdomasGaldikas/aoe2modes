@@ -39,6 +39,13 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 
 def cmd_info(args: argparse.Namespace) -> int:
+    # Scripts and Makefiles need the built filename without hardcoding a version that
+    # goes stale on the next bump, so this prints the bare stem and nothing else.
+    if getattr(args, "output_name", False):
+        for spec in _resolve_specs(args):
+            print(Path(spec.output_name).stem)
+        return 0
+
     for spec in _resolve_specs(args):
         players = spec.players
         teams = " vs ".join("+".join(str(int(p)) for p in team) for team in players.teams) or "free-for-all"
@@ -251,6 +258,64 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _scenario_source(args: argparse.Namespace) -> tuple[Path, ModeSpec | None]:
+    """Resolve ``target`` as either a scenario path or a mode id whose build is in dist/."""
+    candidate = Path(args.target).expanduser()
+    if candidate.suffix == ".aoe2scenario" or candidate.is_file():
+        return candidate, None
+
+    spec = registry.get(args.target, paths())
+    built = Path(args.out_dir or paths().dist) / spec.output_name
+    if not built.is_file():
+        raise BuildError(
+            f"{spec.id} has not been built yet: {built} is missing. "
+            f"Run 'aoe2modes build {spec.id}' first."
+        )
+    return built, spec
+
+
+def cmd_map(args: argparse.Namespace) -> int:
+    """Render a built scenario's map as a self-contained HTML report."""
+    from AoE2ScenarioParser.scenarios.aoe2_de_scenario import AoE2DEScenario
+
+    from aoe2modes.lib import mapview
+
+    toolchain.configure(verbose=args.verbose, xs_check=False)
+    source, spec = _scenario_source(args)
+    scenario = AoE2DEScenario.from_file(str(source))
+
+    if args.png:
+        report = mapview.analyse(scenario)
+        png = (
+            mapview.render_zones(scenario, report, scale=args.scale)
+            if args.zones
+            else mapview.render_terrain(scenario, scale=args.scale)
+        )
+        target = Path(args.png).expanduser()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(png)
+        print(f"wrote {target}")
+        if not args.html:
+            print(report.summary(label=str(source)))
+            return 0
+
+    default_name = f"{source.stem}-map.html"
+    destination = Path(args.html).expanduser() if args.html else Path(paths().dist) / default_name
+    title = args.title or (f"{spec.name} map" if spec else f"{source.stem} map")
+    subtitle = spec.description if spec and spec.description else ""
+    report = mapview.write_report(
+        scenario,
+        destination,
+        title=title,
+        subtitle=subtitle,
+        source=str(source),
+        scale=args.scale,
+    )
+    print(report.summary(label=str(source)))
+    print(f"wrote {destination}")
+    return 0
+
+
 def cmd_audit(args: argparse.Namespace) -> int:
     """Run parser-visible safety checks without claiming engine-level validation."""
     from AoE2ScenarioParser.scenarios.aoe2_de_scenario import AoE2DEScenario
@@ -280,6 +345,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_info = subparsers.add_parser("info", help="show a mode's resolved configuration")
     p_info.add_argument("modes", nargs="*", help="mode ids (default: all)")
+    p_info.add_argument(
+        "--output-name",
+        action="store_true",
+        help="print only the built scenario's filename stem (for scripts and Makefiles)",
+    )
     p_info.set_defaults(func=cmd_info)
 
     p_build = subparsers.add_parser("build", help="build one or more modes into dist/")
@@ -305,6 +375,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_inspect.add_argument("file")
     p_inspect.add_argument("--triggers", action="store_true", help="also dump the trigger summary")
     p_inspect.set_defaults(func=cmd_inspect)
+
+    p_map = subparsers.add_parser(
+        "map", help="render a built scenario's map as a self-contained HTML report"
+    )
+    p_map.add_argument("target", help="mode id, or a path to a .aoe2scenario file")
+    p_map.add_argument("--html", help="output path (default: dist/<stem>-map.html)")
+    p_map.add_argument("--png", help="also write a render to this path")
+    p_map.add_argument(
+        "--zones",
+        action="store_true",
+        help="with --png, colour regions by role instead of drawing terrain",
+    )
+    p_map.add_argument("--scale", type=int, default=5, help="pixels per tile (default: 5)")
+    p_map.add_argument("--title", help="page title (default: the mode's name)")
+    p_map.add_argument("--out-dir", help="where built scenarios live (default: dist/)")
+    p_map.set_defaults(func=cmd_map)
 
     p_audit = subparsers.add_parser(
         "audit",

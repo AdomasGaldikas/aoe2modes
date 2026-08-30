@@ -53,7 +53,7 @@ def test_audit_accepts_a_small_coherent_scenario():
     assert report.findings == []
     assert report.initially_enabled == 1
     assert report.reachable == 1
-    assert report.summary().endswith("PASS — 0 error(s), 0 warning(s)")
+    assert report.summary().endswith("PASS - 0 error(s), 0 warning(s)")
 
 
 def test_audit_reports_broken_references_geometry_and_scheduling():

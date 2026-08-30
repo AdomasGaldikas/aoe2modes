@@ -141,3 +141,52 @@ Two constraints shape this design, both from the parser:
 Decompiling is the end state — the binary stops being the source of truth and the mod
 becomes something you can grep, diff and review. Hand-rebuilding selected parts as
 Python is still fine when you only want a mechanic rather than a whole mod.
+
+## Reading the map, not the triggers
+
+Everything above works on the trigger graph. A CBA map has a second half that no trigger
+diff can see: which ground is walkable, what the walls actually enclose, and whether the
+eight starting positions are really equivalent. `aoe2modes map` measures that half.
+
+```
+aoe2modes map evolution_alpha --html dist/ascendants-map.html
+aoe2modes map "dist/CBA Hero Ascendants v1.0.9.aoe2scenario" --png map.png --zones --scale 8
+```
+
+The report is one self-contained HTML file — both renders inlined as data URIs, no assets
+to keep next to it. It carries a terrain view, a zone view colouring every walkable region
+by role, the region inventory, symmetry against all eight transforms of the square,
+per-player parity, and a distance matrix. `--png` writes just the render, with `--zones`
+choosing which of the two.
+
+Four measurements are worth knowing how to read:
+
+**Regions are computed twice.** Once with every gate shut and once with them open. The
+shut pass is the interesting one: if a base shows up as its own region, nothing reaches it
+except through a gate — no gap at the end of a wall, no diagonal leak along a shoreline.
+The open pass is how a match actually moves, and it is what distances and territory use.
+
+**Players are anchored to a region, not to a building.** The obvious anchor — the centroid
+of a player's Castle row — lands *inside* a Castle, and "step outwards until walkable"
+resolves in a different direction for a base facing north than for its mirror facing
+south. That alone reported a 40% territory spread across eight identical bases. The anchor
+is instead the centre of the sealed region a player's own buildings enclose, which mirrors
+when the map does.
+
+**Symmetry is reported per transform, terrain and objects separately.** The mirror group
+and the diagonal group usually differ, and the gap between them is informative: a map whose
+teams sit across a horizontal line *cannot* be diagonally symmetric, because the strip that
+joins two teammates on one edge has to be water on the edge where it would join enemies.
+Objects are matched on continuous coordinates (`size - x`), not on tile indices — a 4x4
+building sits at `x.0` and a 1x1 at `x.5`, so reflecting the tile index and re-adding the
+fraction lands every even-footprint building one tile off its true mirror.
+
+**Distances are tile steps.** Eight-neighbour breadth-first search, so on an even-sized map
+two mirrored positions can differ by one step. That is grid parity, not an asymmetry.
+
+The one approximation to keep in mind: the parser does not carry building dimensions, so
+footprints come from `FOOTPRINTS` in `lib/mapview.py`, and anything absent falls back to a
+deliberately small guess (2x2 on an integer tile centre, 1x1 on a half tile). Guessing
+small merges two regions that are really separate; guessing large would invent a wall and
+report a base as sealed when it is not. If a mode uses a building that matters for
+connectivity and is not in the table, add it there.

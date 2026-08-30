@@ -9,7 +9,7 @@ help:
 	@echo "list    list the modes in this repo"
 	@echo "deploy  build every mode and copy it into the game's scenario folder"
 	@echo "test    run the test suite"
-	@echo "check-ascendants  run both Ascendants verification layers and build v1.0.8"
+	@echo "check-ascendants  test, build, audit and map the Ascendants scenario"
 	@echo "lint    run ruff"
 	@echo "fmt     run ruff with --fix"
 	@echo "clean   remove dist/ and Python caches"
@@ -31,10 +31,12 @@ deploy:
 test:
 	$(PY) -m pytest
 
+# The audited filename is derived from mode.toml, so a version bump needs no edit here.
 check-ascendants:
 	$(PY) -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 	$(PY) -m aoe2modes build evolution_alpha
-	$(PY) -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.8.aoe2scenario"
+	$(PY) -m aoe2modes audit "dist/$(shell $(PY) -m aoe2modes info evolution_alpha --output-name).aoe2scenario"
+	$(PY) -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 
 lint:
 	$(PY) -m ruff check .
