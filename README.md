@@ -63,10 +63,11 @@ Rule of thumb: **anything a non-Python-user could reasonably tune goes in `mode.
 
 ## Reverse-engineering an existing scenario
 
-Four CLI commands cover the loop from opaque binary to code-generated mode:
+Five CLI commands cover the loop from opaque binary to code-generated mode:
 
 ```bash
 aoe2modes inspect "input/CBA Hero Royal 4v4 Big_Ytri.aoe2scenario" --triggers
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.3.aoe2scenario"
 aoe2modes diff modes/big_ytri/base.aoe2scenario modes/evolution_alpha/base.aoe2scenario
 aoe2modes decompile --mode evolution_alpha        # writes modes/evolution_alpha/generated/
 pytest tests/test_decompile.py                     # prove the reference round trip
@@ -74,6 +75,9 @@ pytest tests/test_evolution_alpha.py               # verify the patched Ascendan
 ```
 
 - **`inspect`** — map size, player count, unit/trigger counts, and (with `--triggers`) the full trigger summary. First look at a scenario.
+- **`audit`** — fail on broken trigger/object/variable references, invalid coordinates,
+  and immediate unconditional victory/defeat. Scheduling and editor risks such as
+  timerless loops, unconditional cleanup, duplicate names, and empty shells are warnings.
 - **`diff`** — compare two scenarios by trigger signature (name + condition/effect types) and report added / removed / reshaped groups. Fastest way to see what changed between versions of the same mode. Auto-orders newest-first (see gotcha below).
 - **`decompile`** — read a scenario back as regenerable Python under `modes/<id>/generated/`, chunked into `part_N.py` files. Works by introspecting the parser's factory signatures — the fields a factory accepts are exactly the fields to read back — and only emitting fields that differ from a freshly constructed default.
 - **`verify`** — build the decompiled mode into a tempdir, snapshot both it and the original as plain-data dicts, and diff field-by-field. Fields that exist only on the newer version go into a `version_only` bucket rather than reported as differences. This is what makes decompiling trustworthy.
@@ -85,7 +89,7 @@ The `input/` folder is where local mod dumps and scenario files go for analysis 
 ```
 aoe2modes/
 ├── src/aoe2modes/          # the CLI, builder, and shared library
-│   ├── cli.py              # `aoe2modes list|build|deploy|new|info|inspect|diff|decompile|verify`
+│   ├── cli.py              # build, inspect, audit, diff, decompile, verify, and deployment commands
 │   ├── builder.py          # build_mode: TOML + build.py → .aoe2scenario
 │   ├── config.py           # mode.toml schema and validation
 │   ├── context.py          # BuildContext passed to every build(ctx)
@@ -128,5 +132,6 @@ The full architecture, gotchas (AoE2ScenarioParser has a real version-state leak
 - [`docs/cba-hero.md`](docs/cba-hero.md) — what CBA Hero is, what mechanics a build has to provide, and how this repo models each one.
 - [`docs/tooling.md`](docs/tooling.md) — the landscape of AoE2 scenario tooling, why this repo uses AoE2ScenarioParser, and how DE actually distributes XS.
 - [`docs/ascendants-development.md`](docs/ascendants-development.md) — the v1.0.3 baseline, verification layers, and safe issue-fixing loop.
+- [`docs/ascendants-issue-register.md`](docs/ascendants-issue-register.md) — reports recovered from the publishing task, parser evidence, and the in-game acceptance matrix.
 - [AoE2ScenarioParser docs](https://ksneijders.github.io/AoE2ScenarioParser/) — upstream. Ahead of the pinned 0.8.4 in places; the version-pinned reference in `.claude/skills/aoe2-scenario-parser/` calls out the divergences.
 - [Castle Blood Automatic — Age of Empires Wiki](https://ageofempires.fandom.com/wiki/Castle_Blood_Automatic) — background on the scenario family this repo is aimed at.

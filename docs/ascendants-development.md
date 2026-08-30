@@ -26,9 +26,16 @@ make check-ascendants
 
 The target first proves that the parser can still round-trip the reference, including
 trigger-variable ids. It then runs the final-build gameplay contract and produces the
-scenario that should be tested in-game.
+scenario that should be tested in-game. Finally, `aoe2modes audit` checks the serialized
+output for broken references, invalid coordinates, and immediate unconditional
+victory/defeat. Potential scheduling or cleanup risks are reported as warnings for
+review because those patterns can be intentional in legacy CBA trigger systems.
 
 The target is entirely local. It does not use GitHub Actions or any paid CI service.
+
+The active issue inventory and manual acceptance cases are in
+[`ascendants-issue-register.md`](ascendants-issue-register.md). Older pre-1.0 builds are
+historical input only; v1.0.3 is the sole comparison baseline.
 
 ## What the automated checks cannot prove
 
@@ -59,7 +66,9 @@ test; never guess a spawn unit, population cap, interval, or builder threshold.
 4. Run both verification layers and build the scenario.
 5. Use `aoe2modes inspect` or `aoe2modes diff` when the change affects trigger shape,
    object placement, terrain, or variables.
-6. Advance the public version and release notes only after gameplay validation.
+6. Run `aoe2modes audit` on the built scenario. Treat an error as a blocker; review
+   warnings in context because decompiled legacy triggers may intentionally reuse names.
+7. Advance the public version and release notes only after gameplay validation.
 
 The `evolution_alpha` id is retained for repository compatibility. User-facing names
 and output filenames use **CBA Hero Ascendants**.

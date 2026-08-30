@@ -32,6 +32,7 @@ from AoE2ScenarioParser.scenarios.aoe2_de_scenario import AoE2DEScenario
 
 from aoe2modes import registry
 from aoe2modes.builder import build_mode
+from aoe2modes.lib.audit import audit_scenario
 
 
 def v2_cell_for_player(player, source_x, source_y):
@@ -83,6 +84,15 @@ def evolution_alpha(tmp_path_factory, repo):
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     assert len(evolution_alpha.trigger_manager.triggers) <= 3_350
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_084
+
+
+def test_evolution_alpha_passes_parser_structural_audit(evolution_alpha):
+    report = audit_scenario(evolution_alpha)
+    assert report.errors == []
+    assert {finding.code for finding in report.warnings} == {
+        "duplicate-trigger-names",
+        "enabled-empty-triggers",
+    }
 
 
 def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_alpha):

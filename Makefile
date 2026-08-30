@@ -34,6 +34,7 @@ test:
 check-ascendants:
 	$(PY) -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 	$(PY) -m aoe2modes build evolution_alpha
+	$(PY) -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.3.aoe2scenario"
 
 lint:
 	$(PY) -m ruff check .

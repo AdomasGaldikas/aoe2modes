@@ -251,6 +251,22 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    """Run parser-visible safety checks without claiming engine-level validation."""
+    from AoE2ScenarioParser.scenarios.aoe2_de_scenario import AoE2DEScenario
+
+    from aoe2modes.lib.audit import audit_scenario
+
+    toolchain.configure(verbose=args.verbose, xs_check=False)
+    source = Path(args.file).expanduser()
+    scenario = AoE2DEScenario.from_file(str(source))
+    report = audit_scenario(scenario)
+    print(report.summary(label=str(source)))
+    if report.errors or (args.strict and report.warnings):
+        return 1
+    return 0
+
+
 # --- parser ------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -289,6 +305,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_inspect.add_argument("file")
     p_inspect.add_argument("--triggers", action="store_true", help="also dump the trigger summary")
     p_inspect.set_defaults(func=cmd_inspect)
+
+    p_audit = subparsers.add_parser(
+        "audit",
+        help="check references, coordinates, trigger reachability, and unsafe loops",
+    )
+    p_audit.add_argument("file", help="scenario to audit")
+    p_audit.add_argument(
+        "--strict",
+        action="store_true",
+        help="also fail when legacy/editor warnings are present",
+    )
+    p_audit.set_defaults(func=cmd_audit)
 
     p_diff = subparsers.add_parser("diff", help="structural trigger diff between two scenarios")
     p_diff.add_argument("a", help="baseline scenario")
