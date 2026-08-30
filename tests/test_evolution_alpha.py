@@ -83,7 +83,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 2_327
+    assert len(triggers) == 2_291
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_076
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -807,6 +807,13 @@ def test_evolution_alpha_distance_movers_are_mobile_and_use_all_five_selectors(
         EffectId.FREEZE_OBJECT,
         EffectId.STOP_OBJECT,
     }
+    source_selector_areas = (
+        (1, 60, 3, 62),
+        (1, 63, 3, 63),
+        (1, 64, 3, 66),
+        (4, 64, 8, 66),
+        (4, 60, 8, 62),
+    )
 
     for player in PlayerId.all(exclude_gaia=True):
         suffix = "" if player == PlayerId.ONE else f" (p{int(player)})"
@@ -844,6 +851,31 @@ def test_evolution_alpha_distance_movers_are_mobile_and_use_all_five_selectors(
                 for condition in selector_conditions
             }
         ) == 5
+        expected_areas = []
+        for source_x1, source_y1, source_x2, source_y2 in source_selector_areas:
+            corners = (
+                v2_cell_for_player(player, source_x1, source_y1),
+                v2_cell_for_player(player, source_x1, source_y2),
+                v2_cell_for_player(player, source_x2, source_y1),
+                v2_cell_for_player(player, source_x2, source_y2),
+            )
+            expected_areas.append(
+                (
+                    min(x for x, _y in corners),
+                    min(y for _x, y in corners),
+                    max(x for x, _y in corners),
+                    max(y for _x, y in corners),
+                )
+            )
+        assert [
+            (
+                condition.area_x1,
+                condition.area_y1,
+                condition.area_x2,
+                condition.area_y2,
+            )
+            for condition in selector_conditions
+        ] == expected_areas
         route_cells = [
             {
                 (x, y)
@@ -852,8 +884,25 @@ def test_evolution_alpha_distance_movers_are_mobile_and_use_all_five_selectors(
             }
             for condition in selector_conditions[:3]
         ]
-        assert all(len(cells) == 3 for cells in route_cells)
-        assert len(set().union(*route_cells)) == 9
+        assert [len(cells) for cells in route_cells] == [9, 3, 9]
+        assert len(set().union(*route_cells)) == sum(map(len, route_cells))
+        spawn_cells = [
+            {
+                (x, y)
+                for x in range(condition.area_x1, condition.area_x2 + 1)
+                for y in range(condition.area_y1, condition.area_y2 + 1)
+            }
+            for condition in selector_conditions[3:]
+        ]
+        assert [len(cells) for cells in spawn_cells] == [15, 15]
+        assert spawn_cells[0].isdisjoint(spawn_cells[1])
+        all_control_cells = route_cells + spawn_cells
+        assert len(set().union(*all_control_cells)) == sum(
+            map(len, all_control_cells)
+        )
+        mover_cell = (int(mover.x), int(mover.y))
+        assert mover_cell not in set().union(*route_cells)
+        assert mover_cell not in spawn_cells[0] | spawn_cells[1]
 
         protections = {
             effect.effect_type
@@ -870,7 +919,29 @@ def test_evolution_alpha_distance_movers_are_mobile_and_use_all_five_selectors(
         ]
         assert not conflicts
 
+        close_trigger = by_name[f"herospawnclose{suffix}"]
         open_trigger = by_name[f"herospawnopen{suffix}"]
+        blocker_x, blocker_y = v2_cell_for_player(player, 16, 38)
+        close_creates = [
+            effect
+            for effect in close_trigger.effects
+            if effect.effect_type == EffectId.CREATE_OBJECT
+            and effect.object_list_unit_id == OtherInfo.OLD_STONE_HEAD.ID
+        ]
+        assert len(close_creates) == 1
+        assert (
+            close_creates[0].source_player,
+            close_creates[0].location_x,
+            close_creates[0].location_y,
+        ) == (PlayerId.GAIA, blocker_x, blocker_y)
+        close_blocker_conditions = [
+            condition
+            for condition in close_trigger.conditions
+            if condition.condition_type == ConditionId.OBJECTS_IN_AREA
+            and condition.object_list == OtherInfo.OLD_STONE_HEAD.ID
+        ]
+        assert len(close_blocker_conditions) == 1
+        assert close_blocker_conditions[0].inverted
         assert not any(
             effect.effect_type == EffectId.TASK_OBJECT
             and reference_id in effect.selected_object_ids
@@ -884,6 +955,19 @@ def test_evolution_alpha_distance_movers_are_mobile_and_use_all_five_selectors(
         ]
         assert len(blocker_conditions) == 1
         assert not blocker_conditions[0].inverted
+        open_removals = [
+            effect
+            for effect in open_trigger.effects
+            if effect.effect_type == EffectId.REMOVE_OBJECT
+            and effect.object_list_unit_id == OtherInfo.OLD_STONE_HEAD.ID
+        ]
+        assert len(open_removals) == 1
+        assert (
+            open_removals[0].area_x1,
+            open_removals[0].area_y1,
+            open_removals[0].area_x2,
+            open_removals[0].area_y2,
+        ) == (blocker_x, blocker_y, blocker_x, blocker_y)
 
 
 def test_evolution_alpha_protects_all_added_v2_walls(evolution_alpha):
@@ -3232,7 +3316,6 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
     order_pattern = re.compile(
         r"Hero Orders (Short|Medium|Long) S([1-8]) W([1-8])"
     )
-    open_order_pattern = re.compile(r"Hero Orders Open S([1-8]) W([1-8])")
     milestone_units = {
         200: HeroInfo.ROBIN_HOOD.ID,
         400: HeroInfo.THEODORIC_THE_GOTH.ID,
@@ -3339,9 +3422,9 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                         ) == (*spawn, *spawn)
 
     canonical_orders = {
-        "Short": ((1, 60, 3, 61), (25, 54)),
-        "Medium": ((1, 62, 5, 64), (31, 52)),
-        "Long": ((1, 65, 3, 66), (43, 53)),
+        "Short": (1, (25, 54)),
+        "Medium": (0, (31, 52)),
+        "Long": (2, (43, 53)),
     }
     order_triggers = {
         (match.group(1), int(match.group(2)), int(match.group(3))): trigger
@@ -3351,47 +3434,13 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
     assert len(order_triggers) == len(canonical_orders) * len(
         VALID_COLOR_WORLD_PAIRS
     )
-    open_order_triggers = {
-        tuple(map(int, match.groups())): trigger
+    assert not any(
+        trigger.name.startswith("Hero Orders Open ")
         for trigger in triggers
-        if (match := open_order_pattern.fullmatch(trigger.name))
-    }
-    assert len(open_order_triggers) == len(VALID_COLOR_WORLD_PAIRS)
-    assert set(open_order_triggers) == VALID_COLOR_WORLD_PAIRS
-    for (color, world_player), trigger in open_order_triggers.items():
-        assert any(
-            condition.condition_type == ConditionId.TIMER
-            and condition.timer == 1
-            for condition in trigger.conditions
-        )
-        assert {
-            (condition.variable, condition.quantity, condition.comparison)
-            for condition in trigger.conditions
-            if condition.condition_type == ConditionId.VARIABLE_VALUE
-        } == {
-            (31 + color, 1, Comparison.EQUAL),
-            (39 + color, world_player, Comparison.EQUAL),
-        }
-        assert {
-            effect.source_player
-            for effect in trigger.effects
-            if effect.effect_type == EffectId.TASK_OBJECT
-        } == {world_player}
-    for family, (source_area, source_destination) in canonical_orders.items():
+    )
+    for family, (route_value, source_destination) in canonical_orders.items():
         for color in range(1, 9):
             spawn_x, spawn_y = v2_cell_for_player(color, 16, 38)
-            corners = (
-                v2_cell_for_player(color, source_area[0], source_area[1]),
-                v2_cell_for_player(color, source_area[0], source_area[3]),
-                v2_cell_for_player(color, source_area[2], source_area[1]),
-                v2_cell_for_player(color, source_area[2], source_area[3]),
-            )
-            selector_area = (
-                min(x for x, _y in corners),
-                min(y for _x, y in corners),
-                max(x for x, _y in corners),
-                max(y for _x, y in corners),
-            )
             destination = v2_cell_for_player(color, *source_destination)
             for world_player in range(1, color + 1):
                 trigger = order_triggers[family, color, world_player]
@@ -3406,15 +3455,16 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                     for condition in trigger.conditions
                     if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
                 ]
-                assert len(selector_conditions) == 1
-                selector = selector_conditions[0]
-                assert selector.unit_object == 88_890 + color
-                assert (
-                    selector.area_x1,
-                    selector.area_y1,
-                    selector.area_x2,
-                    selector.area_y2,
-                ) == selector_area
+                assert selector_conditions == []
+                assert {
+                    (condition.variable, condition.quantity, condition.comparison)
+                    for condition in trigger.conditions
+                    if condition.condition_type == ConditionId.VARIABLE_VALUE
+                } == {
+                    (31 + color, 1, Comparison.EQUAL),
+                    (39 + color, world_player, Comparison.EQUAL),
+                    (88 + color, route_value, Comparison.EQUAL),
+                }
                 tasks = [
                     effect
                     for effect in trigger.effects
@@ -3431,69 +3481,6 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                 ) == (spawn_x - 1, spawn_y - 1, spawn_x + 1, spawn_y + 1)
                 assert (task.location_x, task.location_y) == destination
                 assert task.action_type == ActionType.MOVE
-
-            open_order = open_order_triggers[color, world_player]
-            assert open_order.enabled and open_order.looping
-            open_conditions = [
-                condition
-                for condition in open_order.conditions
-                if condition.condition_type == ConditionId.OBJECTS_IN_AREA
-            ]
-            assert len(open_conditions) == 1
-            open_condition = open_conditions[0]
-            assert (
-                open_condition.object_list,
-                open_condition.source_player,
-                open_condition.area_x1,
-                open_condition.area_y1,
-                open_condition.area_x2,
-                open_condition.area_y2,
-                open_condition.inverted,
-            ) == (
-                OtherInfo.OLD_STONE_HEAD.ID,
-                PlayerId.GAIA,
-                spawn_x,
-                spawn_y,
-                spawn_x,
-                spawn_y,
-                1,
-            )
-            open_variables = {
-                (condition.variable, condition.quantity, condition.comparison)
-                for condition in open_order.conditions
-                if condition.condition_type == ConditionId.VARIABLE_VALUE
-            }
-            assert {
-                (31 + color, 1, Comparison.EQUAL),
-                (39 + color, world_player, Comparison.EQUAL),
-            } <= open_variables
-            open_tasks = [
-                effect
-                for effect in open_order.effects
-                if effect.effect_type == EffectId.TASK_OBJECT
-            ]
-            assert {
-                effect.object_list_unit_id for effect in open_tasks
-            } == set(milestone_units.values())
-            assert {effect.source_player for effect in open_tasks} == {
-                world_player
-            }
-            assert {
-                (
-                    effect.area_x1,
-                    effect.area_y1,
-                    effect.area_x2,
-                    effect.area_y2,
-                )
-                for effect in open_tasks
-            } == {(spawn_x - 1, spawn_y - 1, spawn_x + 1, spawn_y + 1)}
-            assert {
-                (effect.location_x, effect.location_y)
-                for effect in open_tasks
-            } == {v2_cell_for_player(color, 31, 52)}
-            assert {effect.action_type for effect in open_tasks} == {
-                ActionType.MOVE
-            }
 
 
 def test_evolution_alpha_remaps_location_sensitive_triggers_to_v2(evolution_alpha):

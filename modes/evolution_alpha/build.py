@@ -92,6 +92,14 @@ MATCH_READY_VARIABLE_ID = 56
 VOTE_MARKER_VARIABLE_BASE = 57
 ARMY_MOVE_PENDING_VARIABLE_BASE = 81
 ARMY_ROUTE_VARIABLE_BASE = 89
+ROUTE_MEDIUM = 0
+ROUTE_SHORT = 1
+ROUTE_LONG = 2
+ARMY_ROUTE_VALUES = {
+    "move": ROUTE_MEDIUM,
+    "move short": ROUTE_SHORT,
+    "move long": ROUTE_LONG,
+}
 VOTE_FLAG_OFFSETS = {
     PlayerId.ONE: (2, 0),
     PlayerId.TWO: (-2, 0),
@@ -598,6 +606,18 @@ HERO_ORDER_FAMILIES = {
     "Médio": "Medium",
     "Longo": "Long",
 }
+HERO_ROUTE_VALUES = {
+    "Curto": ROUTE_SHORT,
+    "Médio": ROUTE_MEDIUM,
+    "Longo": ROUTE_LONG,
+}
+DISTANCE_SELECTOR_SOURCE_AREAS = {
+    "short": (1, 60, 3, 62),
+    "med": (1, 63, 3, 63),
+    "long": (1, 64, 3, 66),
+    "herospawnopen": (4, 60, 8, 62),
+    "herospawnclose": (4, 64, 8, 66),
+}
 LEGACY_AGE_UP_NAME = re.compile(r"\d+ kills")
 
 
@@ -834,9 +854,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 2_326:
+    if len(ctx.tm.triggers) != 2_290:
         raise RuntimeError(
-            f"expected 2,326 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 2,290 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1867,12 +1887,6 @@ def _replace_legacy_army_spawns(
         ).variable_id
         for player in PLAYERS
     }
-    route_values = {
-        "move": 0,
-        "move short": 1,
-        "move long": 2,
-    }
-
     def guard_new_wave(trigger, scenario_player, world_player, family) -> None:
         """Let one selected route launch only the wave XS just created."""
         trigger.new_condition.variable_value(
@@ -1891,7 +1905,7 @@ def _replace_legacy_army_spawns(
             comparison=Comparison.EQUAL,
         )
         trigger.new_condition.variable_value(
-            quantity=route_values[family],
+            quantity=ARMY_ROUTE_VALUES[family],
             variable=route_variables[scenario_player],
             comparison=Comparison.EQUAL,
         )
@@ -2092,7 +2106,7 @@ def _replace_legacy_army_spawns(
                 if effect not in route_switches
             ]
             selector.new_effect.change_variable(
-                quantity=route_values[chosen_family],
+                quantity=ARMY_ROUTE_VALUES[chosen_family],
                 operation=Operation.SET,
                 variable=route_variables[scenario_player],
             )
@@ -2235,12 +2249,13 @@ def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
             else:
                 _copy_v2_trigger_geometry(player, source, target)
 
-    # Sheep have real collision and can stop on either side of the named Relic
-    # and Rug at a route slot. Keep the three route zones disjoint along the
-    # island edge, but extend each one tile radially so reaching the visible
-    # Short/Medium/Long marker always latches its route.
+    # The Sheep approaches each prop diagonally and stops one tile before its
+    # collision box. Use broad approach regions between the island center and
+    # each visible Rug instead of the legacy prop tile. All five regions stay
+    # mutually exclusive, so crossing the island center cannot change a route
+    # while the player is moving to Open or Closed.
     for player in PLAYERS:
-        for family in ("short", "med", "long"):
+        for family, source_area in DISTANCE_SELECTOR_SOURCE_AREAS.items():
             trigger = _unique_trigger(ctx, family_names[family][player])
             selectors = [
                 condition
@@ -2249,32 +2264,20 @@ def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
             ]
             if len(selectors) != 1:
                 raise RuntimeError(
-                    f"expected one army selector zone in {trigger.name!r}"
+                    f"expected one distance selector zone in {trigger.name!r}"
                 )
             selector = selectors[0]
-            if (selector.area_x1, selector.area_y1) != (
-                selector.area_x2,
-                selector.area_y2,
-            ):
-                raise RuntimeError(
-                    f"expected a one-tile army selector in {trigger.name!r}"
-                )
-            if selector.area_y1 <= 2:
-                selector.area_y1 -= 1
-                selector.area_y2 += 1
-            elif selector.area_y1 >= 141:
-                selector.area_y1 -= 1
-                selector.area_y2 += 1
-            elif selector.area_x1 <= 2:
-                selector.area_x1 -= 1
-                selector.area_x2 += 1
-            elif selector.area_x1 >= 141:
-                selector.area_x1 -= 1
-                selector.area_x2 += 1
-            else:
-                raise RuntimeError(
-                    f"army selector {trigger.name!r} is not on an edge island"
-                )
+            source_x1, source_y1, source_x2, source_y2 = source_area
+            corners = (
+                v2_cell_for_player(player, source_x1, source_y1),
+                v2_cell_for_player(player, source_x1, source_y2),
+                v2_cell_for_player(player, source_x2, source_y1),
+                v2_cell_for_player(player, source_x2, source_y2),
+            )
+            selector.area_x1 = min(x for x, _y in corners)
+            selector.area_y1 = min(y for _x, y in corners)
+            selector.area_x2 = max(x for x, _y in corners)
+            selector.area_y2 = max(y for _x, y in corners)
 
     # Selector loops should react quickly without running on every trigger
     # pass.  Close also needs an absence guard; otherwise it creates another
@@ -3158,7 +3161,7 @@ def _configure_sparse_hero_milestones(
     world_variables,
     match_ready_variable,
 ) -> None:
-    """Make every kill hero and its orders follow the occupied color.
+    """Make every kill hero and its latched route follow the occupied color.
 
     The legacy P5/P6 milestones created their heroes on rear Stone Walls after
     the V2 perimeter was compacted.  They also read a fixed player number, so a
@@ -3229,34 +3232,6 @@ def _configure_sparse_hero_milestones(
         source_name: deepcopy(order_targets[PlayerId.THREE, source_name])
         for source_name in HERO_ORDER_FAMILIES
     }
-    medium_task_effects = [
-        effect
-        for effect in order_templates["Médio"].effects
-        if effect.effect_type == EffectId.TASK_OBJECT
-    ]
-    if len(medium_task_effects) != 1:
-        raise RuntimeError("expected one canonical Medium hero task effect")
-    medium_task_template = medium_task_effects[0]
-    order_selector_references = {}
-    for scenario_player in PLAYERS:
-        for source_name in HERO_ORDER_FAMILIES:
-            selector_conditions = [
-                condition
-                for condition in order_targets[
-                    scenario_player,
-                    source_name,
-                ].conditions
-                if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
-                and condition.unit_object >= 0
-            ]
-            if len(selector_conditions) != 1:
-                raise RuntimeError(
-                    f"expected one P{int(scenario_player)} {source_name} "
-                    "selector relic reference"
-                )
-            order_selector_references[scenario_player, source_name] = (
-                selector_conditions[0].unit_object
-            )
 
     for scenario_player, (spawn_x, spawn_y) in HERO_MILESTONE_SPAWN_TILES.items():
         tile = ctx.mm.get_tile(x=spawn_x, y=spawn_y)
@@ -3390,7 +3365,14 @@ def _configure_sparse_hero_milestones(
                         looping=1,
                     )
 
+                removed_selectors = 0
                 for source_condition in template.conditions:
+                    if (
+                        source_condition.condition_type
+                        == ConditionId.BRING_OBJECT_TO_AREA
+                    ):
+                        removed_selectors += 1
+                        continue
                     condition = _copy_for_world_player(
                         source_condition,
                         PlayerId.THREE,
@@ -3401,12 +3383,12 @@ def _configure_sparse_hero_milestones(
                         source_condition,
                         condition,
                     )
-                    if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA:
-                        condition.unit_object = order_selector_references[
-                            scenario_player,
-                            source_name,
-                        ]
                     trigger.conditions.append(condition)
+                if removed_selectors != 1:
+                    raise RuntimeError(
+                        f"expected one legacy selector condition in "
+                        f"{template.name!r}, found {removed_selectors}"
+                    )
                 trigger.new_condition.variable_value(
                     quantity=1,
                     variable=active_variables[scenario_player],
@@ -3415,6 +3397,13 @@ def _configure_sparse_hero_milestones(
                 trigger.new_condition.variable_value(
                     quantity=int(world_player),
                     variable=world_variables[scenario_player],
+                    comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=HERO_ROUTE_VALUES[source_name],
+                    variable=(
+                        ARMY_ROUTE_VARIABLE_BASE + int(scenario_player) - 1
+                    ),
                     comparison=Comparison.EQUAL,
                 )
                 trigger.new_condition.timer(timer=1)
@@ -3444,55 +3433,6 @@ def _configure_sparse_hero_milestones(
                 )
                 task.action_type = ActionType.MOVE
                 trigger.effects.append(task)
-
-            open_route = ctx.tm.add_trigger(
-                f"Hero Orders Open S{int(scenario_player)} "
-                f"W{int(world_player)}",
-                description_stid=0,
-                short_description_stid=0,
-                enabled=1,
-                looping=1,
-            )
-            open_route.new_condition.objects_in_area(
-                quantity=1,
-                object_list=OtherInfo.OLD_STONE_HEAD.ID,
-                source_player=PlayerId.GAIA,
-                area_x1=spawn_x,
-                area_y1=spawn_y,
-                area_x2=spawn_x,
-                area_y2=spawn_y,
-                inverted=1,
-            )
-            open_route.new_condition.variable_value(
-                quantity=1,
-                variable=active_variables[scenario_player],
-                comparison=Comparison.EQUAL,
-            )
-            open_route.new_condition.variable_value(
-                quantity=int(world_player),
-                variable=world_variables[scenario_player],
-                comparison=Comparison.EQUAL,
-            )
-            open_route.new_condition.timer(timer=1)
-            destination_x, destination_y = v2_cell_for_player(
-                scenario_player,
-                medium_task_template.location_x,
-                medium_task_template.location_y,
-            )
-            for unit_id in dict.fromkeys(
-                unit_id for _threshold, unit_id in HERO_MILESTONES
-            ):
-                open_route.new_effect.task_object(
-                    object_list_unit_id=unit_id,
-                    source_player=world_player,
-                    location_x=destination_x,
-                    location_y=destination_y,
-                    area_x1=spawn_x - 1,
-                    area_y1=spawn_y - 1,
-                    area_x2=spawn_x + 1,
-                    area_y2=spawn_y + 1,
-                    action_type=ActionType.MOVE,
-                )
 
 
 def _add_sparse_feudal_upgrades(

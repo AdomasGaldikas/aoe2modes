@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.6
+# CBA Hero: Ascendants v1.0.7
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,11 +7,11 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.6 |
+| | Baseline | Ascendants v1.0.7 |
 | --- | --- | --- |
-| Triggers | 2,993 | 2,327 |
-| Conditions | 3,314 | 7,048 |
-| Effects | 7,814 | 6,655 |
+| Triggers | 2,993 | 2,291 |
+| Conditions | 3,314 | 6,904 |
+| Effects | 7,814 | 6,475 |
 | Units | 1,123 | 1,076 |
 | Runtime variables | 0 | 97 |
 | Scenario version | v1.51 | v1.58 |
@@ -77,8 +77,10 @@ runtime player so the free tower is reliably available once a builder is earned.
 
 Kill heroes are color-aware as well. Every 200/400/600/800/1000/2000 milestone reads
 the occupied color's resolved runtime player, creates the correct hero on an empty
-mirrored grass tile, and applies that color's selected short/medium/long order. This
-keeps Teal and Purple clear of the compact rear walls and makes the complete ladder
+mirrored grass tile, and applies the same latched Short/Medium/Long route used by that
+color's normal waves. Moving the Sheep to Hero Spawn Closed or Open changes only the
+shoreline blocker and preserves the selected route. This keeps Teal and Purple clear
+of the compact rear walls and makes the complete ladder
 work identically for all eight colors in both full and sparse lobbies.
 
 The 3500- and 5000-kill Genghis reinforcements use the same mapping and corrected
@@ -170,17 +172,20 @@ grass, sand, dirt, or road tint for each player color.
 Automatic armies spawn one tile nearer the arena wall. Movement triggers watch a
 three-by-three area around every spawn point, and the Short, Medium, and Long relic
 selectors now control compacted-color players as well as their original slots. Their
-three disjoint approach strips extend one tile toward the Sheep, so collision with a
-Relic or Rug cannot prevent the selected route from latching. Every
-army, hero, and builder task uses an explicit move action so newly created units leave
+three mutually exclusive route regions cover the Sheep's diagonal stopping cells, and
+the separate Closed/Open regions cover both approaches to the lower markers. All five
+are mutually exclusive, derived from one canonical geometry, and transformed
+identically for every color.
+Every army, hero, and builder task uses an explicit move action so newly created units
+leave
 their spawn pads reliably. Legacy ice decorations are removed as objects as well as
 terrain, leaving the surrounding shore buildable. The separate milestone-hero spawn
 (Robin Hood, Theodoric, and later kill rewards) uses its shoreline pad directly;
 decorative Transport Ships and all marker-specific trigger effects are absent.
-When Hero Spawn is Open, a dedicated fallback continuously sends milestone heroes
-from the shoreline pad toward the Medium staging position inside the base. Packed and
-unpacked Trebuchets are disabled
-for every player, so Castles
+Hero Spawn Closed creates the shoreline blocker; Open removes it. Once clear, the
+selected Short/Medium/Long hero trigger moves milestone heroes from the pad without a
+competing fixed-Medium fallback. Packed and unpacked Trebuchets are disabled for every
+player, so Castles
 cannot train them while scripted rewards can still create their intended units.
 
 Version 1.0.3 replaces the obsolete hidden distance-selector object with a movable
@@ -213,9 +218,18 @@ are removed with them. Hero creation and ordering remain unchanged and fully cov
 for every color/runtime owner. The same release adds a full-map ownership purge to all
 36 compact-safe resignation resolvers, so a resigned player's units and buildings do
 not remain in play. It also replaces route-trigger switching with eight persistent
-Short/Medium/Long variables and widens all 24 Sheep route selectors toward their
-visible markers. The serialized candidate has 2,327 triggers, 1,076 objects, 7,048
+Short/Medium/Long variables. Its first narrow selector-zone repair and separate
+milestone-hero behavior were not sufficient in the game and are superseded by v1.0.7.
+The serialized candidate has 2,327 triggers, 1,076 objects, 7,048
 conditions, 6,655 effects, and 97 variables.
+
+Version 1.0.7 repairs all five Sheep positions from observed engine behavior. The
+selector stopped diagonally beside the Relic/Rug collision boxes, so all 40 conditions
+now cover the reachable approach cells while keeping each state unambiguous. The 108
+milestone-hero order triggers now use the same latched route variables as the 108
+normal-wave routes. The 36 later fixed-Medium Open fallbacks are removed, eliminating
+the order that overrode Short or Long. The candidate has 2,291 triggers, 1,076 objects,
+6,904 conditions, 6,475 effects, and 97 variables.
 
 ## Source of truth
 
