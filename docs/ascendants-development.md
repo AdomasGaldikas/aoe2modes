@@ -1,14 +1,14 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.4** as the current
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.5** as the current
 source-verified release candidate. It is derived only from v1.0.3; older versions are
 not repair or comparison targets. Engine acceptance is still a separate step.
 
 The canonical v1.0.3 checkpoint is 99,694 bytes with SHA-256
-`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. The v1.0.4
-candidate is 92,111 bytes with SHA-256
-`37207f4ea76bc7db60da631c9bfc24c0771ce3e39d936fd085e2df6fd3aa2e0c`.
-Its intentional trigger-graph migration explains the changed hash.
+`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. The v1.0.5
+candidate is 93,590 bytes with SHA-256
+`b5182d2b123a389ca50a584ab341a5ea957246867b0528d44865b2079a3e3903`.
+Its intentional trigger-graph migration and engine-reported fixes explain the changed hash.
 
 ## Two verification layers
 
@@ -30,13 +30,26 @@ trigger-variable ids. It then runs the final-build gameplay contract and produce
 scenario that should be tested in-game. Finally, `aoe2modes audit` checks the serialized
 output for broken references, invalid coordinates, and immediate unconditional
 victory/defeat. Potential scheduling or cleanup risks are reported as warnings for
-review. The v1.0.4 candidate currently passes with **0 errors and 0 warnings**.
+review. The v1.0.5 candidate currently passes with **0 errors and 0 warnings**.
 
 The target is entirely local. It does not use GitHub Actions or any paid CI service.
 
 The active issue inventory and manual acceptance cases are in
 [`ascendants-issue-register.md`](ascendants-issue-register.md). v1.0.3 is the sole
-comparison baseline and v1.0.4 is the only active candidate.
+comparison baseline and v1.0.5 is the only active candidate.
+
+## v1.0.5 engine-report fixes
+
+Automatic army movement is now edge-triggered instead of area-polled. XS sets one
+color-specific pulse only after creating a wave; exactly one active full- or
+compact-owner route consumes it. The three-by-three launch capture area still handles
+spawn collision, but it cannot take over units that later return toward their Castles.
+
+The milestone shoreline has an exact twenty-cell source mask transformed into all
+eight territories. Its 160 legacy Beach cells are now buildable Grass 2 without moving
+water or the hero landing tile. Each Transport Ship marker is two tiles nearer the
+matching shore and is a Gaia-owned, stopped, frozen, speed-zero, unselectable,
+undeletable, untargetable, and unattackable prop, outside player and AI control.
 
 ## v1.0.4 graph migration
 
@@ -61,7 +74,10 @@ Age of Empires II engine. Keep these as explicit in-game checks for every candid
 - automatic armies, builders, six hero milestones, and all five distance positions;
 - vote-kick resolution, resignation/defeat, and team victory for both sides;
 - local HUD values, player names, zero costs/resources, and post-game combat score;
-- unit pathing through every allied route and around all eight rear walls.
+- unit pathing through every allied route and around all eight rear walls;
+- manually returning an army across each Castle launch line without its order changing;
+- placing buildings across every milestone-shore repair strip;
+- leaving all eight marker ships under AI play and confirming they neither move nor take damage.
 
 When one fails, record the exact lobby colors, civilization, trigger-visible symptom,
 and expected result before changing code. That turns an engine-only report into a

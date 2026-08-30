@@ -113,8 +113,32 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
         for x in range(144)
     )
     assert hashlib.sha256(terrain).hexdigest() == (
-        "00ad65797b3efb31c96251a80c793cb8e4a74bc6c3ddd44398c6df49ca9c35df"
+        "a5fea90f87225aad16d1096ea88996cf5a97cac9d2162668f880ab2c27fa1ce6"
     )
+
+    source_milestone_shore = {
+        *((15, y) for y in range(38, 43)),
+        (16, 39),
+        (17, 38),
+        (17, 39),
+        *((x, 39) for x in range(18, 24)),
+        *((24, y) for y in range(38, 44)),
+    }
+    assert len(source_milestone_shore) == 20
+    milestone_shore = {
+        v2_cell_for_player(player, source_x, source_y)
+        for player in PlayerId.all(exclude_gaia=True)
+        for source_x, source_y in source_milestone_shore
+    }
+    assert len(milestone_shore) == 160
+    assert {
+        (
+            evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id,
+            evolution_alpha.map_manager.get_tile(x=x, y=y).elevation,
+            evolution_alpha.map_manager.get_tile(x=x, y=y).layer,
+        )
+        for x, y in milestone_shore
+    } == {(TerrainId.GRASS_2, 1, -1)}
 
     transforms = (
         lambda x, y: (x, y),
@@ -296,7 +320,7 @@ def test_evolution_alpha_keeps_v2_objects_and_playable_gate_holes(evolution_alph
     )
     assert len(additions) == 92
     assert additions_digest == (
-        "2a21218716b6eab2ba3ee2bd84378c5d9811b61ea54c9d5ddb800af4843d13e1"
+        "18baaf36d00b1ccbc89d54ab80abcf1c6d2d9767b751971d812e0ddf27b53c04"
     )
 
 
@@ -770,7 +794,7 @@ def test_evolution_alpha_keeps_visible_land_objects_out_of_water(evolution_alpha
 
 def test_evolution_alpha_uses_protected_boats_as_spawn_markers(evolution_alpha):
     expected_positions = {
-        player: v2_position_for_player(player, 16.5, 35.5)
+        player: v2_position_for_player(player, 16.5, 37.5)
         for player in PlayerId.all(exclude_gaia=True)
     }
     water = {int(terrain) for terrain in TerrainId.water_terrains()}
@@ -785,14 +809,12 @@ def test_evolution_alpha_uses_protected_boats_as_spawn_markers(evolution_alpha):
         if unit.unit_const == UnitInfo.TRANSPORT_SHIP.ID
     ]
     assert len(all_transport_ships) == 8
-    assert {unit.player for unit in all_transport_ships} == set(
-        PlayerId.all(exclude_gaia=True)
-    )
+    assert {unit.player for unit in all_transport_ships} == {PlayerId.GAIA}
 
     for player, position in expected_positions.items():
         boats = [
             unit
-            for unit in evolution_alpha.unit_manager.units[player]
+            for unit in evolution_alpha.unit_manager.units[PlayerId.GAIA]
             if unit.unit_const == UnitInfo.TRANSPORT_SHIP.ID
             and (unit.x, unit.y) == position
         ]
@@ -810,12 +832,13 @@ def test_evolution_alpha_uses_protected_boats_as_spawn_markers(evolution_alpha):
             if boat.reference_id in effect.selected_object_ids
         }
         assert {
-            (EffectId.DISABLE_OBJECT_DELETION, player),
-            (EffectId.DISABLE_OBJECT_SELECTION, player),
-            (EffectId.DISABLE_UNIT_ATTACKABLE, player),
-            (EffectId.DISABLE_UNIT_TARGETING, player),
-            (EffectId.FREEZE_OBJECT, player),
-            (EffectId.CHANGE_OBJECT_SPEED, player),
+            (EffectId.DISABLE_OBJECT_DELETION, PlayerId.GAIA),
+            (EffectId.DISABLE_OBJECT_SELECTION, PlayerId.GAIA),
+            (EffectId.DISABLE_UNIT_ATTACKABLE, PlayerId.GAIA),
+            (EffectId.DISABLE_UNIT_TARGETING, PlayerId.GAIA),
+            (EffectId.FREEZE_OBJECT, PlayerId.GAIA),
+            (EffectId.STOP_OBJECT, PlayerId.GAIA),
+            (EffectId.CHANGE_OBJECT_SPEED, PlayerId.GAIA),
         } <= protections
 
         speed_effects = [
@@ -826,6 +849,22 @@ def test_evolution_alpha_uses_protected_boats_as_spawn_markers(evolution_alpha):
         ]
         assert len(speed_effects) == 1
         assert speed_effects[0].quantity == 0
+
+        hostile_effects = [
+            effect
+            for trigger in evolution_alpha.trigger_manager.triggers
+            for effect in trigger.effects
+            if effect.effect_type
+            in {
+                EffectId.TASK_OBJECT,
+                EffectId.KILL_OBJECT,
+                EffectId.REMOVE_OBJECT,
+                EffectId.CHANGE_OWNERSHIP,
+                EffectId.DAMAGE_OBJECT,
+            }
+            and boat.reference_id in effect.selected_object_ids
+        ]
+        assert hostile_effects == []
 
 
 def test_evolution_alpha_distance_movers_are_mobile_and_use_all_five_selectors(
@@ -1065,6 +1104,10 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
     expected_variables |= {
         (57 + index, f"votekickp{target}byp{voter}")
         for index, (target, voter) in enumerate(vote_keys)
+    }
+    expected_variables |= {
+        (80 + player, f"army_move_pending_p{player}")
+        for player in range(1, 9)
     }
     assert {
         (variable.variable_id, variable.name) for variable in trigger_manager.variables
@@ -3001,6 +3044,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     assert "int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);" in xs_source
     assert "xsGetPlayerCivilization(worldPlayer)" in xs_source
     assert "xsPlayerAttribute(worldPlayer, cAttributeMilitaryPopulation)" in xs_source
+    assert xs_source.count("81 + scenarioPlayer - 1") == 1
     assert xs_source.count("xsArraySetInt(gCbaUnitByCiv") == 59
     assert xs_source.count("cbaSpawnColor(") == 9  # declaration plus all eight colors
     assert "vector(22, 96, -1)" in xs_source
@@ -3030,7 +3074,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     assert all(not trigger.enabled for trigger in long_movements.values())
     teal_for_compacted_p2 = movements["Sparse Move S5 W2"]
     assert teal_for_compacted_p2.looping
-    assert len(teal_for_compacted_p2.conditions) == 2
+    assert len(teal_for_compacted_p2.conditions) == 5
     owner = next(
         condition
         for condition in teal_for_compacted_p2.conditions
@@ -3110,9 +3154,10 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
                     ActionType.MOVE
                 }
         for family, source_locations in canonical_task_locations.items():
+            target = by_name[f"{family} (p{scenario_player})"]
             target_tasks = [
                 effect
-                for effect in by_name[f"{family} (p{scenario_player})"].effects
+                for effect in target.effects
                 if effect.effect_type == EffectId.TASK_OBJECT
             ]
             assert [
@@ -3129,6 +3174,54 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
             assert {effect.action_type for effect in target_tasks} == {
                 ActionType.MOVE
             }
+
+            expected_variable_conditions = {
+                (80 + scenario_player, 1),
+                (31 + scenario_player, 1),
+                (39 + scenario_player, scenario_player),
+            }
+            assert {
+                (condition.variable, condition.quantity)
+                for condition in target.conditions
+                if condition.condition_type == ConditionId.VARIABLE_VALUE
+            } == expected_variable_conditions
+            pending_resets = [
+                effect
+                for effect in target.effects
+                if effect.effect_type == EffectId.CHANGE_VARIABLE
+                and effect.variable == 80 + scenario_player
+            ]
+            assert len(pending_resets) == 1
+            assert (
+                pending_resets[0].operation,
+                pending_resets[0].quantity,
+            ) == (Operation.SET, 0)
+
+        for world_player in range(1, scenario_player):
+            for public_family in ("", " Short", " Long"):
+                movement = by_name[
+                    f"Sparse Move{public_family} S{scenario_player} W{world_player}"
+                ]
+                assert {
+                    (condition.variable, condition.quantity)
+                    for condition in movement.conditions
+                    if condition.condition_type == ConditionId.VARIABLE_VALUE
+                } == {
+                    (80 + scenario_player, 1),
+                    (31 + scenario_player, 1),
+                    (39 + scenario_player, world_player),
+                }
+                pending_resets = [
+                    effect
+                    for effect in movement.effects
+                    if effect.effect_type == EffectId.CHANGE_VARIABLE
+                    and effect.variable == 80 + scenario_player
+                ]
+                assert len(pending_resets) == 1
+                assert (
+                    pending_resets[0].operation,
+                    pending_resets[0].quantity,
+                ) == (Operation.SET, 0)
 
         sparse_families = {
             "move": "",

@@ -90,6 +90,7 @@ COLOR_WORLD_VARIABLE_BASE = 40
 COLOR_ELIMINATED_VARIABLE_BASE = 48
 MATCH_READY_VARIABLE_ID = 56
 VOTE_MARKER_VARIABLE_BASE = 57
+ARMY_MOVE_PENDING_VARIABLE_BASE = 81
 VOTE_FLAG_OFFSETS = {
     PlayerId.ONE: (2, 0),
     PlayerId.TWO: (-2, 0),
@@ -125,7 +126,7 @@ SPAWN_POINTS = {
     PlayerId.EIGHT: ((96, 122), (92, 122), (89, 122), (85, 122)),
 }
 SPAWN_MARKER_BOAT_POSITIONS = {
-    player: v2_position_for_player(player, 16.5, 35.5)
+    player: v2_position_for_player(player, 16.5, 37.5)
     for player in PLAYERS
 }
 HAY_LOCATION_BY_CASTLE_REFERENCE = {
@@ -1640,6 +1641,10 @@ int cbaWorldPlayerForColor(int scenarioPlayer = 0) {{
 
 void cbaCreateWave(int scenarioPlayer = 0, int worldPlayer = 0, int unitId = -1) {{
 {chr(10).join(coordinate_branches)}
+    xsSetTriggerVariable(
+        {ARMY_MOVE_PENDING_VARIABLE_BASE} + scenarioPlayer - 1,
+        1
+    );
 }}
 
 void cbaSpawnColor(int scenarioPlayer = 0) {{
@@ -1839,8 +1844,43 @@ rule cbaBuilderRewardInfo
 """
 
 
-def _replace_legacy_army_spawns(ctx: BuildContext) -> None:
-    """Spawn by selected color while addressing the compacted runtime owner."""
+def _replace_legacy_army_spawns(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> None:
+    """Spawn and launch each color's waves through its compacted runtime owner."""
+    move_pending_variables = {
+        player: ctx.tm.add_variable(
+            f"army_move_pending_p{int(player)}",
+            variable_id=ARMY_MOVE_PENDING_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+
+    def guard_new_wave(trigger, scenario_player, world_player) -> None:
+        """Let one selected route launch only the wave XS just created."""
+        trigger.new_condition.variable_value(
+            quantity=1,
+            variable=move_pending_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=1,
+            variable=active_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=int(world_player),
+            variable=world_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_effect.change_variable(
+            quantity=0,
+            operation=Operation.SET,
+            variable=move_pending_variables[scenario_player],
+        )
+
     disabled = 0
     legacy_ids = set()
     for trigger in ctx.tm.triggers:
@@ -1922,6 +1962,7 @@ def _replace_legacy_army_spawns(ctx: BuildContext) -> None:
                 for condition in target.conditions
             ):
                 target.new_condition.timer(timer=1)
+            guard_new_wave(target, scenario_player, scenario_player)
             movement_tasks[family] = target_tasks
 
         area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[scenario_player]
@@ -1975,6 +2016,7 @@ def _replace_legacy_army_spawns(ctx: BuildContext) -> None:
                         issue_group_command=effect.issue_group_command,
                         queue_action=effect.queue_action,
                     )
+                guard_new_wave(movement, scenario_player, world_player)
                 sparse_movements[family, world_player] = movement
 
         selected_family = {
@@ -3694,7 +3736,7 @@ def _add_spawn_marker_boats(ctx: BuildContext) -> None:
         target_x = (castle_x1 + castle_x2) / 2
         target_y = (castle_y1 + castle_y2) / 2
         boat = ctx.um.add_unit(
-            player=player,
+            player=PlayerId.GAIA,
             unit_const=UnitInfo.TRANSPORT_SHIP.ID,
             x=x,
             y=y,
@@ -3703,28 +3745,32 @@ def _add_spawn_marker_boats(ctx: BuildContext) -> None:
         protection = _unique_trigger(ctx, f"Antidelete P{int(player)}")
         selected = [boat.reference_id]
         protection.new_effect.disable_object_deletion(
-            source_player=player,
+            source_player=PlayerId.GAIA,
             selected_object_ids=selected,
         )
         protection.new_effect.disable_object_selection(
-            source_player=player,
+            source_player=PlayerId.GAIA,
             selected_object_ids=selected,
         )
         protection.new_effect.disable_unit_attackable(
-            source_player=player,
+            source_player=PlayerId.GAIA,
             selected_object_ids=selected,
         )
         protection.new_effect.disable_unit_targeting(
-            source_player=player,
+            source_player=PlayerId.GAIA,
             selected_object_ids=selected,
         )
         protection.new_effect.freeze_object(
-            source_player=player,
+            source_player=PlayerId.GAIA,
+            selected_object_ids=selected,
+        )
+        protection.new_effect.stop_object(
+            source_player=PlayerId.GAIA,
             selected_object_ids=selected,
         )
         protection.new_effect.change_object_speed(
             quantity=0,
-            source_player=player,
+            source_player=PlayerId.GAIA,
             selected_object_ids=selected,
         )
 
@@ -4606,7 +4652,7 @@ def build(ctx: BuildContext) -> None:
         eliminated_variables,
         match_ready_variable,
     )
-    _replace_legacy_army_spawns(ctx)
+    _replace_legacy_army_spawns(ctx, active_variables, world_variables)
     _add_sparse_feudal_upgrades(ctx, active_variables, world_variables)
     _add_rear_enclosures(ctx)
     _open_rear_technology_paths(ctx)

@@ -74,6 +74,21 @@ SOURCE_CORNER_ROUTE_WATER_TILES = frozenset(
     }
 )
 
+# The milestone-hero shore inherited a narrow Beach ribbon from the winter
+# baseline. Beach looks like dry sand but rejects normal building placement in
+# DE. Replace only the exact twenty-cell ribbon in each transformed color
+# sector; the surrounding grass, water, flags, and hero landing tile stay put.
+SOURCE_MILESTONE_SHORE_BEACH_TILES = frozenset(
+    {
+        *((15, y) for y in range(38, 43)),
+        (16, 39),
+        (17, 38),
+        (17, 39),
+        *((x, 39) for x in range(18, 24)),
+        *((24, y) for y in range(38, 44)),
+    }
+)
+
 # The canonical transform intentionally treats King and relic-selector objects
 # as one semantic class, because both use unit 434 in most sectors.  Pinning
 # their established references after assignment prevents P8's two unit-434
@@ -605,6 +620,19 @@ def _replace_winter_terrain(ctx: BuildContext) -> None:
             replacement = WINTER_TERRAIN_REPLACEMENTS.get(tile.terrain_id)
             if replacement is not None:
                 tile.terrain_id = replacement
+
+    for player in PlayerId.all(exclude_gaia=True):
+        for source_x, source_y in SOURCE_MILESTONE_SHORE_BEACH_TILES:
+            x, y = v2_cell_for_player(player, source_x, source_y)
+            tile = ctx.mm.get_tile(x=x, y=y)
+            if tile.terrain_id != TerrainId.BEACH:
+                raise RuntimeError(
+                    f"P{int(player)} milestone shore ({x}, {y}) expected Beach, "
+                    f"found {tile.terrain_id}"
+                )
+            tile.terrain_id = TerrainId.GRASS_2
+            tile.elevation = 1
+            tile.layer = -1
 
     water = {int(terrain) for terrain in TerrainId.water_terrains()}
     for player, terrain_id in FRONT_ENTRANCE_TERRAINS.items():

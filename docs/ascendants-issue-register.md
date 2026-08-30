@@ -1,19 +1,19 @@
-# Ascendants v1.0.4 candidate issue register
+# Ascendants v1.0.5 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.4** is the active source-verified candidate.
+repair targets. **v1.0.5** is the active source-verified candidate.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.4 candidate is 92,111 bytes with SHA-256
-`37207f4ea76bc7db60da631c9bfc24c0771ce3e39d936fd085e2df6fd3aa2e0c`.
+The v1.0.5 candidate is 93,590 bytes with SHA-256
+`b5182d2b123a389ca50a584ab341a5ea957246867b0528d44865b2079a3e3903`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.4 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.5 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -29,14 +29,17 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-012 | Allied paths must be walkable and protected without opening enemy shortcuts. | Guarded | Top/bottom team causeways are land; enemy-side corridors remain water; protected wall/gate references are included in anti-delete effects. | Test allied reinforcement and enemy pathfinding from every orientation. |
 | ASC-013 | Objectives and public text must be clean and contain no development/AI references. | Resolved statically | Scenario messages are rewritten for Ascendants and serialized labels are sanitized; regression tests reject development references. | Review the lobby instructions, objectives panel, start messages, victory, and defeat text. |
 | ASC-014 | Two score numbers appeared beside a player. | Not a scenario defect | The second number is Definitive Edition's team-average display, not another custom score field. | No change unless the game offers a supported UI option to hide it. |
+| ASC-015 | Armies ordered back toward their Castles turned around at an invisible line. | Guarded | All 108 full/sparse Short, Medium, and Long route triggers require a color-specific new-wave variable set by XS only after unit creation. The selected owner route consumes the pulse once; no pulse means no task effect. | For all eight colors, let a wave leave, order it back across all four spawn pads, and confirm the manual order remains. |
+| ASC-016 | The marked milestone shoreline rejected building placement. | Guarded | The exact 20-cell Beach ribbon is transformed eight ways into 160 unique Grass 2 cells. Tests pin its terrain, elevation, layer, symmetry, and whole-map terrain hash. | Place representative buildings throughout every repaired shore strip, including the former corners. |
+| ASC-017 | Marker ships sat too far offshore and player AI could move them; nobody should kill or control them. | Guarded | All eight ships are two tiles shoreward on verified unoccupied water. They are Gaia-owned and receive delete/selection/attack/target disables plus freeze, stop, and speed 0; no task, kill, remove, damage, or ownership effect selects them. | Run AI players for several minutes and try selection, attack, conversion, deletion, and forced movement around every ship. |
 
 ## Additional parser findings
 
-The v1.0.4 candidate passes the structural audit with **0 errors and 0 warnings**:
+The v1.0.5 candidate passes the structural audit with **0 errors and 0 warnings**:
 
 - 2,327 uniquely named, non-empty triggers and a complete display order;
 - 1,084 unique object references, all on-map, with no dangling garrisons;
-- 81 unique variable ids and no dangling variable use;
+- 89 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
 - no partial, inverted, or out-of-bounds trigger geometry;
 - no reachable looping trigger without a Timer condition;
@@ -51,7 +54,7 @@ ever changes.
 Run the same audit after every build:
 
 ```bash
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.4.aoe2scenario"
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.5.aoe2scenario"
 ```
 
 `--strict` passes too. The normal command fails only on structural errors; strict also
@@ -73,6 +76,9 @@ cases are recorded in-game.
 | Builder threshold | Persian plus one other civilization | First pair at the documented threshold, then exactly one pair per later razing. |
 | Route/pathing | All eight colors | Friendly rear and team routes work; walls have no diagonal gap; enemies cannot bypass. |
 | Score/UI | Full and sparse | K/D/R updates, starting scores are neutral, and post-game combat/razing totals are credible. |
+| Manual army return | All eight colors, full and sparse | Returning units cross the four launch pads without being sent back toward the arena. |
+| Milestone shore | All eight colors | Buildings can be placed on the repaired strip; hero spawns and nearby water remain clear. |
+| Marker ships | Human and AI slots | Ships remain at their shore markers and cannot be selected, moved, attacked, converted, or deleted. |
 
 For a failure, record the exact selected colors, runtime player numbers, civilizations,
 game time, action, observed result, and expected result. That is enough to turn most

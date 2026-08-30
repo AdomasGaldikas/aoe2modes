@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.4
+# CBA Hero: Ascendants v1.0.5
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,13 +7,13 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.4 |
+| | Baseline | Ascendants v1.0.5 |
 | --- | --- | --- |
 | Triggers | 2,993 | 2,327 |
-| Conditions | 3,314 | 6,616 |
-| Effects | 7,814 | 6,859 |
+| Conditions | 3,314 | 6,940 |
+| Effects | 7,814 | 6,975 |
 | Units | 1,123 | 1,084 |
-| Runtime variables | 0 | 81 |
+| Runtime variables | 0 | 89 |
 | Scenario version | v1.51 | v1.58 |
 
 ## What changed from the baseline
@@ -54,7 +54,9 @@ loops used the color slot as the runtime player, leaving Teal without its Dravid
 Urumi waves. Ascendants now detects the runtime owner directly from each color's
 fixed Castle row, then spawns that civilization's original unit at the correct color
 territory with the original population cap and interval. Runtime-owner move
-triggers send those waves out of the matching base. The 472 retired static army
+triggers send each newly created wave out of the matching base, consume a one-shot
+launch pulse, and then remain inert until the next wave. A returning army can cross
+the spawn line without the scenario overwriting the player's order. The 472 retired static army
 shells are removed from the final trigger graph.
 
 The same territory/runtime mapping now covers the automatic Feudal upgrade package.
@@ -128,7 +130,9 @@ reduce the enclosed Castle footprint.
 The confusing legacy cliff artwork is removed. Each territory instead receives the
 same transformed continuous rear wall, exactly two buildable rear rows, outer water strip,
 and three-tile technology path. Winter terrain is replaced globally: territories and
-paths use buildable grass, while former icy shore transitions use sand. Legacy
+paths use buildable grass, while former icy shore transitions generally use sand.
+The exact twenty-cell milestone shoreline ribbon in every color is buildable grass,
+so its sand-looking legacy terrain cannot reject construction. Legacy
 wall cleanup stops before them so last-ditch defenses remain available. The obsolete
 `no wall` cleanup family is removed so it
 cannot erase the side walls of Red, Teal, Purple, or Orange at match start. The map has
@@ -165,7 +169,9 @@ army, hero, and builder task uses an explicit move action so newly created units
 their spawn pads reliably. Legacy ice decorations are removed as objects as well as
 terrain, leaving the surrounding shore buildable. Each color has its own stationary
 Transport Ship beside the separate milestone-hero spawn (Robin Hood, Theodoric, and
-later kill rewards); the ship cannot be selected, moved, deleted, targeted, or damaged.
+later kill rewards). Each ship is two tiles nearer its shore, Gaia-owned so player AI
+cannot command it, and explicitly stopped, frozen, speed-zeroed, unselectable,
+undeletable, untargetable, and unattackable.
 When Hero Spawn is Open, a dedicated fallback continuously sends milestone heroes
 from the shoreline pad toward the Medium staging position inside the base. Packed and
 unpacked Trebuchets are disabled
@@ -187,6 +193,13 @@ legacy variants remain separate. The serialized candidate has no empty triggers,
 duplicate names, dangling references, audit errors, or audit warnings. Regression
 coverage now exhausts every occupied/alive color state and flood-fills every rear
 technology route with collision-relevant blockers.
+
+Version 1.0.5 resolves three engine-reported map interactions without expanding the
+trigger graph. All 108 full- and compact-lobby army route triggers require and consume
+one of eight XS wave pulses. The 160 mirrored non-buildable milestone-shore Beach
+cells become Grass 2. All eight marker ships move two tiles shoreward and become
+fully protected Gaia props. The serialized candidate remains 2,327 triggers and
+1,084 objects, with 6,940 conditions, 6,975 effects, and 89 variables.
 
 ## Source of truth
 
