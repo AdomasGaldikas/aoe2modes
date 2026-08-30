@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import re
+from collections import defaultdict
 from copy import deepcopy
 
 from AoE2ScenarioParser.datasets.buildings import BuildingInfo
@@ -42,6 +43,14 @@ from AoE2ScenarioParser.datasets.units import UnitInfo
 from AoE2ScenarioParser.objects.managers.unit_manager import create_id_generator
 
 from aoe2modes.context import BuildContext
+from aoe2modes.lib.decompile import (
+    CONDITION_PARAMS,
+    EFFECT_PARAMS,
+    TRIGGER_PARAMS,
+    condition_factory_name,
+    effect_factory_name,
+    safe_get,
+)
 
 from .generated import apply as apply_generated
 from .v2_map import apply_v2_map, v2_cell_for_player, v2_position_for_player
@@ -591,6 +600,7 @@ HERO_ORDER_FAMILIES = {
     "Médio": "Medium",
     "Longo": "Long",
 }
+LEGACY_AGE_UP_NAME = re.compile(r"\d+ kills")
 
 
 def _unique_trigger(ctx: BuildContext, name: str):
@@ -615,6 +625,233 @@ def _reset_trigger(trigger) -> None:
     trigger.mute_objectives = 0
     trigger.conditions = []
     trigger.effects = []
+
+
+def _component_signature(component, factory_name, parameters):
+    """Return only the fields AoE2ScenarioParser serializes for a component."""
+    factory = factory_name(component)
+    return (
+        factory,
+        tuple(
+            (name, safe_get(component, name, None))
+            for name in parameters.get(factory, ())
+        ),
+    )
+
+
+def _trigger_signature(trigger):
+    """Build a stable, serialization-aware trigger signature for guarded deduping."""
+    return (
+        trigger.name,
+        tuple((name, safe_get(trigger, name, None)) for name in TRIGGER_PARAMS),
+        tuple(
+            _component_signature(
+                condition,
+                condition_factory_name,
+                CONDITION_PARAMS,
+            )
+            for condition in trigger.conditions
+        ),
+        tuple(
+            _component_signature(effect, effect_factory_name, EFFECT_PARAMS)
+            for effect in trigger.effects
+        ),
+    )
+
+
+def _rewrite_trigger_references(ctx: BuildContext, replacements: dict[int, int]) -> int:
+    """Repoint every trigger-reference field and return the number changed."""
+    changed = 0
+    for trigger in ctx.tm.triggers:
+        for condition in trigger.conditions:
+            if (
+                condition.condition_type == ConditionId.TRIGGER_ACTIVE
+                and condition.trigger_id in replacements
+            ):
+                condition.trigger_id = replacements[condition.trigger_id]
+                changed += 1
+        for effect in trigger.effects:
+            if (
+                effect.effect_type
+                in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+                and effect.trigger_id in replacements
+            ):
+                effect.trigger_id = replacements[effect.trigger_id]
+                changed += 1
+    return changed
+
+
+def _age_up_player(trigger) -> int:
+    """Infer the one player controlled by a legacy kill-based age-up trigger."""
+    players = set()
+    for component in (*trigger.conditions, *trigger.effects):
+        for field in (
+            "source_player",
+            "target_player",
+            "player_source",
+            "player_target",
+        ):
+            player = safe_get(component, field, -1)
+            if isinstance(player, int) and 1 <= int(player) <= 8:
+                players.add(int(player))
+    if len(players) != 1:
+        raise RuntimeError(
+            f"could not infer one player for legacy age-up trigger {trigger.name!r}: "
+            f"{sorted(players)}"
+        )
+    return players.pop()
+
+
+def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
+    """Remove proven no-op shells and merge byte-identical legacy age-up logic.
+
+    The decompiled source intentionally preserves the imported scenario as evidence.
+    This final pass runs after every name- and ID-based patch, rewires all references,
+    then lets ``TriggerManager.remove_triggers`` remap IDs and display order safely.
+    Exact baseline counts make a future upstream change fail closed instead of deleting
+    a newly meaningful trigger by accident.
+    """
+    age_triggers = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if LEGACY_AGE_UP_NAME.fullmatch(trigger.name)
+    ]
+    if len(age_triggers) != 288:
+        raise RuntimeError(
+            f"expected 288 imported age-up triggers, found {len(age_triggers)}"
+        )
+
+    signature_groups = defaultdict(list)
+    for trigger in age_triggers:
+        signature_groups[_trigger_signature(trigger)].append(trigger)
+    duplicate_groups = [
+        group for group in signature_groups.values() if len(group) > 1
+    ]
+    duplicate_triggers = [
+        duplicate for group in duplicate_groups for duplicate in group[1:]
+    ]
+    if len(duplicate_groups) != 70 or len(duplicate_triggers) != 189:
+        raise RuntimeError(
+            "legacy age-up graph changed: expected 70 duplicate groups and "
+            f"189 redundant triggers, found {len(duplicate_groups)} and "
+            f"{len(duplicate_triggers)}"
+        )
+
+    replacements = {
+        duplicate.trigger_id: group[0].trigger_id
+        for group in duplicate_groups
+        for duplicate in group[1:]
+    }
+    rewired = _rewrite_trigger_references(ctx, replacements)
+    if rewired != 346:
+        raise RuntimeError(
+            f"expected to rewire 346 legacy age-up activations, rewired {rewired}"
+        )
+    ctx.tm.remove_triggers([trigger.trigger_id for trigger in duplicate_triggers])
+
+    remaining_age_ups = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if LEGACY_AGE_UP_NAME.fullmatch(trigger.name)
+    ]
+    if len(remaining_age_ups) != 99:
+        raise RuntimeError(
+            f"expected 99 canonical age-up triggers, found {len(remaining_age_ups)}"
+        )
+
+    semantic_groups = defaultdict(list)
+    for trigger in remaining_age_ups:
+        semantic_groups[(trigger.name, _age_up_player(trigger))].append(trigger)
+    variant_groups = {
+        key: group for key, group in semantic_groups.items() if len(group) > 1
+    }
+    expected_variants = {
+        ("300 kills", 7),
+        ("600 kills", 7),
+        ("750 kills", 7),
+    }
+    if set(variant_groups) != expected_variants or any(
+        len(group) != 2 for group in variant_groups.values()
+    ):
+        raise RuntimeError(
+            "unexpected non-identical legacy age-up variants: "
+            f"{sorted((key, len(group)) for key, group in variant_groups.items())}"
+        )
+    for (name, player), group in semantic_groups.items():
+        if len(group) == 1:
+            group[0].name = f"{name} (p{player})"
+            continue
+        for variant, trigger in enumerate(group, start=1):
+            trigger.name = f"{name} (p{player}, legacy variant {variant})"
+
+    empty_triggers = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if not trigger.conditions and not trigger.effects
+    ]
+    if len(empty_triggers) != 810:
+        raise RuntimeError(
+            f"expected 810 empty imported trigger shells, found {len(empty_triggers)}"
+        )
+    empty_ids = {trigger.trigger_id for trigger in empty_triggers}
+    empty_by_id = {trigger.trigger_id: trigger for trigger in empty_triggers}
+    incoming_conditions = [
+        condition
+        for trigger in ctx.tm.triggers
+        for condition in trigger.conditions
+        if condition.condition_type == ConditionId.TRIGGER_ACTIVE
+        and condition.trigger_id in empty_ids
+    ]
+    incoming_effects = [
+        effect
+        for trigger in ctx.tm.triggers
+        for effect in trigger.effects
+        if effect.effect_type
+        in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+        and effect.trigger_id in empty_ids
+    ]
+    if incoming_conditions or len(incoming_effects) != 16 or any(
+        effect.effect_type != EffectId.DEACTIVATE_TRIGGER
+        or re.fullmatch(
+            r"(?:re )?no wall \(p[1-8]\)",
+            empty_by_id[effect.trigger_id].name,
+        )
+        is None
+        for effect in incoming_effects
+    ):
+        raise RuntimeError(
+            "empty trigger shells gained meaningful references: "
+            f"{len(incoming_conditions)} conditions and {len(incoming_effects)} effects"
+        )
+
+    for trigger in ctx.tm.triggers:
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if not (
+                effect.effect_type == EffectId.DEACTIVATE_TRIGGER
+                and effect.trigger_id in empty_ids
+            )
+        ]
+    ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
+
+    # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
+    if len(ctx.tm.triggers) != 2_326:
+        raise RuntimeError(
+            f"expected 2,326 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+        )
+    if any(
+        not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
+    ):
+        raise RuntimeError("empty triggers remained after graph compaction")
+    names = [trigger.name for trigger in ctx.tm.triggers]
+    duplicate_names = sorted(
+        name for name in set(names) if names.count(name) > 1
+    )
+    if duplicate_names:
+        raise RuntimeError(
+            f"duplicate trigger names remained after compaction: {duplicate_names}"
+        )
 
 
 def _configure_equalizer(trigger, player: PlayerId) -> None:
@@ -4429,6 +4666,8 @@ def build(ctx: BuildContext) -> None:
         if not protections:
             raise RuntimeError(f"missing Antidelete protection for P{int(player)}")
         protections[-1].selected_object_ids.extend(reference_ids)
+
+    _compact_legacy_trigger_graph(ctx)
 
     ctx.log(
         f"rebuilt from source — {len(ctx.tm.triggers)} triggers, "

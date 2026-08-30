@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.3
+# CBA Hero: Ascendants v1.0.4
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,11 +7,11 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.3 |
+| | Baseline | Ascendants v1.0.4 |
 | --- | --- | --- |
-| Triggers | 2,993 | 3,326 |
-| Conditions | 3,314 | 6,805 |
-| Effects | 7,814 | 7,253 |
+| Triggers | 2,993 | 2,327 |
+| Conditions | 3,314 | 6,616 |
+| Effects | 7,814 | 6,859 |
 | Units | 1,123 | 1,084 |
 | Runtime variables | 0 | 81 |
 | Scenario version | v1.51 | v1.58 |
@@ -54,8 +54,8 @@ loops used the color slot as the runtime player, leaving Teal without its Dravid
 Urumi waves. Ascendants now detects the runtime owner directly from each color's
 fixed Castle row, then spawns that civilization's original unit at the correct color
 territory with the original population cap and interval. Runtime-owner move
-triggers send those waves out of the matching base. The 472 duplicate static army
-loops remain present only as disabled, empty compatibility targets.
+triggers send those waves out of the matching base. The 472 retired static army
+shells are removed from the final trigger graph.
 
 The same territory/runtime mapping now covers the automatic Feudal upgrade package.
 Builder rewards use a separate color-indexed queue: XS resolves the selected color's
@@ -108,7 +108,7 @@ from kills, deaths, razings, and buildings lost, allowing the result screen to
 calculate a useful combat score and MVP without reintroducing economy score. The villager-reward chain
 uses hidden trigger variables instead of spending the real razings counter, so the
 post-game `Buildings Razed` statistic remains accurate. The old 100,000-resource
-tribute triggers remain disabled, removing their economy and tribute-score inflation.
+tribute shells are removed, eliminating their economy and tribute-score inflation.
 
 ## Corrected V2 symmetric map
 
@@ -130,7 +130,7 @@ same transformed continuous rear wall, exactly two buildable rear rows, outer wa
 and three-tile technology path. Winter terrain is replaced globally: territories and
 paths use buildable grass, while former icy shore transitions use sand. Legacy
 wall cleanup stops before them so last-ditch defenses remain available. The obsolete
-`no wall` cleanup family is disabled so it
+`no wall` cleanup family is removed so it
 cannot erase the side walls of Red, Teal, Purple, or Orange at match start. The map has
 1,084 total objects; every added wall is attached to its owner's anti-delete protection.
 The broad outer aprons at all four allied team corners are cut back to matching
@@ -178,6 +178,15 @@ cannot be deleted. All five selector rugs are persistent: choosing Hero Spawn Op
 removes the blocker without ordering the selector back to the center. The same release
 also restores P2/P3 HUD and spawn updates through Castle-verified runtime ownership
 and removes every object owned by a successfully vote-kicked player.
+
+Version 1.0.4 compacts the imported trigger graph without changing intended gameplay.
+It removes 810 empty shells and 16 no-op cleanup references, merges 189
+byte-identical civilization age-up copies, and rewires all 346 incoming activations.
+The 99 canonical age-up triggers keep explicit player names; three non-identical P7
+legacy variants remain separate. The serialized candidate has no empty triggers,
+duplicate names, dangling references, audit errors, or audit warnings. Regression
+coverage now exhausts every occupied/alive color state and flood-fills every rear
+technology route with collision-relevant blockers.
 
 ## Source of truth
 

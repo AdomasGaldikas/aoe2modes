@@ -1,13 +1,14 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.3**. That release is the
-reproducible starting point for ongoing fixes, not a claim that every gameplay issue
-has been resolved.
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.4** as the current
+source-verified release candidate. It is derived only from v1.0.3; older versions are
+not repair or comparison targets. Engine acceptance is still a separate step.
 
 The canonical v1.0.3 checkpoint is 99,694 bytes with SHA-256
-`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. An intentional
-gameplay fix is expected to change that hash; an unexplained change while reconstructing
-the baseline is not.
+`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. The v1.0.4
+candidate is 92,111 bytes with SHA-256
+`37207f4ea76bc7db60da631c9bfc24c0771ce3e39d936fd085e2df6fd3aa2e0c`.
+Its intentional trigger-graph migration explains the changed hash.
 
 ## Two verification layers
 
@@ -29,13 +30,27 @@ trigger-variable ids. It then runs the final-build gameplay contract and produce
 scenario that should be tested in-game. Finally, `aoe2modes audit` checks the serialized
 output for broken references, invalid coordinates, and immediate unconditional
 victory/defeat. Potential scheduling or cleanup risks are reported as warnings for
-review because those patterns can be intentional in legacy CBA trigger systems.
+review. The v1.0.4 candidate currently passes with **0 errors and 0 warnings**.
 
 The target is entirely local. It does not use GitHub Actions or any paid CI service.
 
 The active issue inventory and manual acceptance cases are in
-[`ascendants-issue-register.md`](ascendants-issue-register.md). Older pre-1.0 builds are
-historical input only; v1.0.3 is the sole comparison baseline.
+[`ascendants-issue-register.md`](ascendants-issue-register.md). v1.0.3 is the sole
+comparison baseline and v1.0.4 is the only active candidate.
+
+## v1.0.4 graph migration
+
+The final build now removes 810 conditionless/effectless imported shells. Before
+removal it proves that their only 16 external references are no-op deactivations of
+the retired `no wall` family, then strips those references. It also groups the legacy
+kill-based age-up chains by every serialized field, merges 189 byte-identical copies,
+and rewires all 346 incoming activations to 99 canonical triggers. Three non-identical
+P7 parser variants are preserved and named explicitly.
+
+The resulting file has 2,327 uniquely named non-empty triggers. The audit is clean,
+the victory model exhausts all 6,560 occupied/alive color states, and a bounded map
+flood-fill proves that every rear interior can reach its University and Blacksmith
+without crossing water, walls, towers, Castles, or cliffs.
 
 ## What the automated checks cannot prove
 
@@ -68,7 +83,8 @@ test; never guess a spawn unit, population cap, interval, or builder threshold.
    object placement, terrain, or variables.
 6. Run `aoe2modes audit` on the built scenario. Treat an error as a blocker; review
    warnings in context because decompiled legacy triggers may intentionally reuse names.
-7. Advance the public version and release notes only after gameplay validation.
+7. Version source-changing candidates independently; mark one publishable only after
+   the engine acceptance matrix passes.
 
 The `evolution_alpha` id is retained for repository compatibility. User-facing names
 and output filenames use **CBA Hero Ascendants**.

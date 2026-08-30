@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections import Counter
+from collections import Counter, deque
 
 import pytest
 from AoE2ScenarioParser.datasets.buildings import BuildingInfo
@@ -82,17 +82,28 @@ def evolution_alpha(tmp_path_factory, repo):
 
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
-    assert len(evolution_alpha.trigger_manager.triggers) <= 3_350
+    triggers = evolution_alpha.trigger_manager.triggers
+    assert len(triggers) == 2_327
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_084
+    assert all(trigger.conditions or trigger.effects for trigger in triggers)
+    names = [trigger.name for trigger in triggers]
+    assert len(names) == len(set(names))
+    assert len(
+        [
+            trigger
+            for trigger in triggers
+            if re.fullmatch(
+                r"\d+ kills \(p[1-8](?:, legacy variant [12])?\)",
+                trigger.name,
+            )
+        ]
+    ) == 99
 
 
 def test_evolution_alpha_passes_parser_structural_audit(evolution_alpha):
     report = audit_scenario(evolution_alpha)
     assert report.errors == []
-    assert {finding.code for finding in report.warnings} == {
-        "duplicate-trigger-names",
-        "enabled-empty-triggers",
-    }
+    assert report.warnings == []
 
 
 def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_alpha):
@@ -972,58 +983,46 @@ def test_evolution_alpha_keeps_fixed_slot_teams(evolution_alpha):
     )
 
 
-def test_evolution_alpha_disables_fixed_player_closed_slot_cleanup(evolution_alpha):
+def test_evolution_alpha_removes_fixed_player_closed_slot_cleanup(evolution_alpha):
     expected_names = {f"remove (p{player})" for player in range(1, 9)}
-    cleanup_triggers = [
-        trigger for trigger in evolution_alpha.trigger_manager.triggers if trigger.name in expected_names
-    ]
-
-    assert {trigger.name for trigger in cleanup_triggers} == expected_names
-    assert len(cleanup_triggers) == 8
-
-    by_name = {trigger.name: trigger for trigger in cleanup_triggers}
-    for player in range(1, 9):
-        trigger = by_name[f"remove (p{player})"]
-        assert not trigger.enabled
-        assert not trigger.looping
-        assert trigger.conditions == []
-        assert trigger.effects == []
+    actual_names = {
+        trigger.name for trigger in evolution_alpha.trigger_manager.triggers
+    }
+    assert expected_names.isdisjoint(actual_names)
 
 
-def test_evolution_alpha_cleanup_effects_target_the_correct_slots(evolution_alpha):
-    by_name = {trigger.name: trigger for trigger in evolution_alpha.trigger_manager.triggers}
+def test_evolution_alpha_has_no_retired_cleanup_references(evolution_alpha):
+    triggers = evolution_alpha.trigger_manager.triggers
+    retired_names = {
+        f"{family} (p{player})"
+        for player in range(1, 9)
+        for family in ("remove", "units", "walls", "units2", "units3")
+    }
+    assert retired_names.isdisjoint(trigger.name for trigger in triggers)
 
-    for player in range(1, 9):
-        for family in ("remove", "units", "walls", "units2", "units3"):
-            cleanup = by_name[f"{family} (p{player})"]
-            assert not cleanup.enabled
-            assert not cleanup.looping
-            assert cleanup.conditions == []
-            assert cleanup.effects == []
+    valid_ids = set(range(len(triggers)))
+    assert all(
+        condition.trigger_id in valid_ids
+        for trigger in triggers
+        for condition in trigger.conditions
+        if condition.condition_type == ConditionId.TRIGGER_ACTIVE
+    )
+    assert all(
+        effect.trigger_id in valid_ids
+        for trigger in triggers
+        for effect in trigger.effects
+        if effect.effect_type
+        in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+    )
 
-    p5_goth_cleanup = [
-        effect
-        for effect in by_name["goth walls (p5)"].effects
-        if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
-    ]
-    assert len(p5_goth_cleanup) == 1
-    assert p5_goth_cleanup[0].trigger_id == 892
 
-
-def test_evolution_alpha_disables_legacy_no_wall_cleanup(evolution_alpha):
+def test_evolution_alpha_removes_legacy_no_wall_cleanup(evolution_alpha):
     cleanup = [
         trigger
         for trigger in evolution_alpha.trigger_manager.triggers
         if re.fullmatch(r"(?:re )?no wall \(p[1-8]\)", trigger.name)
     ]
-    assert len(cleanup) == 16
-    assert all(
-        not trigger.enabled
-        and not trigger.looping
-        and trigger.conditions == []
-        and trigger.effects == []
-        for trigger in cleanup
-    )
+    assert cleanup == []
 
 
 def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
@@ -1391,10 +1390,7 @@ def test_evolution_alpha_has_zero_resources_and_free_purchases(evolution_alpha):
         settings = evolution_alpha.player_manager.players[PlayerId(player)]
         assert (settings.food, settings.wood, settings.stone, settings.gold) == (0, 0, 0, 0)
 
-        obsolete = by_name[f"res (p{player})"]
-        assert not obsolete.enabled
-        assert obsolete.conditions == []
-        assert obsolete.effects == []
+        assert f"res (p{player})" not in by_name
 
         free_costs = by_name[f"Free Costs P{player}"]
         assert not free_costs.enabled
@@ -1458,13 +1454,10 @@ def test_evolution_alpha_disables_castle_trebuchet_training(evolution_alpha):
 
 
 def test_evolution_alpha_forces_the_original_bombard_tower_unlock(evolution_alpha):
-    legacy = next(
-        trigger
+    assert all(
+        trigger.name != "Legacy Bombard Tower Unlock Disabled"
         for trigger in evolution_alpha.trigger_manager.triggers
-        if trigger.name == "Legacy Bombard Tower Unlock Disabled"
     )
-    assert not legacy.enabled
-    assert legacy.conditions == [] and legacy.effects == []
 
     occupied_pattern = re.compile(r"Occupied Slot S([1-8]) W([1-8])")
     occupied = [
@@ -1748,18 +1741,7 @@ def test_evolution_alpha_maps_goth_rules_to_runtime_players(evolution_alpha):
         for trigger in triggers
         if trigger.name.startswith("Legacy Goth Palisade Bonus Disabled #")
     ]
-    assert len(legacy_palisades) == 8
-    assert all(
-        not trigger.enabled and not trigger.conditions and not trigger.effects
-        for trigger in legacy_palisades
-    )
-    legacy_ids = {trigger.trigger_id for trigger in legacy_palisades}
-    assert not any(
-        effect.trigger_id in legacy_ids
-        for trigger in triggers
-        for effect in trigger.effects
-        if effect.effect_type in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
-    )
+    assert legacy_palisades == []
 
     family_patterns = {
         "Restriction": re.compile(
@@ -1846,11 +1828,7 @@ def test_evolution_alpha_maps_goth_rules_to_runtime_players(evolution_alpha):
             trigger.name,
         )
     ]
-    assert len(legacy_barracks) == 24
-    assert all(
-        not trigger.enabled and not trigger.conditions and not trigger.effects
-        for trigger in legacy_barracks
-    )
+    assert legacy_barracks == []
 
 
 def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evolution_alpha):
@@ -1870,7 +1848,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
     ]
     assert len(rewards) == len(VALID_COLOR_WORLD_PAIRS)
     assert len(movers) == len(VALID_COLOR_WORLD_PAIRS)
-    assert len(legacy_stages) == 5 * 8
+    assert legacy_stages == []
 
     areas = {
         1: (48, 19, 60, 19),
@@ -2036,17 +2014,6 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 )
                 for unit_id, spawn in spawns.items()
             }
-
-    assert all(not trigger.enabled for trigger in legacy_stages)
-    assert all(not trigger.looping for trigger in legacy_stages)
-    assert all(trigger.conditions == [] and trigger.effects == [] for trigger in legacy_stages)
-    legacy_ids = {trigger.trigger_id for trigger in legacy_stages}
-    assert legacy_ids == set(range(705, 745))
-    assert all(
-        not (effect.effect_type == EffectId.ACTIVATE_TRIGGER and effect.trigger_id in legacy_ids)
-        for trigger in triggers
-        for effect in trigger.effects
-    )
 
     xs_trigger = next(trigger for trigger in triggers if trigger.name == "XS SCRIPT")
     xs_source = xs_trigger.effects[0].message
@@ -2456,8 +2423,7 @@ def test_evolution_alpha_removes_invisible_edge_deletion_strips(evolution_alpha)
         for trigger in evolution_alpha.trigger_manager.triggers
         if trigger.name.startswith("Legacy Edge Delete Disabled (uk")
     ]
-    assert len(disabled) == 32
-    assert all(not trigger.enabled and not trigger.conditions and not trigger.effects for trigger in disabled)
+    assert disabled == []
 
 
 def test_evolution_alpha_keeps_legacy_cleanup_off_rear_routes(evolution_alpha):
@@ -2677,11 +2643,7 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
         for trigger in triggers
         if re.fullmatch(r"(?:units|walls|units2|units3) \(p[1-8]\)", trigger.name)
     ]
-    assert len(legacy_cleanup) == 32
-    assert all(
-        not trigger.enabled and not trigger.conditions and not trigger.effects
-        for trigger in legacy_cleanup
-    )
+    assert legacy_cleanup == []
 
     for trigger in resigned_triggers:
         color, world_player = map(int, resigned_pattern.fullmatch(trigger.name).groups())
@@ -2943,6 +2905,66 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
         for color in (2, 4)
     }
 
+    # Exhaust every occupied/alive combination (3^8 - 1 states). This proves
+    # sparse-lobby compaction cannot produce a false declaration for any color
+    # subset, not only the representative examples above.
+    all_colors = set(range(1, 9))
+    left_colors = set(range(1, 5))
+    right_colors = set(range(5, 9))
+    for occupied_mask in range(1, 1 << 8):
+        occupied = {
+            color
+            for color in all_colors
+            if occupied_mask & (1 << (color - 1))
+        }
+        alive_mask = occupied_mask
+        while True:
+            alive = {
+                color
+                for color in occupied
+                if alive_mask & (1 << (color - 1))
+            }
+            mapping, values = runtime_variables(occupied, alive)
+            actual_winners = {
+                trigger.name
+                for trigger in victory_triggers
+                if variable_conditions_match(trigger, values)
+            }
+            left_alive = alive & left_colors
+            right_alive = alive & right_colors
+            if not values[56] or (left_alive and right_alive) or not alive:
+                expected_winners = set()
+            elif left_alive:
+                expected_winners = {
+                    f"Color Team Victory S{color} W{mapping[color]}"
+                    for color in left_alive
+                }
+            else:
+                expected_winners = {
+                    f"Color Team Victory S{color} W{mapping[color]}"
+                    for color in right_alive
+                }
+            assert actual_winners == expected_winners
+
+            variable_eligible_defeats = {
+                trigger.name
+                for trigger in defeat_triggers
+                if variable_conditions_match(trigger, values)
+            }
+            expected_defeats = (
+                {
+                    f"Color Defeat Resolve S{color} W{mapping[color]}"
+                    for color in alive
+                }
+                if values[56]
+                else set()
+            )
+            assert variable_eligible_defeats == expected_defeats
+
+            if alive_mask == 0:
+                break
+            alive_mask = (alive_mask - 1) & occupied_mask
+
     all_declarations = [
         effect
         for trigger in triggers
@@ -2968,11 +2990,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     disabled_spawners = [
         trigger for trigger in triggers if trigger.name.startswith("Legacy Army Spawn Disabled #")
     ]
-    assert len(disabled_spawners) == 59 * 8
-    assert all(
-        not trigger.enabled and not trigger.conditions and not trigger.effects
-        for trigger in disabled_spawners
-    )
+    assert disabled_spawners == []
 
     xs_trigger = next(trigger for trigger in triggers if trigger.name == "XS SCRIPT")
     assert not xs_trigger.enabled
@@ -3671,6 +3689,56 @@ def test_evolution_alpha_keeps_all_rear_technology_paths_dry(evolution_alpha):
             x=int(unit.x), y=int(unit.y)
         ).terrain_id in water
     ]
+
+    cliff_ids = {
+        getattr(OtherInfo, f"CLIFF_DEFAULT_{index}").ID
+        for index in range(1, 10)
+    }
+    blocking_ids = {
+        BuildingInfo.CASTLE.ID,
+        BuildingInfo.STONE_WALL.ID,
+        BuildingInfo.BOMBARD_TOWER.ID,
+        *cliff_ids,
+    }
+    blocked = {
+        (int(unit.x), int(unit.y))
+        for units in evolution_alpha.unit_manager.units
+        for unit in units
+        if unit.unit_const in blocking_ids
+    }
+    for player in PlayerId.all(exclude_gaia=True):
+        allowed = {
+            v2_cell_for_player(player, source_x, source_y)
+            for source_x in range(3, 18)
+            for source_y in range(48, 61)
+        }
+        start = v2_cell_for_player(player, 16, 54)
+        targets = {
+            (int(unit.x), int(unit.y))
+            for unit in evolution_alpha.unit_manager.units[player]
+            if unit.unit_const
+            in {BuildingInfo.BLACKSMITH.ID, BuildingInfo.UNIVERSITY.ID}
+        }
+        assert len(targets) == 2
+        passable = {
+            point
+            for point in allowed
+            if point not in blocked
+            and evolution_alpha.map_manager.get_tile(
+                x=point[0],
+                y=point[1],
+            ).terrain_id
+            not in water
+        } | targets | {start}
+        reachable = {start}
+        pending = deque([start])
+        while pending:
+            x, y = pending.popleft()
+            for neighbor in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                if neighbor in passable and neighbor not in reachable:
+                    reachable.add(neighbor)
+                    pending.append(neighbor)
+        assert targets <= reachable
 
 
 def test_evolution_alpha_messages_are_public_facing(evolution_alpha):
