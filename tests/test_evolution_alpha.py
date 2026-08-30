@@ -84,7 +84,7 @@ def evolution_alpha(tmp_path_factory, repo):
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
     assert len(triggers) == 2_327
-    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_084
+    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_076
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
     assert len(names) == len(set(names))
@@ -264,17 +264,8 @@ def test_evolution_alpha_trims_all_four_corner_team_routes(evolution_alpha):
         (int(unit.x), int(unit.y))
         for units in evolution_alpha.unit_manager.units
         for unit in units
-        if unit.unit_const != UnitInfo.TRANSPORT_SHIP.ID
     }
     assert cut_tiles.isdisjoint(occupied_tiles)
-
-    marker_tiles = {
-        (int(unit.x), int(unit.y))
-        for units in evolution_alpha.unit_manager.units
-        for unit in units
-        if unit.unit_const == UnitInfo.TRANSPORT_SHIP.ID
-    }
-    assert marker_tiles <= cut_tiles
 
     for player in PlayerId.all(exclude_gaia=True):
         inner_route = {
@@ -318,9 +309,9 @@ def test_evolution_alpha_keeps_v2_objects_and_playable_gate_holes(evolution_alph
     assert original_digest == (
         "253ac71abcdab09f490905f74bbf03f6f10230312551f1425fe12f15799e5b5e"
     )
-    assert len(additions) == 92
+    assert len(additions) == 84
     assert additions_digest == (
-        "18baaf36d00b1ccbc89d54ab80abcf1c6d2d9767b751971d812e0ddf27b53c04"
+        "37797678d99545b5ff07adb9e987ea50a7768dabf269a3b01c79ca3fb3df4cb3"
     )
 
 
@@ -766,7 +757,6 @@ def test_evolution_alpha_keeps_visible_land_objects_out_of_water(evolution_alpha
     intentional_submerged = {
         BuildingInfo.PALISADE_WALL.ID,
         HeroInfo.SABOTEUR.ID,
-        UnitInfo.TRANSPORT_SHIP.ID,
     }
     submerged = [
         unit
@@ -781,7 +771,6 @@ def test_evolution_alpha_keeps_visible_land_objects_out_of_water(evolution_alpha
         {
             BuildingInfo.PALISADE_WALL.ID: 56,
             HeroInfo.SABOTEUR.ID: 8,
-            UnitInfo.TRANSPORT_SHIP.ID: 8,
         }
     )
     assert all(unit.unit_const in intentional_submerged for unit in submerged)
@@ -792,79 +781,12 @@ def test_evolution_alpha_keeps_visible_land_objects_out_of_water(evolution_alpha
     )
 
 
-def test_evolution_alpha_uses_protected_boats_as_spawn_markers(evolution_alpha):
-    expected_positions = {
-        player: v2_position_for_player(player, 16.5, 37.5)
-        for player in PlayerId.all(exclude_gaia=True)
-    }
-    water = {int(terrain) for terrain in TerrainId.water_terrains()}
-    by_name = {
-        trigger.name: trigger
-        for trigger in evolution_alpha.trigger_manager.triggers
-    }
-    all_transport_ships = [
-        unit
+def test_evolution_alpha_has_no_transport_ship_spawn_markers(evolution_alpha):
+    assert all(
+        unit.unit_const != UnitInfo.TRANSPORT_SHIP.ID
         for units in evolution_alpha.unit_manager.units
         for unit in units
-        if unit.unit_const == UnitInfo.TRANSPORT_SHIP.ID
-    ]
-    assert len(all_transport_ships) == 8
-    assert {unit.player for unit in all_transport_ships} == {PlayerId.GAIA}
-
-    for player, position in expected_positions.items():
-        boats = [
-            unit
-            for unit in evolution_alpha.unit_manager.units[PlayerId.GAIA]
-            if unit.unit_const == UnitInfo.TRANSPORT_SHIP.ID
-            and (unit.x, unit.y) == position
-        ]
-        assert len(boats) == 1
-        boat = boats[0]
-        assert (boat.x, boat.y) == position
-        assert evolution_alpha.map_manager.get_tile(
-            x=int(boat.x),
-            y=int(boat.y),
-        ).terrain_id in water
-
-        protections = {
-            (effect.effect_type, effect.source_player)
-            for effect in by_name[f"Antidelete P{int(player)}"].effects
-            if boat.reference_id in effect.selected_object_ids
-        }
-        assert {
-            (EffectId.DISABLE_OBJECT_DELETION, PlayerId.GAIA),
-            (EffectId.DISABLE_OBJECT_SELECTION, PlayerId.GAIA),
-            (EffectId.DISABLE_UNIT_ATTACKABLE, PlayerId.GAIA),
-            (EffectId.DISABLE_UNIT_TARGETING, PlayerId.GAIA),
-            (EffectId.FREEZE_OBJECT, PlayerId.GAIA),
-            (EffectId.STOP_OBJECT, PlayerId.GAIA),
-            (EffectId.CHANGE_OBJECT_SPEED, PlayerId.GAIA),
-        } <= protections
-
-        speed_effects = [
-            effect
-            for effect in by_name[f"Antidelete P{int(player)}"].effects
-            if effect.effect_type == EffectId.CHANGE_OBJECT_SPEED
-            and boat.reference_id in effect.selected_object_ids
-        ]
-        assert len(speed_effects) == 1
-        assert speed_effects[0].quantity == 0
-
-        hostile_effects = [
-            effect
-            for trigger in evolution_alpha.trigger_manager.triggers
-            for effect in trigger.effects
-            if effect.effect_type
-            in {
-                EffectId.TASK_OBJECT,
-                EffectId.KILL_OBJECT,
-                EffectId.REMOVE_OBJECT,
-                EffectId.CHANGE_OWNERSHIP,
-                EffectId.DAMAGE_OBJECT,
-            }
-            and boat.reference_id in effect.selected_object_ids
-        ]
-        assert hostile_effects == []
+    )
 
 
 def test_evolution_alpha_distance_movers_are_mobile_and_use_all_five_selectors(
@@ -922,6 +844,16 @@ def test_evolution_alpha_distance_movers_are_mobile_and_use_all_five_selectors(
                 for condition in selector_conditions
             }
         ) == 5
+        route_cells = [
+            {
+                (x, y)
+                for x in range(condition.area_x1, condition.area_x2 + 1)
+                for y in range(condition.area_y1, condition.area_y2 + 1)
+            }
+            for condition in selector_conditions[:3]
+        ]
+        assert all(len(cells) == 3 for cells in route_cells)
+        assert len(set().union(*route_cells)) == 9
 
         protections = {
             effect.effect_type
@@ -1107,6 +1039,10 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
     }
     expected_variables |= {
         (80 + player, f"army_move_pending_p{player}")
+        for player in range(1, 9)
+    }
+    expected_variables |= {
+        (88 + player, f"army_route_p{player}")
         for player in range(1, 9)
     }
     assert {
@@ -2721,6 +2657,19 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             (31 + color, 0, Operation.SET),
             (47 + color, 1, Operation.SET),
         }
+        removals = [
+            effect
+            for effect in trigger.effects
+            if effect.effect_type == EffectId.REMOVE_OBJECT
+        ]
+        assert len(removals) == 1
+        assert removals[0].source_player == world_player
+        assert (
+            removals[0].area_x1,
+            removals[0].area_y1,
+            removals[0].area_x2,
+            removals[0].area_y2,
+        ) == (0, 0, 143, 143)
 
     for trigger in ready_triggers:
         left_color, right_color = map(
@@ -3070,11 +3019,11 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     assert len(short_movements) == 28
     assert len(long_movements) == 28
     assert all(trigger.enabled for trigger in movements.values())
-    assert all(not trigger.enabled for trigger in short_movements.values())
-    assert all(not trigger.enabled for trigger in long_movements.values())
+    assert all(trigger.enabled for trigger in short_movements.values())
+    assert all(trigger.enabled for trigger in long_movements.values())
     teal_for_compacted_p2 = movements["Sparse Move S5 W2"]
     assert teal_for_compacted_p2.looping
-    assert len(teal_for_compacted_p2.conditions) == 5
+    assert len(teal_for_compacted_p2.conditions) == 6
     owner = next(
         condition
         for condition in teal_for_compacted_p2.conditions
@@ -3117,6 +3066,11 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
             if effect.effect_type == EffectId.TASK_OBJECT
         ]
         for family in ("move", "move short", "move long")
+    }
+    route_values = {
+        "move": 0,
+        "move short": 1,
+        "move long": 2,
     }
     for scenario_player, expected in spawn_points.items():
         original_tasks = [
@@ -3179,7 +3133,9 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
                 (80 + scenario_player, 1),
                 (31 + scenario_player, 1),
                 (39 + scenario_player, scenario_player),
+                (88 + scenario_player, route_values[family]),
             }
+            assert target.enabled
             assert {
                 (condition.variable, condition.quantity)
                 for condition in target.conditions
@@ -3197,11 +3153,17 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
                 pending_resets[0].quantity,
             ) == (Operation.SET, 0)
 
+        public_families = {
+            "": "move",
+            " Short": "move short",
+            " Long": "move long",
+        }
         for world_player in range(1, scenario_player):
-            for public_family in ("", " Short", " Long"):
+            for public_family, family in public_families.items():
                 movement = by_name[
                     f"Sparse Move{public_family} S{scenario_player} W{world_player}"
                 ]
+                assert movement.enabled
                 assert {
                     (condition.variable, condition.quantity)
                     for condition in movement.conditions
@@ -3210,6 +3172,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
                     (80 + scenario_player, 1),
                     (31 + scenario_player, 1),
                     (39 + scenario_player, world_player),
+                    (88 + scenario_player, route_values[family]),
                 }
                 pending_resets = [
                     effect
@@ -3223,39 +3186,40 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
                     pending_resets[0].quantity,
                 ) == (Operation.SET, 0)
 
-        sparse_families = {
-            "move": "",
-            "move short": " Short",
-            "move long": " Long",
-        }
         selectors = {
-            "short": "move short",
-            "med": "move",
-            "long": "move long",
+            "short": 1,
+            "med": 0,
+            "long": 2,
         }
-        for selector_name, selected_family in selectors.items():
+        route_trigger_ids = {
+            by_name[f"{family} (p{scenario_player})"].trigger_id
+            for family in route_values
+        } | {
+            by_name[
+                f"Sparse Move{public_family} S{scenario_player} W{world_player}"
+            ].trigger_id
+            for world_player in range(1, scenario_player)
+            for public_family in public_families
+        }
+        for selector_name, route_value in selectors.items():
             selector = by_name[f"{selector_name} (p{scenario_player})"]
-            for world_player in range(1, scenario_player):
-                family_ids = {
-                    family: by_name[
-                        f"Sparse Move{public_family} S{scenario_player} "
-                        f"W{world_player}"
-                    ].trigger_id
-                    for family, public_family in sparse_families.items()
-                }
-                sparse_switches = {
-                    effect.trigger_id: effect.effect_type
-                    for effect in selector.effects
-                    if effect.trigger_id in family_ids.values()
-                }
-                assert sparse_switches == {
-                    trigger_id: (
-                        EffectId.ACTIVATE_TRIGGER
-                        if family == selected_family
-                        else EffectId.DEACTIVATE_TRIGGER
-                    )
-                    for family, trigger_id in family_ids.items()
-                }
+            assert not any(
+                effect.effect_type
+                in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+                and effect.trigger_id in route_trigger_ids
+                for effect in selector.effects
+            )
+            route_changes = [
+                effect
+                for effect in selector.effects
+                if effect.effect_type == EffectId.CHANGE_VARIABLE
+                and effect.variable == 88 + scenario_player
+            ]
+            assert len(route_changes) == 1
+            assert (
+                route_changes[0].operation,
+                route_changes[0].quantity,
+            ) == (Operation.SET, route_value)
 
 
 def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(

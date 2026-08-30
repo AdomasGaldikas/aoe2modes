@@ -9,7 +9,7 @@ help:
 	@echo "list    list the modes in this repo"
 	@echo "deploy  build every mode and copy it into the game's scenario folder"
 	@echo "test    run the test suite"
-	@echo "check-ascendants  run both Ascendants verification layers and build v1.0.5"
+	@echo "check-ascendants  run both Ascendants verification layers and build v1.0.6"
 	@echo "lint    run ruff"
 	@echo "fmt     run ruff with --fix"
 	@echo "clean   remove dist/ and Python caches"
@@ -34,7 +34,7 @@ test:
 check-ascendants:
 	$(PY) -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 	$(PY) -m aoe2modes build evolution_alpha
-	$(PY) -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.5.aoe2scenario"
+	$(PY) -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.6.aoe2scenario"
 
 lint:
 	$(PY) -m ruff check .

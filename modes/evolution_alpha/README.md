@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.5
+# CBA Hero: Ascendants v1.0.6
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,13 +7,13 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.5 |
+| | Baseline | Ascendants v1.0.6 |
 | --- | --- | --- |
 | Triggers | 2,993 | 2,327 |
-| Conditions | 3,314 | 6,940 |
-| Effects | 7,814 | 6,975 |
-| Units | 1,123 | 1,084 |
-| Runtime variables | 0 | 89 |
+| Conditions | 3,314 | 7,048 |
+| Effects | 7,814 | 6,655 |
+| Units | 1,123 | 1,076 |
+| Runtime variables | 0 | 97 |
 | Scenario version | v1.51 | v1.58 |
 
 ## What changed from the baseline
@@ -43,7 +43,9 @@ opposing occupied color has been eliminated. Closed colors cannot satisfy either
 defeat or victory resolver. Resolution remains locked until both sides are confirmed
 present through the color-to-runtime mapping. Defeat also
 independently requires zero Castles in the color's objective row, preventing stale
-references from ending a live match. The scoreboard and resource systems do not touch a slot
+references from ending a live match. A resignation is resolved through the same
+color/runtime mapping and removes every remaining unit and building owned by that
+runtime player across the full map. The scoreboard and resource systems do not touch a slot
 until an occupied-player gate confirms it is present.
 
 ## Color-aware army spawning
@@ -56,8 +58,11 @@ fixed Castle row, then spawns that civilization's original unit at the correct c
 territory with the original population cap and interval. Runtime-owner move
 triggers send each newly created wave out of the matching base, consume a one-shot
 launch pulse, and then remain inert until the next wave. A returning army can cross
-the spawn line without the scenario overwriting the player's order. The 472 retired static army
-shells are removed from the final trigger graph.
+the spawn line without the scenario overwriting the player's order. Each color's Sheep
+writes a persistent Short, Medium, or Long route value directly. All full and compacted
+owner movement triggers read that value, so route choice no longer depends on fragile
+trigger activation state. The 472 retired static army shells are removed from the final
+trigger graph.
 
 The same territory/runtime mapping now covers the automatic Feudal upgrade package.
 Builder rewards use a separate color-indexed queue: XS resolves the selected color's
@@ -136,7 +141,7 @@ so its sand-looking legacy terrain cannot reject construction. Legacy
 wall cleanup stops before them so last-ditch defenses remain available. The obsolete
 `no wall` cleanup family is removed so it
 cannot erase the side walls of Red, Teal, Purple, or Orange at match start. The map has
-1,084 total objects; every added wall is attached to its owner's anti-delete protection.
+1,076 total objects; every added wall is attached to its owner's anti-delete protection.
 The broad outer aprons at all four allied team corners are cut back to matching
 five-tile L routes. The straight allied causeways at the top and bottom are four tiles
 wide, matching their gate openings. The corresponding left and right corridors remain
@@ -164,14 +169,14 @@ Each front gate also has the same compact mirrored ground marker, with a differe
 grass, sand, dirt, or road tint for each player color.
 Automatic armies spawn one tile nearer the arena wall. Movement triggers watch a
 three-by-three area around every spawn point, and the Short, Medium, and Long relic
-selectors now control compacted-color players as well as their original slots. Every
+selectors now control compacted-color players as well as their original slots. Their
+three disjoint approach strips extend one tile toward the Sheep, so collision with a
+Relic or Rug cannot prevent the selected route from latching. Every
 army, hero, and builder task uses an explicit move action so newly created units leave
 their spawn pads reliably. Legacy ice decorations are removed as objects as well as
-terrain, leaving the surrounding shore buildable. Each color has its own stationary
-Transport Ship beside the separate milestone-hero spawn (Robin Hood, Theodoric, and
-later kill rewards). Each ship is two tiles nearer its shore, Gaia-owned so player AI
-cannot command it, and explicitly stopped, frozen, speed-zeroed, unselectable,
-undeletable, untargetable, and unattackable.
+terrain, leaving the surrounding shore buildable. The separate milestone-hero spawn
+(Robin Hood, Theodoric, and later kill rewards) uses its shoreline pad directly;
+decorative Transport Ships and all marker-specific trigger effects are absent.
 When Hero Spawn is Open, a dedicated fallback continuously sends milestone heroes
 from the shoreline pad toward the Medium staging position inside the base. Packed and
 unpacked Trebuchets are disabled
@@ -200,6 +205,17 @@ one of eight XS wave pulses. The 160 mirrored non-buildable milestone-shore Beac
 cells become Grass 2. All eight marker ships move two tiles shoreward and become
 fully protected Gaia props. The serialized candidate remains 2,327 triggers and
 1,084 objects, with 6,940 conditions, 6,975 effects, and 89 variables.
+
+Version 1.0.6 removes the eight decorative Transport Ship spawn markers after engine
+testing showed that they added no value to the already-working milestone spawn. Their
+56 stop, freeze, speed, selection, deletion, targeting, and attack-protection effects
+are removed with them. Hero creation and ordering remain unchanged and fully covered
+for every color/runtime owner. The same release adds a full-map ownership purge to all
+36 compact-safe resignation resolvers, so a resigned player's units and buildings do
+not remain in play. It also replaces route-trigger switching with eight persistent
+Short/Medium/Long variables and widens all 24 Sheep route selectors toward their
+visible markers. The serialized candidate has 2,327 triggers, 1,076 objects, 7,048
+conditions, 6,655 effects, and 97 variables.
 
 ## Source of truth
 

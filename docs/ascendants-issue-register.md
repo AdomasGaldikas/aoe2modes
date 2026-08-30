@@ -1,19 +1,19 @@
-# Ascendants v1.0.5 candidate issue register
+# Ascendants v1.0.6 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.5** is the active source-verified candidate.
+repair targets. **v1.0.6** is the active source-verified candidate.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.5 candidate is 93,590 bytes with SHA-256
-`b5182d2b123a389ca50a584ab341a5ea957246867b0528d44865b2079a3e3903`.
+The v1.0.6 candidate is 91,541 bytes with SHA-256
+`b48699bf988bce31b002283b94230a96f611e6932365991849cb43447b7b0ca7`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.5 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.6 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -31,15 +31,17 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-014 | Two score numbers appeared beside a player. | Not a scenario defect | The second number is Definitive Edition's team-average display, not another custom score field. | No change unless the game offers a supported UI option to hide it. |
 | ASC-015 | Armies ordered back toward their Castles turned around at an invisible line. | Guarded | All 108 full/sparse Short, Medium, and Long route triggers require a color-specific new-wave variable set by XS only after unit creation. The selected owner route consumes the pulse once; no pulse means no task effect. | For all eight colors, let a wave leave, order it back across all four spawn pads, and confirm the manual order remains. |
 | ASC-016 | The marked milestone shoreline rejected building placement. | Guarded | The exact 20-cell Beach ribbon is transformed eight ways into 160 unique Grass 2 cells. Tests pin its terrain, elevation, layer, symmetry, and whole-map terrain hash. | Place representative buildings throughout every repaired shore strip, including the former corners. |
-| ASC-017 | Marker ships sat too far offshore and player AI could move them; nobody should kill or control them. | Guarded | All eight ships are two tiles shoreward on verified unoccupied water. They are Gaia-owned and receive delete/selection/attack/target disables plus freeze, stop, and speed 0; no task, kill, remove, damage, or ownership effect selects them. | Run AI players for several minutes and try selection, attack, conversion, deletion, and forced movement around every ship. |
+| ASC-017 | Marker ships added no value and could not be made reliable. | Resolved by removal | The serialized scenario contains zero Transport Ships. Their creation pass and all 56 marker protection effects are deleted; milestone hero creation and orders remain independently tested. | Confirm all eight shores are clear and milestone heroes still spawn normally. |
+| ASC-018 | A resigned player's units and buildings remained on the map. | Guarded | Each of the 36 valid color/runtime resignation resolvers has one full-map `REMOVE_OBJECT` effect scoped to its resolved runtime player, alongside the eliminated/active state changes. | Resign one player in full 4v4 and a compacted sparse lobby; all of that player's objects must disappear without touching anyone else. |
+| ASC-019 | The Sheep reached Short, Medium, or Long, but no longer changed where new armies went. | Guarded | Eight persistent route variables replace fragile trigger activation state. All 24 Sheep selectors write the chosen value; all 108 full/sparse route triggers are enabled and require that value plus the one-shot new-wave pulse. Each visible marker has a disjoint three-cell radial approach strip. | For every color in full and sparse lobbies, move the Sheep to Short, Medium, then Long; the next wave must take each route while older units remain manually controllable. |
 
 ## Additional parser findings
 
-The v1.0.5 candidate passes the structural audit with **0 errors and 0 warnings**:
+The v1.0.6 candidate passes the structural audit with **0 errors and 0 warnings**:
 
 - 2,327 uniquely named, non-empty triggers and a complete display order;
-- 1,084 unique object references, all on-map, with no dangling garrisons;
-- 89 unique variable ids and no dangling variable use;
+- 1,076 unique object references, all on-map, with no dangling garrisons;
+- 97 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
 - no partial, inverted, or out-of-bounds trigger geometry;
 - no reachable looping trigger without a Timer condition;
@@ -54,7 +56,7 @@ ever changes.
 Run the same audit after every build:
 
 ```bash
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.5.aoe2scenario"
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.6.aoe2scenario"
 ```
 
 `--strict` passes too. The normal command fails only on structural errors; strict also
@@ -77,8 +79,10 @@ cases are recorded in-game.
 | Route/pathing | All eight colors | Friendly rear and team routes work; walls have no diagonal gap; enemies cannot bypass. |
 | Score/UI | Full and sparse | K/D/R updates, starting scores are neutral, and post-game combat/razing totals are credible. |
 | Manual army return | All eight colors, full and sparse | Returning units cross the four launch pads without being sent back toward the arena. |
+| Sheep army routes | All eight colors, full and sparse | Moving the Sheep to Short, Medium, or Long changes the next wave to that route; existing armies keep manual orders. |
 | Milestone shore | All eight colors | Buildings can be placed on the repaired strip; hero spawns and nearby water remain clear. |
-| Marker ships | Human and AI slots | Ships remain at their shore markers and cannot be selected, moved, attacked, converted, or deleted. |
+| Marker removal | All eight colors | No Transport Ship is present; milestone heroes still spawn and route normally. |
+| Resignation cleanup | Full and sparse | Every unit and building owned by the resigned runtime player disappears; other colors remain intact. |
 
 For a failure, record the exact selected colors, runtime player numbers, civilizations,
 game time, action, observed result, and expected result. That is enough to turn most

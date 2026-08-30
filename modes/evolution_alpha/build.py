@@ -91,6 +91,7 @@ COLOR_ELIMINATED_VARIABLE_BASE = 48
 MATCH_READY_VARIABLE_ID = 56
 VOTE_MARKER_VARIABLE_BASE = 57
 ARMY_MOVE_PENDING_VARIABLE_BASE = 81
+ARMY_ROUTE_VARIABLE_BASE = 89
 VOTE_FLAG_OFFSETS = {
     PlayerId.ONE: (2, 0),
     PlayerId.TWO: (-2, 0),
@@ -124,10 +125,6 @@ SPAWN_POINTS = {
     PlayerId.SIX: ((122, 96), (122, 92), (122, 89), (122, 85)),
     PlayerId.SEVEN: ((48, 122), (52, 122), (55, 122), (59, 122)),
     PlayerId.EIGHT: ((96, 122), (92, 122), (89, 122), (85, 122)),
-}
-SPAWN_MARKER_BOAT_POSITIONS = {
-    player: v2_position_for_player(player, 16.5, 37.5)
-    for player in PLAYERS
 }
 HAY_LOCATION_BY_CASTLE_REFERENCE = {
     9_761: (48, 21),
@@ -1388,6 +1385,17 @@ def _configure_custom_team_victory(
     teal when teal has been compacted to runtime P2.  Runtime variables written
     by XS keep every declaration attached to the selected color instead.
     """
+
+    def purge_runtime_player(trigger, world_player) -> None:
+        """Remove every unit and building still owned by an eliminated player."""
+        trigger.new_effect.remove_object(
+            source_player=world_player,
+            area_x1=0,
+            area_y1=0,
+            area_x2=143,
+            area_y2=143,
+        )
+
     ctx.scenario.option_manager.victory_condition = VictoryCondition.CUSTOM
     ctx.scenario.option_manager.victory_custom_conditions_required = False
     ctx.scenario.sections["GlobalVictory"].retriever_map["conquest_required"].set_data(0)
@@ -1472,13 +1480,7 @@ def _configure_custom_team_victory(
                 operation=Operation.SET,
                 variable=active_variables[color],
             )
-            defeat.new_effect.remove_object(
-                source_player=world_player,
-                area_x1=0,
-                area_y1=0,
-                area_x2=143,
-                area_y2=143,
-            )
+            purge_runtime_player(defeat, world_player)
             defeat.new_effect.declare_victory(
                 source_player=world_player,
                 enabled=0,
@@ -1511,6 +1513,7 @@ def _configure_custom_team_victory(
                 operation=Operation.SET,
                 variable=active_variables[color],
             )
+            purge_runtime_player(resigned, world_player)
 
     # Latch only after at least one occupied color has been detected on each
     # side. This prevents the three-second victory pass from ending a solo map
@@ -1849,7 +1852,7 @@ def _replace_legacy_army_spawns(
     active_variables,
     world_variables,
 ) -> None:
-    """Spawn and launch each color's waves through its compacted runtime owner."""
+    """Spawn and route each color's waves through its compacted runtime owner."""
     move_pending_variables = {
         player: ctx.tm.add_variable(
             f"army_move_pending_p{int(player)}",
@@ -1857,8 +1860,20 @@ def _replace_legacy_army_spawns(
         ).variable_id
         for player in PLAYERS
     }
+    route_variables = {
+        player: ctx.tm.add_variable(
+            f"army_route_p{int(player)}",
+            variable_id=ARMY_ROUTE_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+    route_values = {
+        "move": 0,
+        "move short": 1,
+        "move long": 2,
+    }
 
-    def guard_new_wave(trigger, scenario_player, world_player) -> None:
+    def guard_new_wave(trigger, scenario_player, world_player, family) -> None:
         """Let one selected route launch only the wave XS just created."""
         trigger.new_condition.variable_value(
             quantity=1,
@@ -1873,6 +1888,11 @@ def _replace_legacy_army_spawns(
         trigger.new_condition.variable_value(
             quantity=int(world_player),
             variable=world_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=route_values[family],
+            variable=route_variables[scenario_player],
             comparison=Comparison.EQUAL,
         )
         trigger.new_effect.change_variable(
@@ -1929,8 +1949,10 @@ def _replace_legacy_army_spawns(
 
     for scenario_player in PLAYERS:
         movement_tasks = {}
+        movement_triggers = {}
         for family, canonical_tasks in canonical_move_tasks.items():
             target = _unique_trigger(ctx, f"{family} (p{int(scenario_player)})")
+            target.enabled = 1
             target_tasks = [
                 effect
                 for effect in target.effects
@@ -1962,8 +1984,14 @@ def _replace_legacy_army_spawns(
                 for condition in target.conditions
             ):
                 target.new_condition.timer(timer=1)
-            guard_new_wave(target, scenario_player, scenario_player)
+            guard_new_wave(
+                target,
+                scenario_player,
+                scenario_player,
+                family,
+            )
             movement_tasks[family] = target_tasks
+            movement_triggers[family] = target
 
         area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[scenario_player]
         sparse_movements = {}
@@ -1981,7 +2009,7 @@ def _replace_legacy_army_spawns(
                     f"W{int(world_player)}",
                     description_stid=0,
                     short_description_stid=0,
-                    enabled=1 if family == "move" else 0,
+                    enabled=1,
                     looping=1,
                 )
                 movement.new_condition.objects_in_area(
@@ -2016,7 +2044,12 @@ def _replace_legacy_army_spawns(
                         issue_group_command=effect.issue_group_command,
                         queue_action=effect.queue_action,
                     )
-                guard_new_wave(movement, scenario_player, world_player)
+                guard_new_wave(
+                    movement,
+                    scenario_player,
+                    world_player,
+                    family,
+                )
                 sparse_movements[family, world_player] = movement
 
         selected_family = {
@@ -2034,19 +2067,35 @@ def _replace_legacy_army_spawns(
                 for condition in selector.conditions
             ):
                 selector.new_condition.timer(timer=1)
-            for world_player in _possible_world_players(scenario_player):
-                if world_player == scenario_player:
-                    continue
-                for family in canonical_move_tasks:
-                    movement = sparse_movements[family, world_player]
-                    if family == chosen_family:
-                        selector.new_effect.activate_trigger(
-                            trigger_id=movement.trigger_id
-                        )
-                    else:
-                        selector.new_effect.deactivate_trigger(
-                            trigger_id=movement.trigger_id
-                        )
+            route_trigger_ids = {
+                trigger.trigger_id
+                for trigger in (
+                    *movement_triggers.values(),
+                    *sparse_movements.values(),
+                )
+            }
+            route_switches = [
+                effect
+                for effect in selector.effects
+                if effect.effect_type
+                in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+                and effect.trigger_id in route_trigger_ids
+            ]
+            if len(route_switches) != 3:
+                raise RuntimeError(
+                    f"expected three legacy route switches in {selector.name!r}, "
+                    f"found {len(route_switches)}"
+                )
+            selector.effects = [
+                effect
+                for effect in selector.effects
+                if effect not in route_switches
+            ]
+            selector.new_effect.change_variable(
+                quantity=route_values[chosen_family],
+                operation=Operation.SET,
+                variable=route_variables[scenario_player],
+            )
 
     ctx.add_xs(_render_color_spawn_xs(), label="color-aware army spawning")
 
@@ -2167,9 +2216,8 @@ def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
         for player, name in names.items():
             target = _unique_trigger(ctx, name)
             if family in {"short", "med", "long"}:
-                # Sparse movement adds a different number of trigger-switch
-                # effects for each color (only valid W<=S mappings). Those
-                # effects have no geometry; only the selector conditions do.
+                # Route variables and sparse-owner movement have no geometry;
+                # only the selector conditions need V2 transformation here.
                 if len(source.conditions) != len(target.conditions):
                     raise RuntimeError(
                         f"V2 selector condition mismatch in {target.name!r}"
@@ -2186,6 +2234,47 @@ def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
                     )
             else:
                 _copy_v2_trigger_geometry(player, source, target)
+
+    # Sheep have real collision and can stop on either side of the named Relic
+    # and Rug at a route slot. Keep the three route zones disjoint along the
+    # island edge, but extend each one tile radially so reaching the visible
+    # Short/Medium/Long marker always latches its route.
+    for player in PLAYERS:
+        for family in ("short", "med", "long"):
+            trigger = _unique_trigger(ctx, family_names[family][player])
+            selectors = [
+                condition
+                for condition in trigger.conditions
+                if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
+            ]
+            if len(selectors) != 1:
+                raise RuntimeError(
+                    f"expected one army selector zone in {trigger.name!r}"
+                )
+            selector = selectors[0]
+            if (selector.area_x1, selector.area_y1) != (
+                selector.area_x2,
+                selector.area_y2,
+            ):
+                raise RuntimeError(
+                    f"expected a one-tile army selector in {trigger.name!r}"
+                )
+            if selector.area_y1 <= 2:
+                selector.area_y1 -= 1
+                selector.area_y2 += 1
+            elif selector.area_y1 >= 141:
+                selector.area_y1 -= 1
+                selector.area_y2 += 1
+            elif selector.area_x1 <= 2:
+                selector.area_x1 -= 1
+                selector.area_x2 += 1
+            elif selector.area_x1 >= 141:
+                selector.area_x1 -= 1
+                selector.area_x2 += 1
+            else:
+                raise RuntimeError(
+                    f"army selector {trigger.name!r} is not on an edge island"
+                )
 
     # Selector loops should react quickly without running on every trigger
     # pass.  Close also needs an absence guard; otherwise it creates another
@@ -3707,74 +3796,6 @@ def _remove_remaining_ice_decorations(ctx: BuildContext) -> None:
         ctx.um.remove_unit(unit=unit)
 
 
-def _add_spawn_marker_boats(ctx: BuildContext) -> None:
-    """Mark every color's milestone-hero spawn with an immobile Transport Ship."""
-    water = {int(terrain) for terrain in TerrainId.water_terrains()}
-    ctx.um.reference_id_generator = create_id_generator(
-        ctx.um.find_highest_reference_id() + 1
-    )
-    for player, (x, y) in SPAWN_MARKER_BOAT_POSITIONS.items():
-        tile = ctx.mm.get_tile(x=int(x), y=int(y))
-        if tile.terrain_id not in water:
-            raise RuntimeError(
-                f"P{int(player)} spawn-marker boat ({x}, {y}) is not on water"
-            )
-        occupied = [
-            unit
-            for units in ctx.um.units
-            for unit in units
-            if (unit.x, unit.y) == (x, y)
-        ]
-        if occupied:
-            references = ", ".join(str(unit.reference_id) for unit in occupied)
-            raise RuntimeError(
-                f"P{int(player)} spawn-marker boat position ({x}, {y}) "
-                f"is occupied by refs {references}"
-            )
-
-        castle_x1, castle_y1, castle_x2, castle_y2 = BASE_CASTLE_AREAS[player]
-        target_x = (castle_x1 + castle_x2) / 2
-        target_y = (castle_y1 + castle_y2) / 2
-        boat = ctx.um.add_unit(
-            player=PlayerId.GAIA,
-            unit_const=UnitInfo.TRANSPORT_SHIP.ID,
-            x=x,
-            y=y,
-            rotation=math.atan2(target_y - y, target_x - x) % (2 * math.pi),
-        )
-        protection = _unique_trigger(ctx, f"Antidelete P{int(player)}")
-        selected = [boat.reference_id]
-        protection.new_effect.disable_object_deletion(
-            source_player=PlayerId.GAIA,
-            selected_object_ids=selected,
-        )
-        protection.new_effect.disable_object_selection(
-            source_player=PlayerId.GAIA,
-            selected_object_ids=selected,
-        )
-        protection.new_effect.disable_unit_attackable(
-            source_player=PlayerId.GAIA,
-            selected_object_ids=selected,
-        )
-        protection.new_effect.disable_unit_targeting(
-            source_player=PlayerId.GAIA,
-            selected_object_ids=selected,
-        )
-        protection.new_effect.freeze_object(
-            source_player=PlayerId.GAIA,
-            selected_object_ids=selected,
-        )
-        protection.new_effect.stop_object(
-            source_player=PlayerId.GAIA,
-            selected_object_ids=selected,
-        )
-        protection.new_effect.change_object_speed(
-            quantity=0,
-            source_player=PlayerId.GAIA,
-            selected_object_ids=selected,
-        )
-
-
 def _force_bombard_tower_unlock(ctx: BuildContext) -> None:
     """Grant Bombard Towers through the confirmed color-to-runtime mapping."""
     legacy = _unique_trigger(ctx, "BT -------------------- By: System")
@@ -4673,7 +4694,6 @@ def build(ctx: BuildContext) -> None:
     _configure_sparse_king_islands(ctx, active_variables, world_variables)
     _relocate_builder_spawn_flags(ctx)
     _remove_remaining_ice_decorations(ctx)
-    _add_spawn_marker_boats(ctx)
     _remap_raze_villagers(
         ctx,
         active_variables,

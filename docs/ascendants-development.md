@@ -1,13 +1,13 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.5** as the current
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.6** as the current
 source-verified release candidate. It is derived only from v1.0.3; older versions are
 not repair or comparison targets. Engine acceptance is still a separate step.
 
 The canonical v1.0.3 checkpoint is 99,694 bytes with SHA-256
-`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. The v1.0.5
-candidate is 93,590 bytes with SHA-256
-`b5182d2b123a389ca50a584ab341a5ea957246867b0528d44865b2079a3e3903`.
+`4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`. The v1.0.6
+candidate is 91,541 bytes with SHA-256
+`b48699bf988bce31b002283b94230a96f611e6932365991849cb43447b7b0ca7`.
 Its intentional trigger-graph migration and engine-reported fixes explain the changed hash.
 
 ## Two verification layers
@@ -30,13 +30,31 @@ trigger-variable ids. It then runs the final-build gameplay contract and produce
 scenario that should be tested in-game. Finally, `aoe2modes audit` checks the serialized
 output for broken references, invalid coordinates, and immediate unconditional
 victory/defeat. Potential scheduling or cleanup risks are reported as warnings for
-review. The v1.0.5 candidate currently passes with **0 errors and 0 warnings**.
+review. The v1.0.6 candidate currently passes with **0 errors and 0 warnings**.
 
 The target is entirely local. It does not use GitHub Actions or any paid CI service.
 
 The active issue inventory and manual acceptance cases are in
 [`ascendants-issue-register.md`](ascendants-issue-register.md). v1.0.3 is the sole
-comparison baseline and v1.0.5 is the only active candidate.
+comparison baseline and v1.0.6 is the only active candidate.
+
+## v1.0.6 route, removal, and resignation fixes
+
+Each color now has a persistent Short/Medium/Long army-route variable. The Sheep
+selector writes that variable directly instead of activating and deactivating route
+triggers. All 108 full/sparse route triggers remain enabled, but only the trigger whose
+route value and runtime owner match can consume the next-wave pulse. The three route
+slots use disjoint three-cell approach strips, allowing the Sheep to latch the visible
+marker even when its collision keeps it beside the Relic or Rug.
+
+The milestone hero spawn already works without a visual object, so all eight
+decorative Transport Ships and their 56 protection effects are removed. The final
+scenario contains no Transport Ship and no marker-specific trigger logic.
+
+Every compact-safe resignation detector now performs the same full-map, resolved
+runtime-owner purge already used by Castle defeat. Once the engine reports that the
+mapped player is defeated, all of that player's remaining units and buildings are
+removed before team victory continues resolving.
 
 ## v1.0.5 engine-report fixes
 
@@ -76,8 +94,10 @@ Age of Empires II engine. Keep these as explicit in-game checks for every candid
 - local HUD values, player names, zero costs/resources, and post-game combat score;
 - unit pathing through every allied route and around all eight rear walls;
 - manually returning an army across each Castle launch line without its order changing;
+- moving every Sheep to Short, Medium, and Long and confirming the next wave follows it;
 - placing buildings across every milestone-shore repair strip;
-- leaving all eight marker ships under AI play and confirming they neither move nor take damage.
+- confirming all eight shores have no Transport Ship while milestone heroes still spawn;
+- resigning in full and sparse lobbies and confirming all owned units/buildings disappear.
 
 When one fails, record the exact lobby colors, civilization, trigger-visible symptom,
 and expected result before changing code. That turns an engine-only report into a
