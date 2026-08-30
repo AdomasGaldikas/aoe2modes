@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from collections import Counter, deque
+from itertools import permutations
 
 import pytest
 from AoE2ScenarioParser.datasets.buildings import BuildingInfo
@@ -66,7 +67,7 @@ def v2_position_for_player(player, source_x, source_y):
 VALID_COLOR_WORLD_PAIRS = {
     (color, world_player)
     for color in range(1, 9)
-    for world_player in range(1, color + 1)
+    for world_player in range(1, 9)
 }
 
 
@@ -83,7 +84,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 2_291
+    assert len(triggers) == 3_383
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_076
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -546,7 +547,7 @@ def test_evolution_alpha_kings_use_symmetric_island_destinations(evolution_alpha
             max(x for x, _y in corners),
             max(y for _x, y in corners),
         )
-        for world_player in range(1, int(player) + 1):
+        for world_player in range(1, 9):
             trigger = triggers[int(player), world_player]
             conditions = [
                 condition
@@ -615,7 +616,7 @@ def test_evolution_alpha_king_cannons_use_symmetric_ground_positions(evolution_a
                 y=int(y),
             ).terrain_id not in water
             assert (x, y) not in occupied_fortifications
-        for world_player in range(1, int(player) + 1):
+        for world_player in range(1, 9):
             trigger = triggers[int(player), world_player]
             creates = [
                 effect
@@ -1528,7 +1529,7 @@ def test_evolution_alpha_forces_the_original_bombard_tower_unlock(evolution_alph
         for trigger in evolution_alpha.trigger_manager.triggers
         if occupied_pattern.fullmatch(trigger.name)
     ]
-    assert len(occupied) == 36
+    assert len(occupied) == 64
     for trigger in occupied:
         _color, world_player = map(
             int,
@@ -1563,7 +1564,7 @@ def test_evolution_alpha_forces_the_original_bombard_tower_unlock(evolution_alph
 def test_evolution_alpha_remaps_sparse_feudal_upgrades(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
     sparse = {trigger.name: trigger for trigger in triggers if trigger.name.startswith("Sparse Feudal S")}
-    assert len(sparse) == 28
+    assert len(sparse) == 56
     assert {
         tuple(map(int, re.fullmatch(r"Sparse Feudal S([1-8]) W([1-8])", name).groups()))
         for name in sparse
@@ -1967,7 +1968,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
             for point in source_flag_positions
         }.isdisjoint(flags)
 
-        for world_player in range(1, color + 1):
+        for world_player in range(1, 9):
             reward = rewards[f"Builder Reward S{color} W{world_player}"]
             assert reward.enabled and reward.looping
             assert len(reward.conditions) == 5
@@ -2210,7 +2211,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
         for target in range(1, 9)
     }
     assert len(resolver_ids) == 8
-    assert all(len(ids) == target for target, ids in resolver_ids_by_target.items())
+    assert all(len(ids) == 8 for ids in resolver_ids_by_target.values())
 
     castle_areas = {
         1: (48, 19, 60, 19),
@@ -2245,7 +2246,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
     marker_detectors = [
         trigger for trigger in triggers if marker_pattern.fullmatch(trigger.name)
     ]
-    assert len(marker_detectors) == sum(voter for _target, voter in vote_keys) == 108
+    assert len(marker_detectors) == len(vote_keys) * 8 == 192
     assert all(
         condition.source_player != -1
         for trigger in triggers
@@ -2258,7 +2259,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
             int, marker_pattern.fullmatch(marker_detector.name).groups()
         )
         assert (target, voter) in vote_variable
-        assert 1 <= world_player <= voter
+        assert 1 <= world_player <= 8
         timers = [
             condition
             for condition in marker_detector.conditions
@@ -2479,6 +2480,17 @@ def test_evolution_alpha_detects_every_color_owner_from_its_castles(
         assert len(deactivations) == 1
         assert deactivations[0].trigger_id == detector.trigger_id
 
+    # Lobby rows can present the eight colors in any order. Exercise all
+    # 8! full-lobby assignments, including the observed Green/Yellow reversal.
+    for world_order in permutations(range(1, 9)):
+        selected = {
+            detectors[color, world_order[color - 1]].name
+            for color in range(1, 9)
+        }
+        assert len(selected) == 8
+    assert detectors[3, 4].name == "Color Owner Detect S3 W4"
+    assert detectors[4, 3].name == "Color Owner Detect S4 W3"
+
 
 def test_evolution_alpha_removes_invisible_edge_deletion_strips(evolution_alpha):
     disabled = [
@@ -2533,7 +2545,7 @@ def test_evolution_alpha_keeps_legacy_cleanup_off_rear_routes(evolution_alpha):
     }
     assert set(wall_breaches) == VALID_COLOR_WORLD_PAIRS
     for player, bounds in wall_cleanup_bounds.items():
-        for world_player in range(1, player + 1):
+        for world_player in range(1, 9):
             trigger = wall_breaches[player, world_player]
             effects = [
                 effect
@@ -2828,13 +2840,20 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
         assert effects[0].enabled
         victory_effects.extend(effects)
 
-    def runtime_variables(occupied_colors, alive_colors=None, match_ready=None):
+    def runtime_variables(
+        occupied_colors,
+        alive_colors=None,
+        match_ready=None,
+        mapping_override=None,
+    ):
         if alive_colors is None:
             alive_colors = occupied_colors
-        mapping = {
+        mapping = mapping_override or {
             color: world_player
             for world_player, color in enumerate(sorted(occupied_colors), start=1)
         }
+        assert set(mapping) == set(occupied_colors)
+        assert len(set(mapping.values())) == len(mapping)
         values = {}
         for color in range(1, 9):
             values[31 + color] = int(color in alive_colors)
@@ -2928,6 +2947,33 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             else:
                 assert matching_defeats == []
 
+    full_colors = set(range(1, 9))
+    for mapping in (
+        {1: 1, 2: 2, 3: 4, 4: 3, 5: 5, 6: 6, 7: 7, 8: 8},
+        {color: 9 - color for color in range(1, 9)},
+    ):
+        _, values = runtime_variables(
+            full_colors,
+            mapping_override=mapping,
+        )
+        assert not any(
+            variable_conditions_match(trigger, values)
+            for trigger in victory_triggers
+        )
+        _, left_values = runtime_variables(
+            full_colors,
+            set(range(1, 5)),
+            mapping_override=mapping,
+        )
+        assert {
+            trigger.name
+            for trigger in victory_triggers
+            if variable_conditions_match(trigger, left_values)
+        } == {
+            f"Color Team Victory S{color} W{mapping[color]}"
+            for color in range(1, 5)
+        }
+
     for left in range(1, 5):
         for right in range(5, 9):
             occupied = {left, right}
@@ -2951,7 +2997,6 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
                 f"Color Team Victory S{right} W{mapping[right]}"
             ]
 
-    full_colors = set(range(1, 9))
     _, left_team_values = runtime_variables(full_colors, set(range(1, 5)))
     assert {
         trigger.name
@@ -3099,9 +3144,9 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
         for trigger in triggers
         if trigger.name.startswith("Sparse Move Long S")
     }
-    assert len(movements) == 28
-    assert len(short_movements) == 28
-    assert len(long_movements) == 28
+    assert len(movements) == 56
+    assert len(short_movements) == 56
+    assert len(long_movements) == 56
     assert all(trigger.enabled for trigger in movements.values())
     assert all(trigger.enabled for trigger in short_movements.values())
     assert all(trigger.enabled for trigger in long_movements.values())
@@ -3132,16 +3177,62 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
         (21, 84, 23, 86),
     }
 
+    source_spawn_points = ((22, 48), (22, 52), (22, 55), (22, 59))
     spawn_points = {
-        1: ((48, 22), (52, 22), (55, 22), (59, 22)),
-        2: ((96, 22), (92, 22), (89, 22), (85, 22)),
-        3: ((22, 48), (22, 52), (22, 55), (22, 59)),
-        4: ((122, 48), (122, 52), (122, 55), (122, 59)),
-        5: ((22, 96), (22, 92), (22, 89), (22, 85)),
-        6: ((122, 96), (122, 92), (122, 89), (122, 85)),
-        7: ((48, 122), (52, 122), (55, 122), (59, 122)),
-        8: ((96, 122), (92, 122), (89, 122), (85, 122)),
+        player: tuple(
+            v2_position_for_player(player, x, y)
+            for x, y in source_spawn_points
+        )
+        for player in range(1, 9)
     }
+    all_spawn_points = {
+        point
+        for points in spawn_points.values()
+        for point in points
+    }
+    assert len(all_spawn_points) == 32
+
+    static_cells = {
+        (int(unit.x), int(unit.y))
+        for units in evolution_alpha.unit_manager.units
+        for unit in units
+    }
+    assert all_spawn_points.isdisjoint(static_cells)
+    assert not [
+        (trigger.name, effect.location_x, effect.location_y)
+        for trigger in triggers
+        for effect in trigger.effects
+        if effect.effect_type == EffectId.CREATE_OBJECT
+        and (effect.location_x, effect.location_y) in all_spawn_points
+    ]
+
+    castles = {
+        player: [
+            unit
+            for unit in evolution_alpha.unit_manager.units[player]
+            if unit.unit_const == BuildingInfo.CASTLE.ID
+        ]
+        for player in range(1, 9)
+    }
+    assert all(len(player_castles) == 4 for player_castles in castles.values())
+    for player, points in spawn_points.items():
+        own_castles = castles[player]
+        other_castles = [
+            castle
+            for other_player, player_castles in castles.items()
+            if other_player != player
+            for castle in player_castles
+        ]
+        for x, y in points:
+            own_distance = min(
+                (castle.x - x) ** 2 + (castle.y - y) ** 2
+                for castle in own_castles
+            )
+            other_distance = min(
+                (castle.x - x) ** 2 + (castle.y - y) ** 2
+                for castle in other_castles
+            )
+            assert own_distance < other_distance
     by_name = {trigger.name: trigger for trigger in triggers}
     canonical_task_locations = {
         family: [
@@ -3169,7 +3260,9 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
         assert {effect.action_type for effect in original_tasks} == {
             ActionType.MOVE
         }
-        for world_player in range(1, scenario_player):
+        for world_player in range(1, 9):
+            if world_player == scenario_player:
+                continue
             for public_family in ("", " Short", " Long"):
                 sparse_tasks = [
                     effect
@@ -3242,7 +3335,9 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
             " Short": "move short",
             " Long": "move long",
         }
-        for world_player in range(1, scenario_player):
+        for world_player in range(1, 9):
+            if world_player == scenario_player:
+                continue
             for public_family, family in public_families.items():
                 movement = by_name[
                     f"Sparse Move{public_family} S{scenario_player} W{world_player}"
@@ -3282,7 +3377,8 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
             by_name[
                 f"Sparse Move{public_family} S{scenario_player} W{world_player}"
             ].trigger_id
-            for world_player in range(1, scenario_player)
+            for world_player in range(1, 9)
+            if world_player != scenario_player
             for public_family in public_families
         }
         for selector_name, route_value in selectors.items():
@@ -3344,7 +3440,7 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
         tile = evolution_alpha.map_manager.get_tile(x=spawn[0], y=spawn[1])
         assert tile.terrain_id == TerrainId.GRASS_2
         assert spawn not in occupied_tiles
-        for world_player in range(1, color + 1):
+        for world_player in range(1, 9):
             for threshold, unit_id in milestone_units.items():
                 trigger = milestone_triggers[color, world_player, threshold]
                 assert trigger.enabled and trigger.looping
@@ -3442,7 +3538,7 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
         for color in range(1, 9):
             spawn_x, spawn_y = v2_cell_for_player(color, 16, 38)
             destination = v2_cell_for_player(color, *source_destination)
-            for world_player in range(1, color + 1):
+            for world_player in range(1, 9):
                 trigger = order_triggers[family, color, world_player]
                 assert trigger.enabled and trigger.looping
                 assert any(
@@ -3577,14 +3673,19 @@ def test_evolution_alpha_remaps_location_sensitive_triggers_to_v2(evolution_alph
                     )
 
     expected_hay = {
-        1: ((48, 21), (52, 21), (55, 21), (59, 21)),
-        2: ((95, 21), (84, 21), (88, 21), (91, 21)),
-        3: ((21, 59), (21, 55), (21, 52), (21, 48)),
-        4: ((122, 48), (122, 52), (122, 55), (122, 59)),
-        5: ((21, 95), (21, 84), (21, 88), (21, 91)),
-        6: ((122, 95), (122, 84), (122, 88), (122, 91)),
-        7: ((48, 122), (52, 122), (55, 122), (59, 122)),
-        8: ((95, 122), (84, 122), (88, 122), (91, 122)),
+        1: ((48, 21), (52, 21), (56, 21), (60, 21)),
+        2: ((96, 21), (84, 21), (88, 21), (92, 21)),
+        3: ((21, 60), (21, 56), (21, 52), (21, 48)),
+        4: ((123, 48), (123, 52), (123, 56), (123, 60)),
+        5: ((21, 96), (21, 84), (21, 88), (21, 92)),
+        6: ((123, 96), (123, 84), (123, 88), (123, 92)),
+        7: ((48, 123), (52, 123), (56, 123), (60, 123)),
+        8: ((96, 123), (84, 123), (88, 123), (92, 123)),
+    }
+    army_spawns = {
+        v2_position_for_player(player, x, y)
+        for player in range(1, 9)
+        for x, y in ((22, 48), (22, 52), (22, 55), (22, 59))
     }
     for player, positions in expected_hay.items():
         for index, position in enumerate(positions, start=1):
@@ -3595,6 +3696,7 @@ def test_evolution_alpha_remaps_location_sensitive_triggers_to_v2(evolution_alph
             ]
             assert len(creates) == 1
             assert (creates[0].location_x, creates[0].location_y) == position
+            assert position not in army_spawns
 
 
 
@@ -3929,13 +4031,13 @@ def test_free_costs_are_activated_only_for_occupied_slots(evolution_alpha):
     by_name = {trigger.name: trigger for trigger in evolution_alpha.trigger_manager.triggers}
     for player in range(1, 9):
         free_costs = by_name[f"Free Costs P{player}"]
-        activators = [
+        activators = {
             trigger.name
             for trigger in evolution_alpha.trigger_manager.triggers
             for effect in trigger.effects
             if effect.effect_type == EffectId.ACTIVATE_TRIGGER and effect.trigger_id == free_costs.trigger_id
-        ]
-        assert activators == [
+        }
+        assert activators == {
             f"Occupied Slot S{color} W{player}"
-            for color in range(player, 9)
-        ]
+            for color in range(1, 9)
+        }
