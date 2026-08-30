@@ -1,7 +1,7 @@
 VENV := .venv
 PY   := $(VENV)/bin/python
 
-.PHONY: help setup build list test lint fmt clean deploy
+.PHONY: help setup build list test check-ascendants lint fmt clean deploy
 
 help:
 	@echo "setup   create .venv and install the project (editable, with dev extras)"
@@ -9,6 +9,7 @@ help:
 	@echo "list    list the modes in this repo"
 	@echo "deploy  build every mode and copy it into the game's scenario folder"
 	@echo "test    run the test suite"
+	@echo "check-ascendants  run both Ascendants verification layers and build v1.0.3"
 	@echo "lint    run ruff"
 	@echo "fmt     run ruff with --fix"
 	@echo "clean   remove dist/ and Python caches"
@@ -29,6 +30,10 @@ deploy:
 
 test:
 	$(PY) -m pytest
+
+check-ascendants:
+	$(PY) -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
+	$(PY) -m aoe2modes build evolution_alpha
 
 lint:
 	$(PY) -m ruff check .

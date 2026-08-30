@@ -1,12 +1,14 @@
 """The decompiler's contract: generated source must rebuild the scenario it came from.
 
-The end-to-end test deliberately uses ``evolution_alpha``. Its reference file is
-already v1.58, the same version the rebuild targets, so nothing here trips the
-parser's version-state leak. ``big_ytri`` (v1.51) is checked with
-``aoe2modes verify big_ytri``, which isolates the two versions by ordering the reads.
+The end-to-end test deliberately uses ``evolution_alpha``. Its generated package is
+the direct decompilation of a v1.58 reference; the public Ascendants build applies
+intentional gameplay and map patches after that generated baseline.
 """
 
 from __future__ import annotations
+
+import importlib.util
+import sys
 
 import pytest
 from AoE2ScenarioParser.datasets.object_support import Civilization
@@ -15,8 +17,8 @@ from AoE2ScenarioParser.datasets.scenario_variant import ScenarioVariant
 from AoE2ScenarioParser.scenarios.aoe2_de_scenario import AoE2DEScenario
 
 from aoe2modes import registry
-from aoe2modes.builder import build_mode
-from aoe2modes.lib.decompile import comment_safe, render
+from aoe2modes.context import BuildContext
+from aoe2modes.lib.decompile import comment_safe, decompile, render
 from aoe2modes.lib.verify import compare, snapshot
 
 
@@ -68,10 +70,27 @@ def evolution_rebuild(tmp_path_factory, repo):
     spec = registry.get("evolution_alpha", repo)
     if spec.reference is None:
         pytest.skip("evolution_alpha has no scenario.reference to verify against")
-    result = build_mode(spec, out_dir=tmp_path_factory.mktemp("verify"), xs_check=False)
-    return snapshot(AoE2DEScenario.from_file(str(result.output))), snapshot(
-        AoE2DEScenario.from_file(str(spec.reference))
+
+    original = AoE2DEScenario.from_file(str(spec.reference))
+    generated_dir = tmp_path_factory.mktemp("decompile") / "generated"
+    decompile(original, generated_dir, source_label=spec.reference.name)
+
+    scenario = AoE2DEScenario.from_default(spec.scenario_version)
+    scenario.variant = spec.variant
+    ctx = BuildContext(spec=spec, scenario=scenario, repo=repo)
+    module_name = "aoe2modes._test_generated.evolution_alpha"
+    loader_spec = importlib.util.spec_from_file_location(
+        module_name,
+        generated_dir / "__init__.py",
+        submodule_search_locations=[str(generated_dir)],
     )
+    assert loader_spec is not None and loader_spec.loader is not None
+    module = importlib.util.module_from_spec(loader_spec)
+    sys.modules[module_name] = module
+    loader_spec.loader.exec_module(module)
+    module.apply(ctx)
+
+    return snapshot(scenario), snapshot(original)
 
 
 def test_generated_source_rebuilds_the_original(evolution_rebuild):
@@ -92,9 +111,8 @@ def test_rebuild_has_no_version_gap(evolution_rebuild):
 def test_trigger_variables_round_trip(evolution_rebuild):
     """Variables are addressed by id, so dropping one silently rewires trigger logic.
 
-    ``evolution_alpha`` declares 16 (``kills_p1``/``deaths_p1`` ...), which the earlier
-    decompiler emitted nowhere — the rebuild came out with none and ``verify`` did not
-    notice. Both the ids and the names have to survive.
+    An earlier decompiler emitted variables nowhere, and verification did not notice.
+    Both their ids and names have to survive the round trip.
     """
     rebuilt, original = evolution_rebuild
     assert original["variables"], "fixture mode no longer declares variables"

@@ -100,11 +100,11 @@ to them, triggers are created in their original order because `activate_trigger`
 addresses them positionally, and the `VARIABLES` table in `triggers/__init__.py` is
 declared before the first trigger.
 
-Those variable ids come from the original author, not from `lib/variables`. The
-`SHARED` block there hands out 0–2 for the XS bridge, while `evolution_alpha` (the only
-decompiled mode with variables today) occupies 1–16. Adding XS to a decompiled mode
-therefore means allocating ids above whatever the dump already claims — `add_variable`
-raises on a duplicate, so the build catches it, but only after the XS side is written.
+Those variable ids come from the original author, not from `lib/variables`. A mode can
+also declare more variables in `build.py` after the generated package runs; Ascendants'
+final build currently occupies ids 0–80. Inspect both the generated table and the final
+scenario before allocating a new id. `add_variable` raises on a duplicate, but only after
+the XS side may already have been written with the wrong assumption.
 
 ## Sharing between modes
 

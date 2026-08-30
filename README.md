@@ -28,7 +28,7 @@ Six modes ship with the repo, illustrating both authoring styles:
 | [`cba_hero`](modes/cba_hero/) | blank build | 8-player 4v4 hero arena. 45 triggers, 16 units, XS wave clock — everything is Python. The canonical example. |
 | [`cba_hero_duel`](modes/cba_hero_duel/) | blank build | 1v1 sudden-death cut of the above, on a smaller map. Same library, different pacing. |
 | [`big_ytri`](modes/big_ytri/) | decompiled | Big_Ytri's Royal 4v4, decompiled to Python: 2993 triggers, 3314 conditions, 7814 effects, 1123 units, 20736 terrain tiles. `verify` compares 100,857 fields against the original. |
-| [`evolution_alpha`](modes/evolution_alpha/) | decompiled | The AI-improved Reforged variant (tracking v0.12.0) — Big_Ytri minus ~1000 triggers, with the kill/death ladder replaced by 16 trigger variables. 2029 triggers, 1311 units; `verify` compares 89,977 fields. |
+| [`evolution_alpha`](modes/evolution_alpha/) | decompiled + patches | **CBA Hero: Ascendants v1.0.3** — the reproducible baseline for ongoing fixes: color-aware compact lobbies, automatic armies, six hero tiers, protected team routes, center rewards, vote-kicks, and live K/D/R. 3326 triggers, 1084 units. |
 | [`chieftains_4v4`](modes/chieftains_4v4/) | decompiled | Big_Ytri's published Chieftains 2026 4v4 (workshop `469500`) — Royal 4v4 plus the Chieftains/Greece/Three Kingdoms DLC blocks and a team vote-kick. 3184 triggers, 1171 units; `verify` compares 117,824 fields. |
 | [`chieftains_ffa`](modes/chieftains_ffa/) | decompiled | The free-for-all cut of the same 2026 release (workshop `469501`): all-enemy diplomacy, no vote-kick. 3151 triggers, 1059 units; `verify` compares 115,299 fields. |
 
@@ -38,7 +38,7 @@ Three authoring styles are supported:
 - **Decompiled** — an existing `.aoe2scenario` has been dumped to Python under `modes/<id>/generated/`, so it rebuilds from source and `aoe2modes verify` proves the output still matches. This is where a reverse-engineered mode should end up. (`big_ytri`, `evolution_alpha`, `chieftains_4v4`, `chieftains_ffa`)
 - **Base+patch** — the mode loads a real `.aoe2scenario` binary and modifies it in place. The quick intermediate step, but the base stays an opaque blob in git. No mode uses it today.
 
-A decompiled mode rebuilds at the *current* scenario version rather than the original's, because the parser only ships blank templates for v1.57 and v1.58 — `big_ytri` moved from v1.51 to v1.58. The content is unchanged; `verify` reports the v1.55+ fields the older format never had (`execute_on_load`, `caption_string`, `max_units_affected`, `disable_sound`) separately from real differences. The modes decompiled from v1.58 sources (`evolution_alpha`, `chieftains_4v4`, `chieftains_ffa`) have no such gap, which is why `evolution_alpha` is the decompiler's own fidelity fixture in `tests/test_decompile.py`.
+A decompiled mode rebuilds at the *current* scenario version rather than the original's, because the parser only ships blank templates for v1.57 and v1.58 — `big_ytri` moved from v1.51 to v1.58. The content is unchanged; `verify` reports the v1.55+ fields the older format never had (`execute_on_load`, `caption_string`, `max_units_affected`, `disable_sound`) separately from real differences. Ascendants starts from a v1.58 decompiled reference and then applies intentional gameplay and map patches in `build.py`; `tests/test_decompile.py` verifies the reference round trip, while `tests/test_evolution_alpha.py` verifies the final patched scenario.
 
 Scaffold a new mode from the template:
 
@@ -69,7 +69,8 @@ Four CLI commands cover the loop from opaque binary to code-generated mode:
 aoe2modes inspect "input/CBA Hero Royal 4v4 Big_Ytri.aoe2scenario" --triggers
 aoe2modes diff modes/big_ytri/base.aoe2scenario modes/evolution_alpha/base.aoe2scenario
 aoe2modes decompile --mode evolution_alpha        # writes modes/evolution_alpha/generated/
-aoe2modes verify evolution_alpha                  # rebuild + prove content still matches
+pytest tests/test_decompile.py                     # prove the reference round trip
+pytest tests/test_evolution_alpha.py               # verify the patched Ascendants build
 ```
 
 - **`inspect`** — map size, player count, unit/trigger counts, and (with `--triggers`) the full trigger summary. First look at a scenario.
@@ -126,5 +127,6 @@ The full architecture, gotchas (AoE2ScenarioParser has a real version-state leak
 - [`docs/authoring.md`](docs/authoring.md) — writing a mode from scratch.
 - [`docs/cba-hero.md`](docs/cba-hero.md) — what CBA Hero is, what mechanics a build has to provide, and how this repo models each one.
 - [`docs/tooling.md`](docs/tooling.md) — the landscape of AoE2 scenario tooling, why this repo uses AoE2ScenarioParser, and how DE actually distributes XS.
+- [`docs/ascendants-development.md`](docs/ascendants-development.md) — the v1.0.3 baseline, verification layers, and safe issue-fixing loop.
 - [AoE2ScenarioParser docs](https://ksneijders.github.io/AoE2ScenarioParser/) — upstream. Ahead of the pinned 0.8.4 in places; the version-pinned reference in `.claude/skills/aoe2-scenario-parser/` calls out the divergences.
 - [Castle Blood Automatic — Age of Empires Wiki](https://ageofempires.fandom.com/wiki/Castle_Blood_Automatic) — background on the scenario family this repo is aimed at.

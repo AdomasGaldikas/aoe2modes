@@ -1,78 +1,195 @@
-# CBA Hero Reforged — Evolution Alpha
+# CBA Hero: Ascendants v1.0.3
 
-The AI-improved variant of [`big_ytri`](../big_ytri/), decompiled to Python. Same
-144×144 arena, a third fewer triggers, and the kill/death bookkeeping moved off the
-trigger ladder and onto real trigger variables.
-
-Original authors: **Big_Ytri** (baseline), Reforged (improvement passes).
-
-Tracking source: `CBA Hero Reforged Evolution Alpha v0.12.0.aoe2scenario`. When a newer
-alpha lands, replace `base.aoe2scenario`, re-run `aoe2modes decompile --mode
-evolution_alpha`, and bump `mode.version`.
+An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
+equal territory geometry, predictable automatic movement, and complete
+runtime-player ownership. Ascendants keeps the familiar automatic-army foundation
+while making every color, route, reward, and late-game system work as one coherent game.
 
 ## Shape
 
-| | big_ytri | evolution_alpha v0.12.0 |
+| | Baseline | Ascendants v1.0.3 |
 | --- | --- | --- |
-| Triggers | 2993 | 2029 |
-| Conditions | 3314 | 2481 |
-| Effects | 7814 | 7203 |
-| Trigger variables | 0 | 16 |
-| Kill-threshold triggers | 1651 (55%) | 404 (19%) |
-| Units | 1123 | 1311 |
-| Terrain runs | 2132 | 2576 |
+| Triggers | 2,993 | 3,326 |
+| Conditions | 3,314 | 6,805 |
+| Effects | 7,814 | 7,253 |
+| Units | 1,123 | 1,084 |
+| Runtime variables | 0 | 81 |
 | Scenario version | v1.51 | v1.58 |
 
 ## What changed from the baseline
 
-The interesting half is the **variable-backed K/D overlay**, which is what buys the
-trigger reduction. 16 variables — `kills_p1`/`deaths_p1` … `kills_p8`/`deaths_p8`, ids
-1–16 — are fed by a looping `K/D Update P#` trigger per player using
-`modify_variable_by_resource` on the kills and losses tallies, and rendered by a
-`K/D Row P#` trigger whose objective text is `P#  K: <Variable n>   D: <Variable n+1>`.
-`Occupied Slot P#` gates each pair on the slot actually being taken, so an 8-player
-overlay collapses cleanly in a smaller lobby. That is 404 kill-threshold triggers where
-the baseline needed 1651.
+The original unit waves, civilization pacing, hero milestones, builder thresholds,
+center rewards, and two-team structure remain intact. The release replaces brittle
+fixed-slot behavior with guarded color-to-runtime mappings, corrects map and trigger
+geometry, removes obsolete destructive strips, and throttles every active or
+activatable loop.
 
-The other structural change is economic: the baseline's `resources (p#)` / `res (p#)`
-grants are gone, replaced by **`Free Costs P#`** — one 115-effect trigger per player
-that zeroes the resource pools and rewrites unit costs directly with
-`change_object_cost`. This is why `[players.resources]` is absent from `mode.toml`: the
-players genuinely start on nothing.
+## Flexible lobbies
 
-### Since the previous alpha in this repo
+The map exposes all eight colors and permits arbitrary closed slots. Blue, Red, Green,
+and Yellow are locked to one side; Teal, Purple, Gray, and Orange are locked to the
+other. At least one occupied color is required on each side.
 
-Against the alpha that was here before (1988 triggers), a name-and-shape signature diff
-reports 1923 unchanged, 65 removed and 106 added signatures — the `Free Costs P#`
-family and the K/D variable machinery arriving, the old `resources`/`res` grants
-leaving, and `castle (p#)` picking up a fifth effect.
+Fixed-number closed-slot cleanup is disabled in favor of the runtime-player resolver.
+Vote-kick requires two occupied teammates to delete their matching vote markers.
+Each marker is checked against its color's resolved runtime owner; no ownerless
+wildcard checks remain. A target and both voters must be active, which disables further kicking once a
+side has fewer than three remaining colors. Runtime-player resolver triggers defeat
+the intended color even when DE compacts a sparse lobby. The scenario's locked color diplomacy keeps
+P1-P4 opposed to P5-P8 without overwriting compacted runtime players. Custom
+color-side victory also replaces Conquest: losing all four Castles activates only the
+resolver mapped to that color's real runtime player, and a side wins only when every
+opposing occupied color has been eliminated. Closed colors cannot satisfy either a
+defeat or victory resolver. Resolution remains locked until both sides are confirmed
+present through the color-to-runtime mapping. Defeat also
+independently requires zero Castles in the color's objective row, preventing stale
+references from ending a live match. The scoreboard and resource systems do not touch a slot
+until an occupied-player gate confirms it is present.
 
-A plain `aoe2modes diff` against `big_ytri`'s base file is much noisier than the counts
-above suggest, because the author tag in the trigger names changed from `By: Milhao` to
-`By: System` across hundreds of triggers and a name-based signature counts every one of
-those as a remove plus an add.
+## Color-aware army spawning
 
-## Variable ids collide with `lib/variables`
+DE compacts sparse lobbies into consecutive runtime player numbers. For example,
+Teal/P5 becomes runtime P2 when only Blue and Teal are occupied. The legacy army
+loops used the color slot as the runtime player, leaving Teal without its Dravidian
+Urumi waves. Ascendants now detects the runtime owner directly from each color's
+fixed Castle row, then spawns that civilization's original unit at the correct color
+territory with the original population cap and interval. Runtime-owner move
+triggers send those waves out of the matching base. The 472 duplicate static army
+loops remain present only as disabled, empty compatibility targets.
 
-`lib/variables.SHARED` hands out ids 0–2 for the XS bridge (`wave`, `wave_size`,
-`match_seconds`), and this mode occupies 1–16. They do not clash today because
-`build.py` never calls `variables.declare`. If you add XS to this mode, allocate its
-ids above 16 rather than reusing the shared block — `add_variable` raises on a
-duplicate id, so the build will tell you, but only after you have written the XS side.
+The same territory/runtime mapping now covers the automatic Feudal upgrade package.
+Builder rewards use a separate color-indexed queue: XS resolves the selected color's
+runtime civilization and razing total, then the matching color trigger creates the
+villagers in its own base. A persistent color/runtime-aware movement pass catches
+each new pair on the next tick and parks one builder at each protected side of the
+Castle row, away from the automatic army lane. Each civilization keeps its original one-to-four-raze
+threshold; the first pair arrives at that threshold and every later razing earns
+another pair. A short local chat line at match start states the player's civilization
+and first-builder threshold. The two-second Bombard Tower grant is forced for every
+runtime player so the free tower is reliably available once a builder is earned.
+
+Kill heroes are color-aware as well. Every 200/400/600/800/1000/2000 milestone reads
+the occupied color's resolved runtime player, creates the correct hero on an empty
+mirrored grass tile, and applies that color's selected short/medium/long order. This
+keeps Teal and Purple clear of the compact rear walls and makes the complete ladder
+work identically for all eight colors in both full and sparse lobbies.
+
+The 3500- and 5000-kill Genghis reinforcements use the same mapping and corrected
+spawn lane, including the Hero Spawn Open fallback. Center-control kills and
+Trebuchet rewards now belong to the actual runtime player for each selected color.
+The Goth Elite Huskarl Palisade bonus uses one clear transformed twelve-wall row in
+every territory, and the Anarchy Barracks restriction remains active until Imperial
+Age for both full and compact lobbies.
+
+## Compact combat HUD
+
+The full Objectives overlay is disabled. A native compact HUD list on the right shows
+P1 through P8 vertically under fixed `P# | K | D | R` headings (kills, deaths, and
+buildings razed), with one small divider between the two teams, so it no longer covers
+the battle in the middle of the screen. XS maps each selected color to its
+compacted runtime player and publishes the live counters through short named trigger
+variables. Empty colors show dashes, occupied colors show values, and player nicknames
+remain unchanged. The list uses plain text without color markup or printed newline
+markers.
+
+All players start with zero food, wood, gold, and stone; occupied-slot loops keep all
+four stockpiles at zero. Research, repairs, and every unit or building are free. At
+startup, XS walks every runtime player's complete data-object and technology tables
+and sets all four purchase costs to zero. This changes cost only, preserving existing
+availability, prerequisites, and unlock timing—including buildings introduced by new
+game updates. This also keeps the villager reward unlocked after the first razing
+useful. The K/D HUD remains the canonical
+combat result because zero-cost units no longer contribute their normal resource
+value to DE's built-in score. The runtime-player loop also clears exploration,
+technology, tribute, stockpile, and standing unit/building value from native score;
+this is important in sparse lobbies, where selected colors are renumbered and fixed
+slot equalizers cannot safely address P5-P8. Combat value is therefore republished
+from kills, deaths, razings, and buildings lost, allowing the result screen to
+calculate a useful combat score and MVP without reintroducing economy score. The villager-reward chain
+uses hidden trigger variables instead of spending the real razings counter, so the
+post-game `Buildings Razed` statistic remains accurate. The old 100,000-resource
+tribute triggers remain disabled, removing their economy and tribute-score inflation.
+
+## Corrected V2 symmetric map
+
+Terrain and player-owned objects derive from the Structure-Aware Symmetry V2
+workbook, with later gameplay corrections versioned in code. P3's complete territory
+is the canonical template; the build
+rotates or reflects that sector into all eight color positions. The result has equal
+mirrored base geometry, including Castles, gates, spawn lanes, builders, technology
+buildings, defensive structures, land, and water.
+
+The workbook's original object table placed 20 gates sideways and filled or detached
+the four allied side-gate openings. The corrected build transforms gates and straight
+wall artwork by their physical map axis and keeps four guarded teammate openings clear.
+Each route-facing corner replaces exactly four wall cells with its allied gate opening;
+that deliberate passage is the only wall-count difference between sectors and does not
+reduce the enclosed Castle footprint.
+The confusing legacy cliff artwork is removed. Each territory instead receives the
+same transformed continuous rear wall, exactly two buildable rear rows, outer water strip,
+and three-tile technology path. Winter terrain is replaced globally: territories and
+paths use buildable grass, while former icy shore transitions use sand. Legacy
+wall cleanup stops before them so last-ditch defenses remain available. The obsolete
+`no wall` cleanup family is disabled so it
+cannot erase the side walls of Red, Teal, Purple, or Orange at match start. The map has
+1,084 total objects; every added wall is attached to its owner's anti-delete protection.
+The broad outer aprons at all four allied team corners are cut back to matching
+five-tile L routes. The straight allied causeways at the top and bottom are four tiles
+wide, matching their gate openings. The corresponding left and right corridors remain
+water because those colors are enemies, so the team routes do not create a side bypass.
+
+Army movement areas and destinations, hay markers, hero selectors, wall-cleanup
+regions, Castle checks, builder rewards, and Blacksmith upgrade areas are transformed
+with the map. King and relic-selector references are pinned explicitly so triggers
+cannot exchange two visually similar objects. Every King destination uses the same
+transformed island-corner area, so Blue's King Sancho and all seven mirrored Kings
+activate their reward reliably. Every white counter King is named for its color and
+shows that color's exact live kills as its sword/attack value, using the same runtime
+value as the combat HUD. Regression
+tests also require the team
+routes to be land, the enemy sides to remain water, every technology path to remain
+dry, and every gate and straight wall to follow its physical wall axis. Vote flags
+now stand in parallel rows beside their matching Outposts, and the edge-island Relics,
+Rugs, and King ornaments are aligned to their existing symmetric ground tiles.
+Kinging also uses one mirrored six-cannon layout: every cannon appears on ground,
+clear of the perimeter walls, and inside its matching health and attack buff area.
+Rear Bombard Towers sit against the wall and gate rather than the Castle footprint.
+Builder rewards appear on the center of the technology causeway between two dedicated
+flags, then move automatically into the two side pockets beside the Castles.
+Each front gate also has the same compact mirrored ground marker, with a different
+grass, sand, dirt, or road tint for each player color.
+Automatic armies spawn one tile nearer the arena wall. Movement triggers watch a
+three-by-three area around every spawn point, and the Short, Medium, and Long relic
+selectors now control compacted-color players as well as their original slots. Every
+army, hero, and builder task uses an explicit move action so newly created units leave
+their spawn pads reliably. Legacy ice decorations are removed as objects as well as
+terrain, leaving the surrounding shore buildable. Each color has its own stationary
+Transport Ship beside the separate milestone-hero spawn (Robin Hood, Theodoric, and
+later kill rewards); the ship cannot be selected, moved, deleted, targeted, or damaged.
+When Hero Spawn is Open, a dedicated fallback continuously sends milestone heroes
+from the shoreline pad toward the Medium staging position inside the base. Packed and
+unpacked Trebuchets are disabled
+for every player, so Castles
+cannot train them while scripted rewards can still create their intended units.
+
+Version 1.0.3 replaces the obsolete hidden distance-selector object with a movable
+Sheep for every color. It has no trade, build, attack, or population side effects and
+cannot be deleted. All five selector rugs are persistent: choosing Hero Spawn Open
+removes the blocker without ordering the selector back to the center. The same release
+also restores P2/P3 HUD and spawn updates through Castle-verified runtime ownership
+and removes every object owned by a successfully vote-kicked player.
 
 ## Source of truth
 
-`build.py` calls `generated.apply(ctx)`; everything lives under `generated/`.
-`base.aoe2scenario` is kept only as `scenario.reference`:
+`build.py` starts with `generated.apply(ctx)`, applies the gameplay compatibility
+passes, then runs `v2_map.py` and its trigger-geometry remap. `base.aoe2scenario` is
+kept as the decompiled legacy reference. Since this mode deliberately changes that
+reference, release validation uses the test suite, deterministic rebuilds, and the
+focused V2 structural checks:
 
 ```
-aoe2modes verify evolution_alpha
+make check-ascendants
 ```
-
-That compares 89,977 fields and must report `MATCH`, with no version gap — the original
-is already v1.58, so both sides have the same field set. This mode is therefore also the
-fidelity test for the decompiler itself (`tests/test_decompile.py`), since it needs no
-cross-version handling.
 
 ## Editing
 
@@ -83,5 +200,5 @@ overrides anything. Structural changes go in `generated/`, but
 ## Build
 
 ```
-aoe2modes build evolution_alpha --deploy
+.venv/bin/aoe2modes build evolution_alpha --deploy
 ```

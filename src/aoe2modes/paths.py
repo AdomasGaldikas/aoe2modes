@@ -60,6 +60,9 @@ def _profile_roots() -> list[Path]:
     # Linux — the game runs through Proton, so the profile lives inside the prefix.
     prefix_users = [
         home / ".steam/steam/steamapps/compatdata" / AOE2_STEAM_APP_ID / "pfx/drive_c/users",
+        home / ".steam/debian-installation/steamapps/compatdata"
+        / AOE2_STEAM_APP_ID
+        / "pfx/drive_c/users",
         home / ".local/share/Steam/steamapps/compatdata" / AOE2_STEAM_APP_ID / "pfx/drive_c/users",
     ]
     roots: list[Path] = []
@@ -78,13 +81,31 @@ def find_game_scenario_dir() -> Path | None:
     if override:
         return Path(override).expanduser()
 
+    candidates: dict[Path, tuple[int, float]] = {}
     for profile in _profile_roots():
         de_dir = profile / "Games" / "Age of Empires 2 DE"
         if not de_dir.is_dir():
             continue
-        # The profile folder is the numeric Steam ID; pick the one that actually has scenarios.
-        for user_dir in sorted(de_dir.iterdir()):
+        for user_dir in de_dir.iterdir():
             scenario_dir = user_dir / "resources" / "_common" / "scenario"
-            if scenario_dir.is_dir():
-                return scenario_dir
-    return None
+            if not scenario_dir.is_dir():
+                continue
+
+            # DE also creates a fallback profile named ``0``. Prefer a real numeric
+            # Steam profile, then the profile whose scenario folder was used most
+            # recently. This avoids silently deploying to an unused fallback account.
+            if user_dir.name.isdigit() and user_dir.name != "0":
+                profile_priority = 0
+            elif user_dir.name != "0":
+                profile_priority = 1
+            else:
+                profile_priority = 2
+            resolved = scenario_dir.resolve()
+            candidates[resolved] = min(
+                candidates.get(resolved, (profile_priority, float("inf"))),
+                (profile_priority, -scenario_dir.stat().st_mtime),
+            )
+
+    if not candidates:
+        return None
+    return min(candidates, key=lambda path: (*candidates[path], str(path)))

@@ -3570,9 +3570,6 @@ def emit(tm) -> None:
     t.new_effect.disable_object_deletion(selected_object_ids=[22926])
     t.new_effect.disable_object_deletion(selected_object_ids=[90055])
     t.new_effect.disable_object_deletion(selected_object_ids=[90056])
-    t.new_effect.disable_object_deletion(
-        selected_object_ids=[109743, 109747, 109748, 109749, 109750, 109751, 109752, 109753, 109754, 109755, 109756, 109757, 109758, 109759, 109760, 109761, 109762, 109763, 109764, 109765],
-    )
 
     # --- #1665  Antidelete P2   [display 1665]
     t = tm.add_trigger('Antidelete P2', description_stid=0, short_description_stid=0)
@@ -3588,10 +3585,6 @@ def emit(tm) -> None:
     t.new_effect.disable_object_deletion(source_player=PlayerId.TWO, selected_object_ids=[23081])
     t.new_effect.disable_object_deletion(source_player=PlayerId.TWO, selected_object_ids=[90061])
     t.new_effect.disable_object_deletion(source_player=PlayerId.TWO, selected_object_ids=[90062])
-    t.new_effect.disable_object_deletion(
-        source_player=PlayerId.TWO,
-        selected_object_ids=[109744, 109766, 109767, 109768, 109769, 109770, 109771, 109772, 109773, 109774, 109775, 109776, 109777, 109778, 109779, 109780, 109781, 109782, 109783, 109784],
-    )
 
     # --- #1666  Antidelete P3   [display 1666]
     t = tm.add_trigger('Antidelete P3', description_stid=0, short_description_stid=0)
@@ -3607,10 +3600,6 @@ def emit(tm) -> None:
     t.new_effect.disable_object_deletion(source_player=PlayerId.THREE, selected_object_ids=[23653])
     t.new_effect.disable_object_deletion(source_player=PlayerId.THREE, selected_object_ids=[90064])
     t.new_effect.disable_object_deletion(source_player=PlayerId.THREE, selected_object_ids=[90065])
-    t.new_effect.disable_object_deletion(
-        source_player=PlayerId.THREE,
-        selected_object_ids=[109785, 109786, 109787, 109788, 109789, 109790, 109791, 109792, 109793, 109794, 109795, 109796, 109797, 109798, 109799, 109800, 109801, 109802, 109803],
-    )
 
     # --- #1667  Antidelete P4   [display 1667]
     t = tm.add_trigger('Antidelete P4', description_stid=0, short_description_stid=0)
@@ -3626,10 +3615,6 @@ def emit(tm) -> None:
     t.new_effect.disable_object_deletion(source_player=PlayerId.FOUR, selected_object_ids=[23633])
     t.new_effect.disable_object_deletion(source_player=PlayerId.FOUR, selected_object_ids=[90070])
     t.new_effect.disable_object_deletion(source_player=PlayerId.FOUR, selected_object_ids=[90071])
-    t.new_effect.disable_object_deletion(
-        source_player=PlayerId.FOUR,
-        selected_object_ids=[109804, 109805, 109806, 109807, 109808, 109809, 109810, 109811, 109812, 109813, 109814, 109815, 109816, 109817, 109818, 109819, 109820, 109821, 109822],
-    )
 
     # --- #1668  Antidelete P5   [display 1668]
     t = tm.add_trigger('Antidelete P5', description_stid=0, short_description_stid=0)
@@ -3645,10 +3630,6 @@ def emit(tm) -> None:
     t.new_effect.disable_object_deletion(source_player=PlayerId.FIVE, selected_object_ids=[23647])
     t.new_effect.disable_object_deletion(source_player=PlayerId.FIVE, selected_object_ids=[90076])
     t.new_effect.disable_object_deletion(source_player=PlayerId.FIVE, selected_object_ids=[78285])
-    t.new_effect.disable_object_deletion(
-        source_player=PlayerId.FIVE,
-        selected_object_ids=[109823, 109824, 109825, 109826, 109827, 109828, 109829, 109830, 109831, 109832, 109833, 109834, 109835, 109836, 109837, 109838, 109839, 109840, 109841],
-    )
 
     # --- #1669  Antidelete P6   [display 1669]
     t = tm.add_trigger('Antidelete P6', description_stid=0, short_description_stid=0)
@@ -3664,10 +3645,6 @@ def emit(tm) -> None:
     t.new_effect.disable_object_deletion(source_player=PlayerId.SIX, selected_object_ids=[23634])
     t.new_effect.disable_object_deletion(source_player=PlayerId.SIX, selected_object_ids=[90085])
     t.new_effect.disable_object_deletion(source_player=PlayerId.SIX, selected_object_ids=[90086])
-    t.new_effect.disable_object_deletion(
-        source_player=PlayerId.SIX,
-        selected_object_ids=[109842, 109843, 109844, 109845, 109846, 109847, 109848, 109849, 109850, 109851, 109852, 109853, 109854, 109855, 109856, 109857, 109858, 109859, 109860],
-    )
 
     # --- #1670  Antidelete P7   [display 1670]
     t = tm.add_trigger('Antidelete P7', description_stid=0, short_description_stid=0)
@@ -3683,10 +3660,6 @@ def emit(tm) -> None:
     t.new_effect.disable_object_deletion(source_player=PlayerId.SEVEN, selected_object_ids=[39500])
     t.new_effect.disable_object_deletion(source_player=PlayerId.SEVEN, selected_object_ids=[90088])
     t.new_effect.disable_object_deletion(source_player=PlayerId.SEVEN, selected_object_ids=[90089])
-    t.new_effect.disable_object_deletion(
-        source_player=PlayerId.SEVEN,
-        selected_object_ids=[109745, 109861, 109862, 109863, 109864, 109865, 109866, 109867, 109868, 109869, 109870, 109871, 109872, 109873, 109874, 109875, 109876, 109877, 109878, 109879],
-    )
 
     # --- #1671  Antidelete P8   [display 1671]
     t = tm.add_trigger('Antidelete P8', description_stid=0, short_description_stid=0)
@@ -3702,10 +3675,6 @@ def emit(tm) -> None:
     t.new_effect.disable_object_deletion(source_player=PlayerId.EIGHT, selected_object_ids=[23638])
     t.new_effect.disable_object_deletion(source_player=PlayerId.EIGHT, selected_object_ids=[90094])
     t.new_effect.disable_object_deletion(source_player=PlayerId.EIGHT, selected_object_ids=[90095])
-    t.new_effect.disable_object_deletion(
-        source_player=PlayerId.EIGHT,
-        selected_object_ids=[109746, 109880, 109881, 109882, 109883, 109884, 109885, 109886, 109887, 109888, 109889, 109890, 109891, 109892, 109893, 109894, 109895, 109896, 109897, 109898],
-    )
 
     # --- #1672  Elimina Walls P1   [display 1672]
     t = tm.add_trigger('Elimina Walls P1', description_stid=0, short_description_stid=0)
@@ -4563,82 +4532,549 @@ def emit(tm) -> None:
     t = tm.add_trigger('-- Vote Kick', description_stid=0, short_description_stid=0)
 
     # --- #1723  VoteKickP1-P2-P4   [display 1723]
-    t = tm.add_trigger('VoteKickP1-P2-P4', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP1-P2-P4', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FOUR,
+        area_x1=142,
+        area_y1=31,
+        area_x2=142,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.TWO,
+        area_x1=108,
+        area_y1=0,
+        area_x2=108,
+        area_y2=0,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1753)
 
     # --- #1724  VoteKickP1-P3-P4   [display 1724]
-    t = tm.add_trigger('VoteKickP1-P3-P4', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP1-P3-P4', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FOUR,
+        area_x1=142,
+        area_y1=31,
+        area_x2=142,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.THREE,
+        area_x1=0,
+        area_y1=31,
+        area_x2=0,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1753)
 
     # --- #1725  VoteKickP1-P3-P2   [display 1725]
-    t = tm.add_trigger('VoteKickP1-P3-P2', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP1-P3-P2', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.TWO,
+        area_x1=108,
+        area_y1=0,
+        area_x2=108,
+        area_y2=0,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.THREE,
+        area_x1=0,
+        area_y1=31,
+        area_x2=0,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1753)
 
     # --- #1726  VoteKickP2-P1-P3   [display 1726]
-    t = tm.add_trigger('VoteKickP2-P1-P3', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP2-P1-P3', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(quantity=1, object_list=598, area_x1=33, area_y1=0, area_x2=33, area_y2=0, inverted=1)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.THREE,
+        area_x1=1,
+        area_y1=31,
+        area_x2=1,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1747)
 
     # --- #1727  VoteKickP2-P1-P4   [display 1727]
-    t = tm.add_trigger('VoteKickP2-P1-P4', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP2-P1-P4', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(quantity=1, object_list=598, area_x1=33, area_y1=0, area_x2=33, area_y2=0, inverted=1)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FOUR,
+        area_x1=143,
+        area_y1=31,
+        area_x2=143,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1747)
 
     # --- #1728  VoteKickP2-P3-P4   [display 1728]
-    t = tm.add_trigger('VoteKickP2-P3-P4', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP2-P3-P4', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.THREE,
+        area_x1=1,
+        area_y1=31,
+        area_x2=1,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FOUR,
+        area_x1=143,
+        area_y1=31,
+        area_x2=143,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1747)
 
     # --- #1729  VoteKickP3-P1-P2   [display 1729]
-    t = tm.add_trigger('VoteKickP3-P1-P2', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP3-P1-P2', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(quantity=1, object_list=598, area_x1=32, area_y1=0, area_x2=32, area_y2=0, inverted=1)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.TWO,
+        area_x1=107,
+        area_y1=0,
+        area_x2=107,
+        area_y2=0,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1748)
 
     # --- #1730  VoteKickP3-P1-P4   [display 1730]
-    t = tm.add_trigger('VoteKickP3-P1-P4', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP3-P1-P4', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(quantity=1, object_list=598, area_x1=32, area_y1=0, area_x2=32, area_y2=0, inverted=1)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FOUR,
+        area_x1=141,
+        area_y1=31,
+        area_x2=141,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1748)
 
     # --- #1731  VoteKickP3-P2-P4   [display 1731]
-    t = tm.add_trigger('VoteKickP3-P2-P4', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP3-P2-P4', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.TWO,
+        area_x1=107,
+        area_y1=0,
+        area_x2=107,
+        area_y2=0,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FOUR,
+        area_x1=141,
+        area_y1=31,
+        area_x2=141,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1748)
 
     # --- #1732  VoteKickP4-P1-P3   [display 1732]
-    t = tm.add_trigger('VoteKickP4-P1-P3', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP4-P1-P3', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(quantity=1, object_list=598, area_x1=34, area_y1=0, area_x2=34, area_y2=0, inverted=1)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.THREE,
+        area_x1=2,
+        area_y1=31,
+        area_x2=2,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1749)
 
     # --- #1733  VoteKickP4-P1-P2   [display 1733]
-    t = tm.add_trigger('VoteKickP4-P1-P2', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP4-P1-P2', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(quantity=1, object_list=598, area_x1=34, area_y1=0, area_x2=34, area_y2=0, inverted=1)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.TWO,
+        area_x1=109,
+        area_y1=0,
+        area_x2=109,
+        area_y2=0,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1749)
 
     # --- #1734  VoteKickP4-P3-P2   [display 1734]
-    t = tm.add_trigger('VoteKickP4-P3-P2', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP4-P3-P2', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.THREE,
+        area_x1=2,
+        area_y1=31,
+        area_x2=2,
+        area_y2=31,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.TWO,
+        area_x1=109,
+        area_y1=0,
+        area_x2=109,
+        area_y2=0,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1749)
 
     # --- #1735  VoteKickP5-P6-P7   [display 1735]
-    t = tm.add_trigger('VoteKickP5-P6-P7', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP5-P6-P7', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SIX,
+        area_x1=141,
+        area_y1=107,
+        area_x2=141,
+        area_y2=107,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SEVEN,
+        area_x1=30,
+        area_y1=142,
+        area_x2=30,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1750)
 
     # --- #1736  VoteKickP5-P6-P8   [display 1736]
-    t = tm.add_trigger('VoteKickP5-P6-P8', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP5-P6-P8', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SIX,
+        area_x1=141,
+        area_y1=107,
+        area_x2=141,
+        area_y2=107,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.EIGHT,
+        area_x1=103,
+        area_y1=142,
+        area_x2=103,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1750)
 
     # --- #1737  VoteKickP5-P7-P8   [display 1737]
-    t = tm.add_trigger('VoteKickP5-P7-P8', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP5-P7-P8', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SEVEN,
+        area_x1=30,
+        area_y1=142,
+        area_x2=30,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.EIGHT,
+        area_x1=103,
+        area_y1=142,
+        area_x2=103,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1750)
 
     # --- #1738  VoteKickP6-P5-P7   [display 1738]
-    t = tm.add_trigger('VoteKickP6-P5-P7', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP6-P5-P7', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FIVE,
+        area_x1=2,
+        area_y1=111,
+        area_x2=2,
+        area_y2=111,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SEVEN,
+        area_x1=32,
+        area_y1=142,
+        area_x2=32,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1751)
 
     # --- #1739  VoteKickP6-P5-P8   [display 1739]
-    t = tm.add_trigger('VoteKickP6-P5-P8', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP6-P5-P8', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FIVE,
+        area_x1=2,
+        area_y1=111,
+        area_x2=2,
+        area_y2=111,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.EIGHT,
+        area_x1=105,
+        area_y1=142,
+        area_x2=105,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1751)
 
     # --- #1740  VoteKickP6-P7-P8   [display 1740]
-    t = tm.add_trigger('VoteKickP6-P7-P8', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP6-P7-P8', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SEVEN,
+        area_x1=32,
+        area_y1=142,
+        area_x2=32,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.EIGHT,
+        area_x1=105,
+        area_y1=142,
+        area_x2=105,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1751)
 
     # --- #1741  VoteKickP7-P5-P6   [display 1741]
-    t = tm.add_trigger('VoteKickP7-P5-P6', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP7-P5-P6', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FIVE,
+        area_x1=0,
+        area_y1=111,
+        area_x2=0,
+        area_y2=111,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SIX,
+        area_x1=142,
+        area_y1=107,
+        area_x2=142,
+        area_y2=107,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1752)
 
     # --- #1742  VoteKickP7-P5-P8   [display 1742]
-    t = tm.add_trigger('VoteKickP7-P5-P8', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP7-P5-P8', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FIVE,
+        area_x1=0,
+        area_y1=111,
+        area_x2=0,
+        area_y2=111,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.EIGHT,
+        area_x1=104,
+        area_y1=142,
+        area_x2=104,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1752)
 
     # --- #1743  VoteKickP7-P6-P8   [display 1743]
-    t = tm.add_trigger('VoteKickP7-P6-P8', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP7-P6-P8', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SIX,
+        area_x1=142,
+        area_y1=107,
+        area_x2=142,
+        area_y2=107,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.EIGHT,
+        area_x1=104,
+        area_y1=142,
+        area_x2=104,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1752)
 
     # --- #1744  VoteKickP8-P5-P6   [display 1744]
-    t = tm.add_trigger('VoteKickP8-P5-P6', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP8-P5-P6', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FIVE,
+        area_x1=1,
+        area_y1=111,
+        area_x2=1,
+        area_y2=111,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SIX,
+        area_x1=143,
+        area_y1=107,
+        area_x2=143,
+        area_y2=107,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1754)
 
     # --- #1745  VoteKickP8-P5-P7   [display 1745]
-    t = tm.add_trigger('VoteKickP8-P5-P7', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP8-P5-P7', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.FIVE,
+        area_x1=1,
+        area_y1=111,
+        area_x2=1,
+        area_y2=111,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SEVEN,
+        area_x1=31,
+        area_y1=142,
+        area_x2=31,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1754)
 
     # --- #1746  VoteKickP8-P6-P7   [display 1746]
-    t = tm.add_trigger('VoteKickP8-P6-P7', description_stid=0, short_description_stid=0, enabled=0)
+    t = tm.add_trigger('VoteKickP8-P6-P7', description_stid=0, short_description_stid=0)
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SIX,
+        area_x1=143,
+        area_y1=107,
+        area_x2=143,
+        area_y2=107,
+        inverted=1,
+    )
+    t.new_condition.objects_in_area(
+        quantity=1,
+        object_list=598,
+        source_player=PlayerId.SEVEN,
+        area_x1=31,
+        area_y1=142,
+        area_x2=31,
+        area_y2=142,
+        inverted=1,
+    )
+    t.new_effect.activate_trigger(trigger_id=1754)
 
     # --- #1747  Kick P2   [display 1748]
     t = tm.add_trigger('Kick P2', description_stid=0, short_description_stid=0, enabled=0)
+    t.new_effect.display_instructions(source_player=PlayerId.EIGHT, message='RED has been Vote-Kicked!!', use_tag_color_for_icon=1)
+    t.new_effect.declare_victory(source_player=PlayerId.TWO, enabled=0)
+    t.new_effect.disable_object_deletion(source_player=PlayerId.TWO, area_x1=107, area_y1=0, area_x2=109, area_y2=0)
 
     # --- #1748  Kick P3   [display 1749]
     t = tm.add_trigger('Kick P3', description_stid=0, short_description_stid=0, enabled=0)
+    t.new_effect.display_instructions(
+        source_player=PlayerId.EIGHT,
+        message='GREEN has been Vote-Kicked!!',
+        use_tag_color_for_icon=1,
+    )
+    t.new_effect.declare_victory(source_player=PlayerId.THREE, enabled=0)
+    t.new_effect.disable_object_deletion(source_player=PlayerId.THREE, area_x1=0, area_y1=31, area_x2=2, area_y2=31)
 
     # --- #1749  Kick P4   [display 1750]
     t = tm.add_trigger('Kick P4', description_stid=0, short_description_stid=0, enabled=0)
+    t.new_effect.display_instructions(
+        source_player=PlayerId.EIGHT,
+        message='YELLOW has been Vote-Kicked!!',
+        use_tag_color_for_icon=1,
+    )
+    t.new_effect.declare_victory(source_player=PlayerId.FOUR, enabled=0)
+    t.new_effect.disable_object_deletion(source_player=PlayerId.FOUR, area_x1=141, area_y1=31, area_x2=143, area_y2=31)

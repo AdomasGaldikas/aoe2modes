@@ -1,18 +1,16 @@
 [mode]
 id = "evolution_alpha"
-name = "CBA Hero Reforged Evolution Alpha"
-version = "0.12.0"
-description = "AI-improved variant of Big_Ytri's Royal 4v4 — 2029 triggers backed by 16 kill/death variables instead of a hand-copied counter ladder."
-authors = ["Big_Ytri (original)", "reforged"]
-tags = ["cba", "hero", "4v4", "reforged"]
+name = "CBA Hero Ascendants"
+version = "1.0.3"
+description = "A complete CBA Hero arena with automatic armies, six hero tiers, free building and research, protected team routes, live K/D/R, center rewards, and team vote-kicks."
+authors = []
+tags = ["cba", "hero", "arena", "4v4"]
 
 [scenario]
 # No `base`: this mode is built from code in generated/, starting from a blank
-# scenario. `reference` is the original it was decompiled from — `aoe2modes verify
-# evolution_alpha` rebuilds and diffs against it.
+# scenario. `reference` is the original it was decompiled from. The final public
+# build intentionally differs; use `make check-ascendants` for both verification layers.
 reference = "base.aoe2scenario"
-# The v0.12.0 source is already v1.58, so unlike big_ytri there is no version gap
-# between the original and the rebuild — `verify` reports zero version-only fields.
 version = "1.58"
 filename = "{name} v{version}"
 
