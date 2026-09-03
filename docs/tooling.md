@@ -150,7 +150,7 @@ eight starting positions are really equivalent. `aoe2modes map` measures that ha
 
 ```
 aoe2modes map evolution_alpha --html dist/ascendants-map.html
-aoe2modes map "dist/CBA Hero Ascendants v1.0.11.aoe2scenario" --png map.png --zones --scale 8
+aoe2modes map "dist/CBA Hero Ascendants v1.0.12.aoe2scenario" --png map.png --zones --scale 8
 ```
 
 The report is one self-contained HTML file — both renders inlined as data URIs, no assets

@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.11
+# CBA Hero: Ascendants v1.0.12
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,11 +7,11 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.11 |
+| | Baseline | Ascendants v1.0.12 |
 | --- | --- | --- |
-| Triggers | 2,993 | 3,383 |
-| Conditions | 3,314 | 11,640 |
-| Effects | 7,814 | 10,871 |
+| Triggers | 2,993 | 3,319 |
+| Conditions | 3,314 | 11,384 |
+| Effects | 7,814 | 10,807 |
 | Units | 1,123 | 1,012 |
 | Runtime variables | 0 | 113 |
 | Scenario version | v1.51 | v1.58 |
@@ -91,9 +91,9 @@ work identically for all eight colors in both full and sparse lobbies.
 The 3500- and 5000-kill Genghis reinforcements use the same mapping and corrected
 spawn lane, including the Hero Spawn Open fallback. Center-control kills and
 Trebuchet rewards now belong to the actual runtime player for each selected color.
-The Goth Elite Huskarl Palisade bonus uses one clear transformed twelve-wall row in
-every territory, and the Anarchy Barracks restriction remains active until Imperial
-Age for both full and compact lobbies.
+The hidden Elite-Huskarl Palisade HP exception is removed entirely. The Goth Anarchy
+Barracks restriction remains active until Imperial Age for both full and compact
+lobbies.
 
 ## Compact combat HUD
 
@@ -150,8 +150,8 @@ wall cleanup stops before them so last-ditch defenses remain available. The obso
 cannot erase the side walls of Red, Teal, Purple, or Orange at match start. The map has
 1,012 total objects; every added wall is attached to its owner's anti-delete protection.
 The 56 submerged Palisade Walls and eight Saboteurs inherited as outer-corner staging
-art are absent; they had no gameplay references. This does not remove the separate
-trigger-created Goth Palisade reward inside a playable base.
+art are absent; they had no gameplay references. No trigger-created or trigger-buffed
+Palisade mechanic remains either.
 The broad outer aprons at all four allied team corners are cut back to matching
 five-tile L routes. The straight allied causeways at the top and bottom are four tiles
 wide, matching their gate openings. The corresponding left and right corridors remain
@@ -275,10 +275,17 @@ explicit Red/Green swap and a full eight-color rotation. This release also remov
 static corner Palisade Walls and eight static corner Saboteurs. The candidate has
 3,383 triggers, 1,012 objects, 11,640 conditions, 10,871 effects, and 113 variables.
 
+Version 1.0.12 removes the remaining hidden Goth Palisade mechanic. It previously
+waited for Elite Huskarl plus a designated row of 12 player-built Palisade Walls, then
+added 2,750 HP to that row. The eight imported triggers and the 64 shuffled-lobby
+replacements are absent, with no Palisade condition or effect remaining. Goth army,
+hero, civilization, and Anarchy Barracks behavior are unchanged. The candidate has
+3,319 triggers, 1,012 objects, 11,384 conditions, 10,807 effects, and 113 variables.
+
 ## Source of truth
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`: `dist/CBA Hero Ascendants v1.0.11.aoe2scenario` is a build
+`scenario.reference`: `dist/CBA Hero Ascendants v1.0.12.aoe2scenario` is a build
 product, and nothing here is verified back against a binary.
 
 `build.py` starts with `apply_scenario_source(ctx)` — the arena in `scenario/` — then

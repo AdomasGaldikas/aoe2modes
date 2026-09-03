@@ -1,20 +1,20 @@
-# Ascendants v1.0.11 candidate issue register
+# Ascendants v1.0.12 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.11** is the active source-verified candidate; v1.0.10 remains the
+repair targets. **v1.0.12** is the active source-verified candidate; v1.0.11 remains the
 immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.11 candidate is 125,040 bytes with SHA-256
-`d516f9d9c472c8f650d590830788e5f62f21e28666c7c51bdc99f245413394c5`.
+The v1.0.12 candidate is 123,686 bytes with SHA-256
+`b9096bf0140c4b1db87d9bbe37d2dafc20c1dd3ac0ab7bdc2f7899f12eb2622f`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.11 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.12 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -39,13 +39,14 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-021 | Anti-Trebuchet protection did not cover the Castles of P4, P6, P7, or P8. | Guarded in v1.0.9 | Both cleanup families now derive from one canonical P3 rectangle through an independent eight-way transform. Every color's anti-Trebuchet zone is one mirror orbit, covers all four of its Castles, and stays clear of its rear route. Effects remain restricted to an enemy player's packed Trebuchets. | Place an enemy packed Trebuchet beside each Castle row, especially P4/P6/P7/P8; it must be removed without affecting friendly rear-route units. |
 | ASC-022 | Milestone heroes could be turned back by the invisible spawn line after the player ordered them toward the Castles. | Guarded in v1.0.10 | All 192 Short/Medium/Long hero movers now require and consume one of eight hero-creation pulses. The six 200–2000 milestones and all three 3500/5000 Genghis loops arm that pulse only after creating a hero. | For every color and each route, return milestone and late Genghis heroes through the three hero spawn cells; later player orders must remain intact. |
 | ASC-023 | Raze-reward builders could have later orders overwritten when they returned across their creation pads. | Guarded in v1.0.10 | All 64 builder movers require and consume one of eight builder-creation pulses. Each reward arms the pulse after creating the pair, and only the resolved runtime owner can consume it once. | Earn a pair for every color orientation, let it auto-park, then move both villagers back across both spawn pads; they must obey the player. |
-| ASC-024 | Obsolete wooden walls and Saboteurs were visible in the outer map corners. | Resolved statically in v1.0.11 | Exactly 56 submerged static Palisade Walls and eight static Saboteurs are removed after assertions pin their types, counts, water terrain, and corner locations. Their 64 object references are absent from all conditions/effects. The independent trigger-created Goth Palisade reward remains. | Reveal all four corners and confirm no Palisade Wall or Saboteur remains; verify a Goth player can still receive the intended Palisade reward. |
+| ASC-024 | Obsolete wooden walls and Saboteurs were visible in the outer map corners. | Resolved statically in v1.0.11 | Exactly 56 submerged static Palisade Walls and eight static Saboteurs are removed after assertions pin their types, counts, water terrain, and corner locations. Their 64 object references are absent from all conditions/effects. | Reveal all four corners and confirm no Palisade Wall or Saboteur remains. |
+| ASC-025 | The hidden Goth Palisade HP mechanic is unnecessary and must not remain. | Resolved statically in v1.0.12 | The mechanic required Elite Huskarl plus 12 Palisade Walls in a fixed row, then added 2,750 HP. All eight imported triggers and 64 color/player replacements are absent. Tests reject every serialized Palisade condition/effect while preserving the separate Goth Anarchy/Barracks family. | As Goths, research Elite Huskarl and build Palisades near the Castle lane; they must retain ordinary game HP and receive no scenario bonus. |
 
 ## Additional parser findings
 
-The v1.0.11 candidate passes the strict structural audit with **0 errors and 0 warnings**:
+The v1.0.12 candidate passes the strict structural audit with **0 errors and 0 warnings**:
 
-- 3,383 uniquely named, non-empty triggers and a complete display order;
+- 3,319 uniquely named, non-empty triggers and a complete display order;
 - 1,012 unique object references, all on-map, with no dangling garrisons;
 - 113 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
@@ -62,7 +63,7 @@ ever changes.
 Run the same audit after every build:
 
 ```bash
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.11.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.12.aoe2scenario" --strict
 ```
 
 `--strict` passes too. The normal command fails only on structural errors; strict also
@@ -91,7 +92,8 @@ cases are recorded in-game.
 | Five Sheep controls | All eight colors, full and sparse | Short/Medium/Long route the next normal wave and every kill hero identically; Closed/Open add/remove the shore blocker without resetting the route; existing armies keep manual orders. |
 | Milestone shore | All eight colors | Buildings can be placed on the repaired strip; hero spawns and nearby water remain clear. |
 | Marker removal | All eight colors | No Transport Ship is present; milestone heroes still spawn and route normally. |
-| Corner cleanup | All four outer corners; include Goth once | No static Palisade Wall or Saboteur remains; the separate Goth Palisade reward still works. |
+| Corner cleanup | All four outer corners | No static Palisade Wall or Saboteur remains. |
+| Goth Palisade removal | Goths after Elite Huskarl | Player-built Palisades receive no hidden scenario HP bonus; Anarchy/Barracks progression still works. |
 | Resignation cleanup | Full and sparse | Every unit and building owned by the resigned runtime player disappears; other colors remain intact. |
 | Anti-Trebuchet parity | All eight colors | An enemy packed Trebuchet beside any Castle row is removed, including P4/P6/P7/P8; no friendly rear-route unit is touched. |
 

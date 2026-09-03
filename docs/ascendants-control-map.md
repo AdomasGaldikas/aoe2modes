@@ -1,6 +1,6 @@
 # Ascendants control and ownership map
 
-This is the exact v1.0.11 control manifest for CBA Hero: Ascendants. Coordinates are
+This is the exact v1.0.12 control manifest for CBA Hero: Ascendants. Coordinates are
 scenario cells unless shown with `.5`, which is an object position. Rectangle notation
 is `(x1,y1)–(x2,y2)`, inclusive. P1–P8 always mean the scenario player/color:
 Blue, Red, Green, Yellow, Teal, Purple, Gray, Orange.

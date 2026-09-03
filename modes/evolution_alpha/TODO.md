@@ -1,12 +1,22 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.11 source review. Most of it is closed in **v1.0.11**;
+Open work from the v1.0.7–v1.0.12 source review. Most of it is closed in **v1.0.12**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## Closed in v1.0.12
+
+### [x] F1 — hidden Goth Palisade HP exception was not wanted
+
+The legacy mechanic did not award or create walls: Elite Huskarl plus exactly 12
+player-built Palisade Walls in a designated row caused a 2,750 HP increase. The eight
+imported triggers and all 64 shuffled-lobby replacements are now absent. A regression
+rejects every Palisade-targeting condition/effect in the serialized scenario while
+retaining the independent Goth Anarchy/Barracks restriction.
 
 ## Closed in v1.0.11
 
@@ -32,7 +42,8 @@ an explicit Red/Green swap, and a full rotation. Exact control geometry is recor
 
 Exactly 56 submerged static Palisade Walls and eight static Saboteurs are removed from
 the outer corners. A regression pins their reference ids and proves no trigger refers
-to them. The separate trigger-created Goth Palisade reward remains intact.
+to them. The separate Goth Palisade HP trigger remained at this release point and is
+removed by v1.0.12 F1 above.
 
 ### [x] E4 — current artifact and issue documentation lagged the engine reports
 
@@ -161,7 +172,7 @@ baseline it before making the audit a repo-wide release gate.
 
 ## Engine acceptance — nothing static can close these
 
-`docs/ascendants-issue-register.md` marks ASC-001…ASC-024 "Guarded" or statically
+`docs/ascendants-issue-register.md` marks ASC-001…ASC-025 "Guarded" or statically
 resolved, which that doc
 correctly defines as *"the serialized scenario and tests contain the intended
 correction; it does not mean the engine has been observed running it"*. Engine reports
@@ -182,8 +193,9 @@ correction has not yet been engine-verified.
 - [ ] **ASC-023** — return both raze-reward villagers through their creation pads after
       the initial auto-park.
 - [ ] **ASC-006** — vote kick with three and four teammates, and proof that two cannot.
-- [ ] **ASC-024** — no static Palisade Wall or Saboteur in any outer corner; Goth's
-      separate earned Palisade reward still works.
+- [ ] **ASC-024** — no static Palisade Wall or Saboteur in any outer corner.
+- [ ] **ASC-025** — after Elite Huskarl, verify Goth Palisades retain ordinary game HP
+      while the independent Anarchy/Barracks restriction still resolves normally.
 - [ ] ASC-001, 002, 004, 007–018 — per the register's own "Required game check" column.
 
 ---
@@ -211,3 +223,7 @@ correction has not yet been engine-verified.
   triggers, 1,012 units, 113 variables; 69 focused and 114 repository tests pass;
   `ruff` clean; all 6 modes build. The final artifact hash is recorded in
   `RELEASE_NOTES_v1.0.11.md`.
+- v1.0.12 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,319
+  triggers, 1,012 units, 113 variables; 69 focused and 114 repository tests pass;
+  `ruff` clean; all 6 modes build. The final artifact hash is recorded in
+  `RELEASE_NOTES_v1.0.12.md`.

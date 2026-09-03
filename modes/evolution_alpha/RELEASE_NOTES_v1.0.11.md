@@ -1,5 +1,8 @@
 # CBA Hero: Ascendants v1.0.11 candidate
 
+> Superseded by v1.0.12, which removes the unwanted hidden Goth Palisade HP
+> mechanic. Keep this candidate only as the ownership-fix comparison point.
+
 This candidate fixes the engine-reported cross-owned Castle spawns in shuffled
 lobbies and removes the obsolete Palisade/Saboteur clutter from all four map corners.
 It supersedes v1.0.10; the sole historical comparison baseline remains v1.0.3.

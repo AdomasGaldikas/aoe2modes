@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.11**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.12**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.11.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.12.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -32,7 +32,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 ```bash
 .venv/bin/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.11.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.12.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -41,11 +41,11 @@ itself fails closed on drift: exact trigger-family counts, eight-way symmetry of
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.11 passes with **0 errors and 0 warnings**.
+unconditional victory/defeat. v1.0.12 passes with **0 errors and 0 warnings**.
 
 `aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
 geometry. It is not a pass/fail gate; read the report and confirm the arena still holds
-its shape. For v1.0.11 that means: all eight base pockets sealed at **285 walkable tiles**
+its shape. For v1.0.12 that means: all eight base pockets sealed at **285 walkable tiles**
 with every gate shut, territory **911** tiles for the four edge colors and **879** for the
 four side colors, the same walk to the centre from every base (44–45 steps, the one-step
 spread being grid parity on an even-sized map), and terrain symmetry of
@@ -65,6 +65,20 @@ The active issue inventory and manual acceptance cases are in
 The exact Castle rows, Sheep references and zones, army/hero creation pads, route
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.12 Goth Palisade mechanic removal
+
+The imported scenario contained an undocumented civilization-specific exception. Once
+a Goth player researched Elite Huskarl and built exactly 12 Palisade Walls in a fixed
+row near the Castle lane, a trigger added 2,750 HP to those walls. It was neither a
+raze reward nor part of the permanent arena wall geometry.
+
+The eight imported `hp (p#)` triggers remain visible only in the code-defined source
+layer as provenance, then are reset and removed during the build. Their incoming
+activations are stripped, and v1.0.12 does not generate the 64 color/player replacement
+triggers introduced by v1.0.8. A regression rejects every serialized Palisade condition
+or effect. Goth unit spawning, kill heroes, civilization values, and the separate
+Anarchy/Barracks restriction are unchanged.
 
 ## v1.0.11 player-identity boundary and corner cleanup
 
@@ -87,8 +101,8 @@ never modeled the engine identity boundary that had failed.
 
 The same release removes 56 submerged static Palisade Walls and eight static
 Saboteurs from the outer corners. None had a trigger, garrison, or object reference.
-The Goth Palisade reward is created later by a gameplay trigger inside the base and is
-not affected.
+At that release point the independent Goth Palisade HP trigger was not affected;
+v1.0.12 removes it explicitly.
 
 ## v1.0.10 one-shot order completion
 

@@ -105,7 +105,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 3_383
+    assert len(triggers) == 3_319
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_012
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -1811,95 +1811,21 @@ def test_evolution_alpha_maps_center_rewards_to_runtime_players(evolution_alpha)
             )
 
 
-def test_evolution_alpha_maps_goth_rules_to_runtime_players(evolution_alpha):
+def test_evolution_alpha_removes_palisade_bonus_and_maps_other_goth_rules(
+    evolution_alpha,
+):
     triggers = evolution_alpha.trigger_manager.triggers
-    palisade_pattern = re.compile(r"Goth Palisade Bonus S([1-8]) W([1-8])")
-    palisades = {
-        tuple(map(int, match.groups())): trigger
+    assert all("Palisade Bonus" not in trigger.name for trigger in triggers)
+    assert all(
+        condition.object_list != BuildingInfo.PALISADE_WALL.ID
         for trigger in triggers
-        if (match := palisade_pattern.fullmatch(trigger.name))
-    }
-    assert set(palisades) == VALID_COLOR_WORLD_PAIRS
-    occupied = {
-        (int(unit.x), int(unit.y))
-        for units in evolution_alpha.unit_manager.units
-        for unit in units
-    }
-    for (color, world_player), trigger in palisades.items():
-        x1, y1 = v2_cell_for_player(color, 24, 48)
-        x2, y2 = v2_cell_for_player(color, 24, 59)
-        area = (min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
-        row = {
-            (x, y)
-            for x in range(area[0], area[2] + 1)
-            for y in range(area[1], area[3] + 1)
-        }
-        assert len(row) == 12
-        assert all(
-            evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
-            == TerrainId.GRASS_2
-            for x, y in row
-        )
-        assert row.isdisjoint(occupied)
-        wall = next(
-            condition
-            for condition in trigger.conditions
-            if condition.condition_type == ConditionId.OBJECTS_IN_AREA
-        )
-        tech = next(
-            condition
-            for condition in trigger.conditions
-            if condition.condition_type == ConditionId.RESEARCH_TECHNOLOGY
-        )
-        assert (
-            wall.quantity,
-            wall.object_list,
-            wall.source_player,
-            wall.area_x1,
-            wall.area_y1,
-            wall.area_x2,
-            wall.area_y2,
-        ) == (12, BuildingInfo.PALISADE_WALL.ID, world_player, *area)
-        assert (tech.source_player, tech.technology) == (
-            world_player,
-            TechInfo.ELITE_HUSKARL.ID,
-        )
-        assert {
-            (condition.variable, condition.quantity, condition.comparison)
-            for condition in trigger.conditions
-            if condition.condition_type == ConditionId.VARIABLE_VALUE
-        } == {
-            (31 + color, 1, Comparison.EQUAL),
-            (39 + color, world_player, Comparison.EQUAL),
-        }
-        hp = next(
-            effect
-            for effect in trigger.effects
-            if effect.effect_type == EffectId.CHANGE_OBJECT_HP
-        )
-        assert (
-            hp.source_player,
-            hp.object_list_unit_id,
-            hp.quantity,
-            hp.operation,
-            hp.area_x1,
-            hp.area_y1,
-            hp.area_x2,
-            hp.area_y2,
-        ) == (
-            world_player,
-            BuildingInfo.PALISADE_WALL.ID,
-            2750,
-            Operation.ADD,
-            *area,
-        )
-
-    legacy_palisades = [
-        trigger
+        for condition in trigger.conditions
+    )
+    assert all(
+        effect.object_list_unit_id != BuildingInfo.PALISADE_WALL.ID
         for trigger in triggers
-        if trigger.name.startswith("Legacy Goth Palisade Bonus Disabled #")
-    ]
-    assert legacy_palisades == []
+        for effect in trigger.effects
+    )
 
     family_patterns = {
         "Restriction": re.compile(

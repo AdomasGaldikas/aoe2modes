@@ -911,9 +911,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_382:
+    if len(ctx.tm.triggers) != 3_318:
         raise RuntimeError(
-            f"expected 3,382 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,318 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1031,12 +1031,13 @@ def _disable_legacy_no_wall_cleanup(ctx: BuildContext) -> None:
         )
 
 
-def _configure_sparse_goth_palisade_bonus(
-    ctx: BuildContext,
-    active_variables,
-    world_variables,
-) -> None:
-    """Apply the earned Goth Palisade bonus fairly in compacted lobbies."""
+def _remove_legacy_goth_palisade_bonus(ctx: BuildContext) -> None:
+    """Remove the hidden Elite-Huskarl Palisade HP mechanic.
+
+    The imported scenario waited for a Goth player to build a designated row of 12
+    Palisade Walls after researching Elite Huskarl, then added 2,750 HP to that row.
+    Ascendants has no need for this invisible, civilization-specific wall exception.
+    """
     bonuses = []
     for trigger in ctx.tm.triggers:
         if re.fullmatch(r"hp \(p[1-8]\)", trigger.name) is None:
@@ -1065,48 +1066,6 @@ def _configure_sparse_goth_palisade_bonus(
                 and effect.trigger_id in legacy_ids
             )
         ]
-    for player in PLAYERS:
-        x1, y1 = v2_cell_for_player(player, 24, 48)
-        x2, y2 = v2_cell_for_player(player, 24, 59)
-        area = {
-            "area_x1": min(x1, x2),
-            "area_y1": min(y1, y2),
-            "area_x2": max(x1, x2),
-            "area_y2": max(y1, y2),
-        }
-        for world_player in _possible_world_players(player):
-            trigger = ctx.tm.add_trigger(
-                f"Goth Palisade Bonus S{int(player)} W{int(world_player)}",
-                description_stid=0,
-                short_description_stid=0,
-            )
-            trigger.new_condition.variable_value(
-                quantity=1,
-                variable=active_variables[player],
-                comparison=Comparison.EQUAL,
-            )
-            trigger.new_condition.variable_value(
-                quantity=int(world_player),
-                variable=world_variables[player],
-                comparison=Comparison.EQUAL,
-            )
-            trigger.new_condition.research_technology(
-                source_player=world_player,
-                technology=TechInfo.ELITE_HUSKARL.ID,
-            )
-            trigger.new_condition.objects_in_area(
-                quantity=12,
-                object_list=BuildingInfo.PALISADE_WALL.ID,
-                source_player=world_player,
-                **area,
-            )
-            trigger.new_effect.change_object_hp(
-                quantity=2750,
-                object_list_unit_id=BuildingInfo.PALISADE_WALL.ID,
-                source_player=world_player,
-                operation=Operation.ADD,
-                **area,
-            )
 
 
 def _configure_sparse_goth_barracks_restriction(
@@ -3960,8 +3919,7 @@ def _remove_corner_staging_objects(ctx: BuildContext) -> None:
 
     The imported scenario carried one Saboteur and seven Palisade Walls per color in
     the four extreme map corners. Nothing references them; they are visible leftovers,
-    not gameplay markers. The Goth Palisade reward is trigger-created and is therefore
-    unaffected by removing these 64 static objects.
+    not gameplay markers.
     """
     expected_counts = {
         BuildingInfo.PALISADE_WALL.ID: 56,
@@ -4859,11 +4817,7 @@ def build(ctx: BuildContext) -> None:
         match_ready_variable,
     ) = _add_color_runtime_variables(ctx)
     _add_color_owner_detection(ctx, active_variables, world_variables)
-    _configure_sparse_goth_palisade_bonus(
-        ctx,
-        active_variables,
-        world_variables,
-    )
+    _remove_legacy_goth_palisade_bonus(ctx)
     _configure_sparse_goth_barracks_restriction(
         ctx,
         active_variables,
