@@ -1,8 +1,8 @@
 [mode]
 id = "evolution_alpha"
 name = "CBA Hero Ascendants"
-version = "1.0.12"
-description = "A complete CBA Hero arena with automatic armies, six hero tiers, free building and research, protected team routes, live K/D/R, center rewards, and team vote-kicks."
+version = "1.0.13"
+description = "A complete CBA Hero arena with independent Castle-army and Hero spawn sliders, six hero tiers, free development, protected team routes, live K/D/R, center rewards, and team vote-kicks."
 authors = []
 tags = ["cba", "hero", "arena", "4v4"]
 
@@ -25,7 +25,8 @@ terrain = "GRASS_1"
 count = 8
 teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
 starting_age = "FEUDAL_AGE"
-population_cap = 250
+# One protected War Penguin consumes one real slot; 251 preserves 250 gameplay slots.
+population_cap = 251
 
 # Empty on purpose, and `aoe2modes info` will show no XS for this mode. Ascendants
 # does not bundle .xs files from disk: build.py generates its whole XS runtime inline

@@ -102,7 +102,7 @@ declared before the first trigger.
 
 Those variable ids come from the original author, not from `lib/variables`. A mode can
 also declare more variables in `build.py` after the generated package runs; Ascendants'
-final build currently occupies ids 0–112. Inspect both the generated table and the final
+final build currently occupies ids 0–120. Inspect both the generated table and the final
 scenario before allocating a new id. `add_variable` raises on a duplicate, but only after
 the XS side may already have been written with the wrong assumption.
 

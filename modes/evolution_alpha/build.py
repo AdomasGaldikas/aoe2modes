@@ -35,6 +35,7 @@ from AoE2ScenarioParser.datasets.techs import TechInfo
 from AoE2ScenarioParser.datasets.terrains import TerrainId
 from AoE2ScenarioParser.datasets.trigger_lists import (
     ActionType,
+    AttackStance,
     Attribute,
     Comparison,
     ObjectAttribute,
@@ -154,17 +155,12 @@ COLOR_ELIMINATED_VARIABLE_BASE = 48
 MATCH_READY_VARIABLE_ID = 56
 VOTE_MARKER_VARIABLE_BASE = 57
 ARMY_MOVE_PENDING_VARIABLE_BASE = 81
-ARMY_ROUTE_VARIABLE_BASE = 89
+ARMY_RANGE_VARIABLE_BASE = 89
 HERO_MOVE_PENDING_VARIABLE_BASE = 97
 BUILDER_MOVE_PENDING_VARIABLE_BASE = 105
-ROUTE_MEDIUM = 0
-ROUTE_SHORT = 1
-ROUTE_LONG = 2
-ARMY_ROUTE_VALUES = {
-    "move": ROUTE_MEDIUM,
-    "move short": ROUTE_SHORT,
-    "move long": ROUTE_LONG,
-}
+HERO_RANGE_VARIABLE_BASE = 113
+RANGE_LEVELS = tuple(range(6))
+DEFAULT_RANGE_LEVEL = 3
 VOTE_FLAG_OFFSETS = {
     PlayerId.ONE: (2, 0),
     PlayerId.TWO: (-2, 0),
@@ -203,15 +199,20 @@ WALL_CLEANUP_SOURCE_AREA = (17, 43, 38, 64)
 LOBBY_SETTLE_SECONDS = 3
 VICTORY_RESOLVE_SECONDS = 5
 SOURCE_ARMY_SPAWN_POINTS = ((22, 48), (22, 52), (22, 55), (22, 59))
-# Army creation uses continuous unit positions, whose reflected axis is 144,
-# rather than inclusive trigger cells, whose reflected axis is 143. Deriving
-# every row from P3 prevents a hand-edited Green/Yellow or corner swap.
+# Army route capture and destination geometry use inclusive map cells, whose
+# reflected axis is 143. XS creates each unit at the center of that transformed
+# cell; this avoids the old integer-boundary ambiguity that collapsed reflected
+# L0 routes onto their spawn point.
 SPAWN_POINTS = {
     player: tuple(
-        tuple(map(int, v2_position_for_player(player, x, y)))
+        v2_cell_for_player(player, x, y)
         for x, y in SOURCE_ARMY_SPAWN_POINTS
     )
     for player in PLAYERS
+}
+SPAWN_WORLD_POSITIONS = {
+    player: tuple((x + 0.5, y + 0.5) for x, y in points)
+    for player, points in SPAWN_POINTS.items()
 }
 BASE_CASTLE_SOURCE_AREA = (19, 48, 19, 60)
 BASE_CASTLE_AREAS = _mirrored_position_bounds(BASE_CASTLE_SOURCE_AREA)
@@ -585,6 +586,12 @@ PUBLIC_INSTRUCTIONS = (
     "TEAM ROUTES\r"
     "The arena uses eight equal mirrored fortified territories. Guarded rear team routes and "
     "each player's protected gate let allies reinforce one another.\r\r"
+    "SPAWN CONTROLS\r"
+    "Move your Sheep along its Castle-army lane: rear holds new Castle armies beside their "
+    "Castles; every step forward sends them proportionally farther into battle. Move your "
+    "Penguin along its separate Hero lane: the rear position switches Hero production OFF; levels "
+    "1 to 5 switch it ON and send new Heroes progressively farther. Existing units keep "
+    "your manual orders.\r\r"
     "VOTE KICK\r"
     "Delete the matching Vote Kick marker to vote against a teammate. Two occupied "
     "teammates must vote. Voting is disabled when fewer than three colors remain on that "
@@ -626,6 +633,14 @@ HERO_MILESTONES = (
     (1_000, HeroInfo.GENGHIS_KHAN.ID),
     (2_000, HeroInfo.GENGHIS_KHAN.ID),
 )
+HERO_MILESTONE_UPPER_BOUNDS = {
+    200: 400,
+    400: 600,
+    600: 800,
+    800: 1_000,
+    1_000: 2_000,
+    2_000: 3_500,
+}
 HERO_MILESTONE_SPAWN_TILES = {
     player: v2_cell_for_player(player, 16, 38)
     for player in PLAYERS
@@ -635,18 +650,79 @@ HERO_ORDER_FAMILIES = {
     "Médio": "Medium",
     "Longo": "Long",
 }
-HERO_ROUTE_VALUES = {
-    "Curto": ROUTE_SHORT,
-    "Médio": ROUTE_MEDIUM,
-    "Longo": ROUTE_LONG,
+# Each controller moves along one clean six-level lane on P3's canonical edge
+# island.  The transforms below keep L0 at the map edge and L5 toward the arena
+# for all eight colors.
+SOURCE_RANGE_ISLAND = (1, 60, 9, 66)
+# Detection spans the full island height for both controller families.  The two
+# differently-textured strips remain the visual lanes, while this wider capture
+# makes an accidentally cross-lane controller keep working.  L0/L5 also include
+# the beach end caps so a controller cannot be stranded just past a marker.
+SOURCE_ARMY_RANGE_AREAS = (
+    (1, 60, 3, 66),
+    (4, 60, 4, 66),
+    (5, 60, 5, 66),
+    (6, 60, 6, 66),
+    (7, 60, 7, 66),
+    (8, 60, 9, 66),
+)
+SOURCE_HERO_RANGE_AREAS = SOURCE_ARMY_RANGE_AREAS
+SOURCE_ARMY_CONTROLLER_POSITION = (6.5, 61.5)
+SOURCE_HERO_CONTROLLER_POSITION = (6.5, 65.5)
+SOURCE_RANGE_SIGN_POSITIONS = ((2.5, 63.5), (9.5, 63.5))
+ARMY_CONTROLLER_LABEL = (
+    "CASTLE ARMIES: move rear to hold; move forward for farther travel"
+)
+HERO_CONTROLLER_LABEL = (
+    "HEROES: rear is OFF; move forward to enable and travel farther"
+)
+RANGE_REAR_LABEL = "LEVEL 0: CASTLE HOLD / HERO OFF"
+RANGE_FORWARD_LABEL = "LEVEL 5: FAR BATTLE ROUTE"
+
+# L0 deliberately parks each newly-created Castle wave one tile back toward its
+# own Castle. L1 and L5 retain the proven Short and Long endpoints; the three
+# intermediate levels interpolate monotonically through grounded arena cells.
+SOURCE_ARMY_RANGE_DESTINATIONS = (
+    ((21, 48), (21, 52), (21, 55), (21, 59)),
+    ((25, 49), (25, 50), (25, 54), (25, 55)),
+    ((30, 50), (30, 51), (30, 54), (30, 55)),
+    ((34, 51), (34, 52), (34, 54), (34, 54)),
+    ((38, 52), (38, 52), (38, 54), (38, 54)),
+    ((43, 53), (43, 53), (43, 54), (43, 54)),
+)
+# Hero L0 is production OFF. L1-L5 use the same near-to-battle progression,
+# avoiding the shore wall crossed by a naive straight-line interpolation.
+SOURCE_HERO_RANGE_DESTINATIONS = {
+    1: (25, 54),
+    2: (30, 52),
+    3: (34, 52),
+    4: (38, 53),
+    5: (43, 53),
 }
-DISTANCE_SELECTOR_SOURCE_AREAS = {
-    "short": (1, 60, 3, 62),
-    "med": (1, 63, 3, 63),
-    "long": (1, 64, 3, 66),
-    "herospawnopen": (4, 60, 8, 62),
-    "herospawnclose": (4, 64, 8, 66),
+LEGACY_SELECTOR_FAMILIES = ("short", "med", "long")
+LEGACY_HERO_SELECTOR_FAMILIES = ("herospawnclose", "herospawnopen")
+SOURCE_EDGE_SELECTOR_SLOTS = {
+    OtherInfo.RELIC.ID: (
+        (1.5, 61.5),
+        (1.5, 63.5),
+        (1.5, 65.5),
+        (7.5, 61.5),
+        (7.5, 65.5),
+    ),
+    OtherInfo.RUGS.ID: (
+        (2.5, 61.5),
+        (2.5, 63.5),
+        (2.5, 65.5),
+        (6.5, 61.5),
+        (6.5, 65.5),
+    ),
 }
+SOURCE_SELECTOR_TORCH_POSITIONS = (
+    (4.0, 63.0),
+    (5.0, 63.0),
+    (4.0, 64.0),
+    (5.0, 64.0),
+)
 LEGACY_AGE_UP_NAME = re.compile(r"\d+ kills")
 
 
@@ -700,6 +776,28 @@ def _reset_trigger(trigger) -> None:
     trigger.mute_objectives = 0
     trigger.conditions = []
     trigger.effects = []
+
+
+def _strip_trigger_references(ctx: BuildContext, trigger_ids: set[int]) -> None:
+    """Remove legacy graph edges before reusing triggers for new behavior."""
+    for trigger in ctx.tm.triggers:
+        trigger.conditions = [
+            condition
+            for condition in trigger.conditions
+            if not (
+                condition.condition_type == ConditionId.TRIGGER_ACTIVE
+                and condition.trigger_id in trigger_ids
+            )
+        ]
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if not (
+                effect.effect_type
+                in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+                and effect.trigger_id in trigger_ids
+            )
+        ]
 
 
 def _component_signature(component, factory_name, parameters):
@@ -864,9 +962,10 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
         for trigger in ctx.tm.triggers
         if not trigger.conditions and not trigger.effects
     ]
-    if len(empty_triggers) != 810:
+    if len(empty_triggers) != 842:
         raise RuntimeError(
-            f"expected 810 empty imported trigger shells, found {len(empty_triggers)}"
+            "expected 810 empty imported shells plus 32 retired Hay markers, "
+            f"found {len(empty_triggers)}"
         )
     empty_ids = {trigger.trigger_id for trigger in empty_triggers}
     empty_by_id = {trigger.trigger_id: trigger for trigger in empty_triggers}
@@ -911,9 +1010,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_318:
+    if len(ctx.tm.triggers) != 3_534:
         raise RuntimeError(
-            f"expected 3,318 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,534 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1637,7 +1736,9 @@ def _render_color_spawn_xs() -> str:
         )
 
     coordinate_branches = []
-    for index, (scenario_player, points) in enumerate(SPAWN_POINTS.items()):
+    for index, (scenario_player, points) in enumerate(
+        SPAWN_WORLD_POSITIONS.items()
+    ):
         prefix = "if" if index == 0 else "else if"
         coordinate_branches.append(f"    {prefix} (scenarioPlayer == {int(scenario_player)}) {{")
         coordinate_branches.extend(
@@ -1707,7 +1808,10 @@ void cbaSpawnColor(int scenarioPlayer = 0) {{
     if (now < nextSpawn) {{
         return;
     }}
-    if (xsPlayerAttribute(worldPlayer, cAttributeMilitaryPopulation) < populationCap) {{
+    // Every live color owns exactly one military-class Penguin controller.  Exclude
+    // that non-combat object from the legacy army cap without depending on a
+    // post-load unit-data mutation, which is unreliable after object naming.
+    if ((xsPlayerAttribute(worldPlayer, cAttributeMilitaryPopulation) - 1) < populationCap) {{
         cbaCreateWave(scenarioPlayer, worldPlayer, unitId);
         xsArraySetInt(gCbaNextSpawnByColor, scenarioPlayer, now + interval);
     }}
@@ -1891,8 +1995,8 @@ def _replace_legacy_army_spawns(
     ctx: BuildContext,
     active_variables,
     world_variables,
-) -> None:
-    """Spawn and route each color's waves through its compacted runtime owner."""
+) -> tuple[dict[PlayerId, int], dict[PlayerId, int]]:
+    """Spawn and route each color's waves through two six-level controls."""
     move_pending_variables = {
         player: ctx.tm.add_variable(
             f"army_move_pending_p{int(player)}",
@@ -1900,15 +2004,54 @@ def _replace_legacy_army_spawns(
         ).variable_id
         for player in PLAYERS
     }
-    route_variables = {
+    army_range_variables = {
         player: ctx.tm.add_variable(
-            f"army_route_p{int(player)}",
-            variable_id=ARMY_ROUTE_VARIABLE_BASE + int(player) - 1,
+            f"army_range_p{int(player)}",
+            variable_id=ARMY_RANGE_VARIABLE_BASE + int(player) - 1,
         ).variable_id
         for player in PLAYERS
     }
-    def guard_new_wave(trigger, scenario_player, world_player, family) -> None:
-        """Let one selected route launch only the wave XS just created."""
+    hero_range_variables = {
+        player: ctx.tm.add_variable(
+            f"hero_range_p{int(player)}",
+            variable_id=HERO_RANGE_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+
+    # The color-owner resolver runs before the first XS wave. Set both controls
+    # to their physical L3 starts there, avoiding a one-pass default-L0 race.
+    for scenario_player in PLAYERS:
+        for world_player in _possible_world_players(scenario_player):
+            detector = _unique_trigger(
+                ctx,
+                f"Color Owner Detect S{int(scenario_player)} W{int(world_player)}",
+            )
+            detector.new_effect.change_variable(
+                quantity=DEFAULT_RANGE_LEVEL,
+                operation=Operation.SET,
+                variable=army_range_variables[scenario_player],
+            )
+            detector.new_effect.change_variable(
+                quantity=DEFAULT_RANGE_LEVEL,
+                operation=Operation.SET,
+                variable=hero_range_variables[scenario_player],
+            )
+            self_deactivations = [
+                effect
+                for effect in detector.effects
+                if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
+                and effect.trigger_id == detector.trigger_id
+            ]
+            if len(self_deactivations) != 1:
+                raise RuntimeError(
+                    f"expected one self-deactivation in {detector.name!r}"
+                )
+            detector.effects.remove(self_deactivations[0])
+            detector.effects.append(self_deactivations[0])
+
+    def guard_new_wave(trigger, scenario_player, world_player, level) -> None:
+        """Let one selected range launch only the wave XS just created."""
         trigger.new_condition.variable_value(
             quantity=1,
             variable=move_pending_variables[scenario_player],
@@ -1925,8 +2068,8 @@ def _replace_legacy_army_spawns(
             comparison=Comparison.EQUAL,
         )
         trigger.new_condition.variable_value(
-            quantity=ARMY_ROUTE_VALUES[family],
-            variable=route_variables[scenario_player],
+            quantity=level,
+            variable=army_range_variables[scenario_player],
             comparison=Comparison.EQUAL,
         )
         trigger.new_effect.change_variable(
@@ -1968,85 +2111,48 @@ def _replace_legacy_army_spawns(
             )
         ]
 
-    canonical_move_tasks = {
-        family: deepcopy(
-            [
-                effect
-                for effect in _unique_trigger(ctx, f"{family} (p3)").effects
-                if effect.effect_type == EffectId.TASK_OBJECT
-            ]
-        )
+    canonical_tasks = deepcopy(
+        [
+            effect
+            for effect in _unique_trigger(ctx, "move (p3)").effects
+            if effect.effect_type == EffectId.TASK_OBJECT
+        ]
+    )
+    if len(canonical_tasks) != len(SOURCE_ARMY_SPAWN_POINTS):
+        raise RuntimeError("expected four canonical P3 army task effects")
+
+    reusable = [
+        _unique_trigger(ctx, f"{family} (p{int(player)})")
+        for player in PLAYERS
         for family in ("move", "move short", "move long")
-    }
-    if any(len(tasks) != 4 for tasks in canonical_move_tasks.values()):
-        raise RuntimeError("expected four canonical P3 task effects per move family")
+    ]
+    reusable_ids = {trigger.trigger_id for trigger in reusable}
+    _strip_trigger_references(ctx, reusable_ids)
+    reusable_iter = iter(reusable)
 
     for scenario_player in PLAYERS:
-        movement_tasks = {}
-        movement_triggers = {}
-        for family, canonical_tasks in canonical_move_tasks.items():
-            target = _unique_trigger(ctx, f"{family} (p{int(scenario_player)})")
-            target.enabled = 1
-            target_tasks = [
-                effect
-                for effect in target.effects
-                if effect.effect_type == EffectId.TASK_OBJECT
-            ]
-            if len(target_tasks) != 4:
-                raise RuntimeError(
-                    f"expected four task effects in {target.name!r}, "
-                    f"found {len(target_tasks)}"
-                )
-            for effect, source, (spawn_x, spawn_y) in zip(
-                target_tasks,
-                canonical_tasks,
-                SPAWN_POINTS[scenario_player],
-                strict=True,
-            ):
-                effect.area_x1 = spawn_x - 1
-                effect.area_y1 = spawn_y - 1
-                effect.area_x2 = spawn_x + 1
-                effect.area_y2 = spawn_y + 1
-                effect.action_type = ActionType.MOVE
-                effect.location_x, effect.location_y = v2_cell_for_player(
-                    scenario_player,
-                    source.location_x,
-                    source.location_y,
-                )
-            if not any(
-                condition.condition_type == ConditionId.TIMER
-                for condition in target.conditions
-            ):
-                target.new_condition.timer(timer=1)
-            guard_new_wave(
-                target,
-                scenario_player,
-                scenario_player,
-                family,
-            )
-            movement_tasks[family] = target_tasks
-            movement_triggers[family] = target
-
         area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[scenario_player]
-        sparse_movements = {}
         for world_player in _possible_world_players(scenario_player):
-            if world_player == scenario_player:
-                continue
-            for family, task_effects in movement_tasks.items():
-                public_family = {
-                    "move": "",
-                    "move short": " Short",
-                    "move long": " Long",
-                }[family]
-                movement = ctx.tm.add_trigger(
-                    f"Sparse Move{public_family} S{int(scenario_player)} "
-                    f"W{int(world_player)}",
-                    description_stid=0,
-                    short_description_stid=0,
-                    enabled=1,
-                    looping=1,
+            for level, source_destinations in enumerate(
+                SOURCE_ARMY_RANGE_DESTINATIONS
+            ):
+                target = next(reusable_iter, None)
+                if target is None:
+                    target = ctx.tm.add_trigger(
+                        f"Army Range L{level} S{int(scenario_player)} "
+                        f"W{int(world_player)}",
+                        description_stid=0,
+                        short_description_stid=0,
+                    )
+                _reset_trigger(target)
+                target.name = (
+                    f"Army Range L{level} S{int(scenario_player)} "
+                    f"W{int(world_player)}"
                 )
-                movement.new_condition.objects_in_area(
+                target.enabled = 1
+                target.looping = 1
+                target.new_condition.timer(timer=1)
+                target.new_condition.objects_in_area(
                     quantity=1,
                     object_list=BuildingInfo.CASTLE.ID,
                     source_player=world_player,
@@ -2055,83 +2161,43 @@ def _replace_legacy_army_spawns(
                     area_x2=area_x2,
                     area_y2=area_y2,
                 )
-                movement.new_condition.timer(timer=1)
-                for effect, (spawn_x, spawn_y) in zip(
-                    task_effects,
-                    SPAWN_POINTS[scenario_player],
-                    strict=True,
-                ):
-                    movement.new_effect.task_object(
-                        object_list_unit_id=effect.object_list_unit_id,
-                        source_player=world_player,
-                        location_x=effect.location_x,
-                        location_y=effect.location_y,
-                        location_object_reference=effect.location_object_reference,
-                        area_x1=spawn_x - 1,
-                        area_y1=spawn_y - 1,
-                        area_x2=spawn_x + 1,
-                        area_y2=spawn_y + 1,
-                        object_group=effect.object_group,
-                        object_type=effect.object_type,
-                        action_type=ActionType.MOVE,
-                        max_units_affected=effect.max_units_affected,
-                        issue_group_command=effect.issue_group_command,
-                        queue_action=effect.queue_action,
-                    )
                 guard_new_wave(
-                    movement,
+                    target,
                     scenario_player,
                     world_player,
-                    family,
+                    level,
                 )
-                sparse_movements[family, world_player] = movement
+                # The reset effect added by guard_new_wave must run last.
+                reset_pending = target.effects.pop(-1)
+                for source_effect, (spawn_x, spawn_y), source_destination in zip(
+                    canonical_tasks,
+                    SPAWN_POINTS[scenario_player],
+                    source_destinations,
+                    strict=True,
+                ):
+                    task = _copy_for_world_player(
+                        source_effect,
+                        PlayerId.THREE,
+                        world_player,
+                    )
+                    # XS creates all four units at this exact cell centre.  Keep
+                    # the one-shot capture on that cell so later pulses never
+                    # reselect an older L0-held wave one tile Castle-ward.
+                    task.area_x1 = task.area_x2 = spawn_x
+                    task.area_y1 = task.area_y2 = spawn_y
+                    task.location_x, task.location_y = v2_cell_for_player(
+                        scenario_player,
+                        *source_destination,
+                    )
+                    task.action_type = ActionType.MOVE
+                    target.effects.append(task)
+                target.effects.append(reset_pending)
 
-        selected_family = {
-            "short": "move short",
-            "med": "move",
-            "long": "move long",
-        }
-        for selector_name, chosen_family in selected_family.items():
-            selector = _unique_trigger(
-                ctx,
-                f"{selector_name} (p{int(scenario_player)})",
-            )
-            if not any(
-                condition.condition_type == ConditionId.TIMER
-                for condition in selector.conditions
-            ):
-                selector.new_condition.timer(timer=1)
-            route_trigger_ids = {
-                trigger.trigger_id
-                for trigger in (
-                    *movement_triggers.values(),
-                    *sparse_movements.values(),
-                )
-            }
-            route_switches = [
-                effect
-                for effect in selector.effects
-                if effect.effect_type
-                in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
-                and effect.trigger_id in route_trigger_ids
-            ]
-            if len(route_switches) != 3:
-                raise RuntimeError(
-                    f"expected three legacy route switches in {selector.name!r}, "
-                    f"found {len(route_switches)}"
-                )
-            selector.effects = [
-                effect
-                for effect in selector.effects
-                if effect not in route_switches
-            ]
-            selector.new_effect.change_variable(
-                quantity=ARMY_ROUTE_VALUES[chosen_family],
-                operation=Operation.SET,
-                variable=route_variables[scenario_player],
-            )
+    if next(reusable_iter, None) is not None:
+        raise RuntimeError("not every legacy army route trigger was reused")
 
     ctx.add_xs(_render_color_spawn_xs(), label="color-aware army spawning")
+    return army_range_variables, hero_range_variables
 
 
 def _transformed_v2_area(
@@ -2227,147 +2293,7 @@ def _copy_v2_trigger_geometry(
 
 
 def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
-    """Move legacy selector, hero-spawn, and marker effects with V2."""
-    family_names = {
-        family: {
-            player: f"{family} (p{int(player)})"
-            for player in PLAYERS
-        }
-        for family in ("short", "med", "long")
-    }
-    family_names.update(
-        {
-            family: {
-                player: family if player == PlayerId.ONE else f"{family} (p{int(player)})"
-                for player in PLAYERS
-            }
-            for family in ("herospawnclose", "herospawnopen")
-        }
-    )
-
-    for family, names in family_names.items():
-        source = deepcopy(_unique_trigger(ctx, names[PlayerId.THREE]))
-        for player, name in names.items():
-            target = _unique_trigger(ctx, name)
-            if family in {"short", "med", "long"}:
-                # Route variables and sparse-owner movement have no geometry;
-                # only the selector conditions need V2 transformation here.
-                if len(source.conditions) != len(target.conditions):
-                    raise RuntimeError(
-                        f"V2 selector condition mismatch in {target.name!r}"
-                    )
-                for source_condition, target_condition in zip(
-                    source.conditions,
-                    target.conditions,
-                    strict=True,
-                ):
-                    _copy_v2_component_geometry(
-                        player,
-                        source_condition,
-                        target_condition,
-                    )
-            else:
-                _copy_v2_trigger_geometry(player, source, target)
-
-    # The Sheep approaches each prop diagonally and stops one tile before its
-    # collision box. Use broad approach regions between the island center and
-    # each visible Rug instead of the legacy prop tile. All five regions stay
-    # mutually exclusive, so crossing the island center cannot change a route
-    # while the player is moving to Open or Closed.
-    for player in PLAYERS:
-        for family, source_area in DISTANCE_SELECTOR_SOURCE_AREAS.items():
-            trigger = _unique_trigger(ctx, family_names[family][player])
-            selectors = [
-                condition
-                for condition in trigger.conditions
-                if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
-            ]
-            if len(selectors) != 1:
-                raise RuntimeError(
-                    f"expected one distance selector zone in {trigger.name!r}"
-                )
-            selector = selectors[0]
-            source_x1, source_y1, source_x2, source_y2 = source_area
-            corners = (
-                v2_cell_for_player(player, source_x1, source_y1),
-                v2_cell_for_player(player, source_x1, source_y2),
-                v2_cell_for_player(player, source_x2, source_y1),
-                v2_cell_for_player(player, source_x2, source_y2),
-            )
-            selector.area_x1 = min(x for x, _y in corners)
-            selector.area_y1 = min(y for _x, y in corners)
-            selector.area_x2 = max(x for x, _y in corners)
-            selector.area_y2 = max(y for _x, y in corners)
-
-    # Selector loops should react quickly without running on every trigger
-    # pass.  Close also needs an absence guard; otherwise it creates another
-    # Old Stone Head every pass while the selector remains on the rug.
-    for player in PLAYERS:
-        suffix = "" if player == PlayerId.ONE else f" (p{int(player)})"
-        close = _unique_trigger(ctx, f"herospawnclose{suffix}")
-        close.new_condition.timer(timer=1)
-        close_creates = [
-            effect
-            for effect in close.effects
-            if effect.effect_type == EffectId.CREATE_OBJECT
-            and effect.object_list_unit_id == OtherInfo.OLD_STONE_HEAD.ID
-        ]
-        if len(close_creates) != 1:
-            raise RuntimeError(
-                f"expected one hero-spawn blocker create for P{int(player)}"
-            )
-        blocker_x = close_creates[0].location_x
-        blocker_y = close_creates[0].location_y
-        close.new_condition.objects_in_area(
-            quantity=1,
-            object_list=OtherInfo.OLD_STONE_HEAD.ID,
-            source_player=PlayerId.GAIA,
-            area_x1=blocker_x,
-            area_y1=blocker_y,
-            area_x2=blocker_x,
-            area_y2=blocker_y,
-            inverted=1,
-        )
-
-        open_trigger = _unique_trigger(ctx, f"herospawnopen{suffix}")
-        open_trigger.new_condition.timer(timer=1)
-        remove_effects = [
-            effect
-            for effect in open_trigger.effects
-            if effect.effect_type == EffectId.REMOVE_OBJECT
-        ]
-        if len(remove_effects) != 1:
-            raise RuntimeError(
-                f"expected one hero-spawn blocker removal for P{int(player)}"
-            )
-        remove = remove_effects[0]
-        remove.object_list_unit_id = OtherInfo.OLD_STONE_HEAD.ID
-        open_trigger.new_condition.objects_in_area(
-            quantity=1,
-            object_list=OtherInfo.OLD_STONE_HEAD.ID,
-            source_player=PlayerId.GAIA,
-            area_x1=remove.area_x1,
-            area_y1=remove.area_y1,
-            area_x2=remove.area_x2,
-            area_y2=remove.area_y2,
-        )
-
-        # Open is a persistent selector like Close/Short/Medium/Long. The
-        # legacy order immediately sent the mover back to its center tile;
-        # current DE can keep that order ahead of the player's next command,
-        # making the five-position control appear immobile.
-        return_orders = [
-            effect
-            for effect in open_trigger.effects
-            if effect.effect_type == EffectId.TASK_OBJECT
-            and effect.selected_object_ids
-        ]
-        if len(return_orders) != 1:
-            raise RuntimeError(
-                f"expected one legacy selector return order for P{int(player)}"
-            )
-        open_trigger.effects.remove(return_orders[0])
-
+    """Move the remaining King effects and retire blocking Hay markers."""
     # King objects move with V2, but the legacy triggers retained eight
     # different hand-authored island corners, cannon spawns, and buff areas.
     # Blue watched one obsolete cell; several colors also spawned a cannon in
@@ -2378,101 +2304,71 @@ def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
         target = _unique_trigger(ctx, f"P{int(player)} King")
         _copy_v2_trigger_geometry(player, source_king, target)
 
-    unit_by_reference = {
-        unit.reference_id: unit
-        for units in ctx.um.units
-        for unit in units
-    }
-    seen_hay_references = set()
-    for player in PLAYERS:
-        unused_spawn_points = set(SPAWN_POINTS[player])
-        for hay_index in range(1, 5):
-            target = _unique_trigger(ctx, f"hay{hay_index} (p{int(player)})")
-            reference_ids = {
-                condition.unit_object
-                for condition in target.conditions
-                if condition.unit_object >= 0
-            }
-            creates = [
-                effect
-                for effect in target.effects
-                if effect.effect_type == EffectId.CREATE_OBJECT
-            ]
-            if len(reference_ids) != 1 or len(creates) != 1:
-                raise RuntimeError(
-                    f"expected one castle reference and create effect in {target.name!r}"
-                )
-            reference_id = reference_ids.pop()
-            castle = unit_by_reference.get(reference_id)
-            if castle is None or castle.player != player:
-                raise RuntimeError(
-                    f"invalid P{int(player)} hay castle reference {reference_id} "
-                    f"in {target.name!r}"
-                )
-            spawn_x, spawn_y = min(
-                unused_spawn_points,
-                key=lambda point: (
-                    (castle.x - point[0]) ** 2 + (castle.y - point[1]) ** 2,
-                    point,
-                ),
-            )
-            unused_spawn_points.remove((spawn_x, spawn_y))
-            # Put the decorative marker one cell toward its Castle, never on
-            # the wave pad itself. The old cell transform placed all P4 and P7
-            # Hay Stacks directly on their four army creation points.
-            step_x = (castle.x > spawn_x) - (castle.x < spawn_x)
-            step_y = (castle.y > spawn_y) - (castle.y < spawn_y)
-            creates[0].location_x = spawn_x + step_x
-            creates[0].location_y = spawn_y + step_y
-            seen_hay_references.add(reference_id)
-        if unused_spawn_points:
-            raise RuntimeError(
-                f"not every P{int(player)} army spawn received a hay marker"
-            )
-    if len(seen_hay_references) != len(PLAYERS) * 4:
-        raise RuntimeError("not every V2 hay castle reference was assigned")
+    hay_triggers = [
+        _unique_trigger(ctx, f"hay{hay_index} (p{int(player)})")
+        for player in PLAYERS
+        for hay_index in range(1, 5)
+    ]
+    if any(
+        sum(
+            effect.effect_type == EffectId.CREATE_OBJECT
+            and effect.object_list_unit_id == OtherInfo.HAY_STACK.ID
+            for effect in trigger.effects
+        )
+        != 1
+        for trigger in hay_triggers
+    ):
+        raise RuntimeError("unexpected imported Castle Hay marker graph")
+    _strip_trigger_references(
+        ctx,
+        {trigger.trigger_id for trigger in hay_triggers},
+    )
+    for trigger in hay_triggers:
+        original_id = trigger.trigger_id
+        _reset_trigger(trigger)
+        trigger.name = f"Legacy Castle Hay Marker Removed #{original_id}"
 
 
-def _restore_mobile_distance_movers(ctx: BuildContext) -> None:
-    """Use a supported controllable unit for every five-position selector."""
+def _configure_range_sliders(
+    ctx: BuildContext,
+    army_range_variables,
+    hero_range_variables,
+) -> None:
+    """Build one Castle-army Sheep lane and one Hero Penguin lane per color."""
     unit_by_reference = {
         unit.reference_id: unit
         for units in ctx.um.units
         for unit in units
     }
     water = {int(terrain) for terrain in TerrainId.water_terrains()}
-    forbidden_effects = {
-        EffectId.DISABLE_OBJECT_SELECTION,
-        EffectId.FREEZE_OBJECT,
-        EffectId.STOP_OBJECT,
-    }
+    legacy_selectors = []
+    sheep_by_player = {}
 
     for player in PLAYERS:
         suffix = "" if player == PlayerId.ONE else f" (p{int(player)})"
         selector_names = (
-            f"short (p{int(player)})",
-            f"med (p{int(player)})",
-            f"long (p{int(player)})",
-            f"herospawnclose{suffix}",
-            f"herospawnopen{suffix}",
+            *(f"{family} (p{int(player)})" for family in LEGACY_SELECTOR_FAMILIES),
+            *(f"{family}{suffix}" for family in LEGACY_HERO_SELECTOR_FAMILIES),
         )
+        player_selectors = [_unique_trigger(ctx, name) for name in selector_names]
+        legacy_selectors.extend(player_selectors)
         references = {
             condition.unit_object
-            for name in selector_names
-            for condition in _unique_trigger(ctx, name).conditions
+            for trigger in player_selectors
+            for condition in trigger.conditions
             if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
             and condition.unit_object >= 0
         }
         if len(references) != 1:
             raise RuntimeError(
-                f"expected one five-position mover for P{int(player)}, "
+                f"expected one legacy selector mover for P{int(player)}, "
                 f"found {sorted(references)}"
             )
         reference_id = references.pop()
         mover = unit_by_reference.get(reference_id)
         if mover is None or mover.player != player:
             raise RuntimeError(
-                f"missing owner-correct distance mover {reference_id} "
+                f"missing owner-correct army controller {reference_id} "
                 f"for P{int(player)}"
             )
         if mover.unit_const != 159:
@@ -2480,35 +2376,385 @@ def _restore_mobile_distance_movers(ctx: BuildContext) -> None:
                 f"unexpected legacy mover unit {mover.unit_const} "
                 f"for P{int(player)}"
             )
-        if ctx.mm.get_tile(x=int(mover.x), y=int(mover.y)).terrain_id in water:
-            raise RuntimeError(
-                f"P{int(player)} distance mover {reference_id} is on water"
-            )
-
-        # ID 159 is an obsolete hidden Relic Cart variant and is not reliably
-        # commandable in current DE. A player-owned Sheep is a normal movable
-        # selector without trade/build/attack commands or population cost.
         mover.unit_const = UnitInfo.SHEEP.ID
+        mover.x, mover.y = v2_position_for_player(
+            player,
+            *SOURCE_ARMY_CONTROLLER_POSITION,
+        )
+        sheep_by_player[player] = mover
 
-        selected = [reference_id]
-        protection = _unique_trigger(ctx, f"Antidelete P{int(player)}")
-        protection.new_effect.disable_object_deletion(
-            source_player=player,
-            selected_object_ids=selected,
+    selector_ids = {trigger.trigger_id for trigger in legacy_selectors}
+    _strip_trigger_references(ctx, selector_ids)
+
+    # Remove the collision-heavy five-point Relic/Rug layout and the four
+    # central Torches from every island before laying down continuous lanes.
+    removed_prop_references = set()
+    for unit_const, source_positions in SOURCE_EDGE_SELECTOR_SLOTS.items():
+        for player in PLAYERS:
+            for source_position in source_positions:
+                x, y = v2_position_for_player(player, *source_position)
+                matches = [
+                    unit
+                    for unit in ctx.um.units[PlayerId.GAIA]
+                    if unit.unit_const == unit_const
+                    and (unit.x, unit.y) == (x, y)
+                ]
+                if len(matches) != 1:
+                    raise RuntimeError(
+                        f"expected one P{int(player)} legacy selector prop "
+                        f"{unit_const} at ({x}, {y}), found {len(matches)}"
+                    )
+                removed_prop_references.add(matches[0].reference_id)
+                ctx.um.remove_unit(unit=matches[0])
+
+    for player in PLAYERS:
+        for source_position in SOURCE_SELECTOR_TORCH_POSITIONS:
+            x, y = v2_position_for_player(player, *source_position)
+            matches = [
+                unit
+                for unit in ctx.um.units[player]
+                if unit.unit_const == OtherInfo.TORCH_A.ID
+                and (unit.x, unit.y) == (x, y)
+            ]
+            if len(matches) != 1:
+                raise RuntimeError(
+                    f"expected one P{int(player)} selector Torch at "
+                    f"({x}, {y}), found {len(matches)}"
+                )
+            ctx.um.remove_unit(unit=matches[0])
+
+    for player in PLAYERS:
+        source_x1, source_y1, source_x2, source_y2 = SOURCE_RANGE_ISLAND
+        for source_y in range(source_y1, source_y2 + 1):
+            for source_x in range(source_x1, source_x2 + 1):
+                x, y = v2_cell_for_player(player, source_x, source_y)
+                tile = ctx.mm.get_tile(x=x, y=y)
+                if source_x in {source_x1, source_x2}:
+                    tile.terrain_id = TerrainId.BEACH
+                elif source_y <= 62:
+                    tile.terrain_id = TerrainId.ROAD
+                elif source_y == 63:
+                    tile.terrain_id = TerrainId.GRASS_2
+                else:
+                    tile.terrain_id = TerrainId.ROAD_GRAVEL
+                tile.elevation = 1
+                tile.layer = -1
+
+    penguin_by_player = {}
+    signs_by_player = {}
+    for player in PLAYERS:
+        penguin_x, penguin_y = v2_position_for_player(
+            player,
+            *SOURCE_HERO_CONTROLLER_POSITION,
+        )
+        penguin = ctx.um.add_unit(
+            player=player,
+            unit_const=UnitInfo.WAR_PENGUIN.ID,
+            x=penguin_x,
+            y=penguin_y,
+        )
+        penguin_by_player[player] = penguin
+        signs_by_player[player] = tuple(
+            ctx.um.add_unit(
+                player=PlayerId.GAIA,
+                unit_const=OtherInfo.SIGN.ID,
+                x=sign_x,
+                y=sign_y,
+            )
+            for sign_x, sign_y in (
+                v2_position_for_player(player, *source_position)
+                for source_position in SOURCE_RANGE_SIGN_POSITIONS
+            )
+        )
+        _unique_trigger(ctx, f"Antidelete P{int(player)}").new_effect.disable_object_deletion(
+            # Set Objects is authoritative here; wildcard ownership keeps the
+            # protection valid when DE compacts a color into another world slot.
+            source_player=-1,
+            selected_object_ids=[
+                sheep_by_player[player].reference_id,
+                penguin.reference_id,
+            ],
         )
 
-        conflicts = [
-            (trigger.name, effect.effect_type)
-            for trigger in ctx.tm.triggers
-            for effect in trigger.effects
-            if reference_id in (effect.selected_object_ids or ())
-            and effect.effect_type in forbidden_effects
-        ]
-        if conflicts:
-            raise RuntimeError(
-                f"P{int(player)} distance mover {reference_id} has "
-                f"conflicting effects: {conflicts}"
+    controller_references = {
+        unit.reference_id
+        for unit in (*sheep_by_player.values(), *penguin_by_player.values())
+    }
+    legacy_controller_names = [
+        effect
+        for trigger in ctx.tm.triggers
+        for effect in trigger.effects
+        if effect.effect_type == EffectId.CHANGE_OBJECT_NAME
+        and controller_references.intersection(effect.selected_object_ids or ())
+    ]
+    if (
+        len(legacy_controller_names) != len(PLAYERS) * 2
+        or {effect.message for effect in legacy_controller_names}
+        != {
+            "Mova-me para selecionar o spawn",
+            "Move me to set spawn",
+        }
+        or any(
+            sum(
+                reference_id in (effect.selected_object_ids or ())
+                for effect in legacy_controller_names
             )
+            != 2
+            for reference_id in (
+                unit.reference_id for unit in sheep_by_player.values()
+            )
+        )
+    ):
+        raise RuntimeError(
+            "unexpected imported controller-name effects: "
+            f"{len(legacy_controller_names)}"
+        )
+    legacy_controller_name_ids = {
+        id(effect) for effect in legacy_controller_names
+    }
+    for trigger in ctx.tm.triggers:
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if id(effect) not in legacy_controller_name_ids
+        ]
+
+    # Selected-object wildcard effects provide an immediate full-lobby path.
+    # The matching Castle-row resolver below repeats the setup with the exact
+    # runtime owner, making sparse and shuffled lobbies independent of how DE
+    # combines Source Player with Set Objects for each effect family.
+    for player in PLAYERS:
+        selected = [
+            sheep_by_player[player].reference_id,
+            penguin_by_player[player].reference_id,
+        ]
+        penguin_selected = [penguin_by_player[player].reference_id]
+        for world_player in _possible_world_players(player):
+            detector = _unique_trigger(
+                ctx,
+                f"Color Owner Detect S{int(player)} W{int(world_player)}",
+            )
+            self_deactivations = [
+                effect
+                for effect in detector.effects
+                if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
+                and effect.trigger_id == detector.trigger_id
+            ]
+            if len(self_deactivations) != 1:
+                raise RuntimeError(
+                    f"expected one self-deactivation in {detector.name!r}"
+                )
+            detector.effects.remove(self_deactivations[0])
+            detector.new_effect.change_object_name(
+                source_player=world_player,
+                message=ARMY_CONTROLLER_LABEL,
+                selected_object_ids=[sheep_by_player[player].reference_id],
+            )
+            detector.new_effect.change_object_name(
+                source_player=world_player,
+                message=HERO_CONTROLLER_LABEL,
+                selected_object_ids=penguin_selected,
+            )
+            detector.new_effect.disable_object_deletion(
+                source_player=world_player,
+                selected_object_ids=selected,
+            )
+            detector.new_effect.change_object_stance(
+                attack_stance=AttackStance.NO_ATTACK_STANCE,
+                source_player=world_player,
+                selected_object_ids=penguin_selected,
+            )
+            detector.new_effect.change_object_attack(
+                armour_attack_quantity=0,
+                source_player=world_player,
+                selected_object_ids=penguin_selected,
+                operation=Operation.MULTIPLY,
+            )
+            detector.new_effect.disable_unit_attackable(
+                source_player=world_player,
+                selected_object_ids=selected,
+            )
+            detector.effects.append(self_deactivations[0])
+
+    reusable_iter = iter(legacy_selectors)
+
+    def transformed_area(player, source_area):
+        source_x1, source_y1, source_x2, source_y2 = source_area
+        corners = (
+            v2_cell_for_player(player, source_x1, source_y1),
+            v2_cell_for_player(player, source_x1, source_y2),
+            v2_cell_for_player(player, source_x2, source_y1),
+            v2_cell_for_player(player, source_x2, source_y2),
+        )
+        return (
+            min(x for x, _y in corners),
+            min(y for _x, y in corners),
+            max(x for x, _y in corners),
+            max(y for _x, y in corners),
+        )
+
+    selector_specs = (
+        (
+            "Army",
+            SOURCE_ARMY_RANGE_AREAS,
+            sheep_by_player,
+            army_range_variables,
+        ),
+        (
+            "Hero",
+            SOURCE_HERO_RANGE_AREAS,
+            penguin_by_player,
+            hero_range_variables,
+        ),
+    )
+    for public_name, source_areas, controllers, variables in selector_specs:
+        for player in PLAYERS:
+            for level, source_area in enumerate(source_areas):
+                trigger = next(reusable_iter, None)
+                if trigger is None:
+                    trigger = ctx.tm.add_trigger(
+                        f"{public_name} Range Select L{level} P{int(player)}",
+                        description_stid=0,
+                        short_description_stid=0,
+                    )
+                _reset_trigger(trigger)
+                trigger.name = (
+                    f"{public_name} Range Select L{level} P{int(player)}"
+                )
+                trigger.enabled = 1
+                trigger.looping = 1
+                trigger.new_condition.timer(timer=1)
+                area_x1, area_y1, area_x2, area_y2 = transformed_area(
+                    player,
+                    source_area,
+                )
+                trigger.new_condition.bring_object_to_area(
+                    unit_object=controllers[player].reference_id,
+                    area_x1=area_x1,
+                    area_y1=area_y1,
+                    area_x2=area_x2,
+                    area_y2=area_y2,
+                )
+                trigger.new_effect.change_variable(
+                    quantity=level,
+                    operation=Operation.SET,
+                    variable=variables[player],
+                )
+    if next(reusable_iter, None) is not None:
+        raise RuntimeError("not every legacy selector trigger was reused")
+
+    controller_labels = _unique_trigger(ctx, "Nome ---------------- ")
+    _reset_trigger(controller_labels)
+    controller_labels.name = "Range Controller Labels"
+    controller_labels.enabled = 1
+    controller_labels.new_condition.timer(timer=1)
+    for player in PLAYERS:
+        controller_labels.new_effect.change_object_name(
+            source_player=-1,
+            message=ARMY_CONTROLLER_LABEL,
+            selected_object_ids=[sheep_by_player[player].reference_id],
+        )
+        controller_labels.new_effect.change_object_name(
+            source_player=-1,
+            message=HERO_CONTROLLER_LABEL,
+            selected_object_ids=[penguin_by_player[player].reference_id],
+        )
+
+    endpoint_labels = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if trigger.name == "==Rename======" and not trigger.looping
+    ]
+    if len(endpoint_labels) != 1:
+        raise RuntimeError(
+            f"expected one legacy selector-label trigger, found {len(endpoint_labels)}"
+        )
+    endpoint_labels = endpoint_labels[0]
+    endpoint_labels.effects = [
+        effect
+        for effect in endpoint_labels.effects
+        if not (
+            effect.effect_type == EffectId.CHANGE_OBJECT_NAME
+            and removed_prop_references.intersection(
+                effect.selected_object_ids or ()
+            )
+        )
+    ]
+    for player in PLAYERS:
+        rear_sign, front_sign = signs_by_player[player]
+        endpoint_labels.new_effect.change_object_name(
+            source_player=PlayerId.GAIA,
+            message=RANGE_REAR_LABEL,
+            selected_object_ids=[rear_sign.reference_id],
+        )
+        endpoint_labels.new_effect.change_object_name(
+            source_player=PlayerId.GAIA,
+            message=RANGE_FORWARD_LABEL,
+            selected_object_ids=[front_sign.reference_id],
+        )
+
+    controller_safety = _unique_trigger(ctx, "herospawnrelic")
+    _reset_trigger(controller_safety)
+    controller_safety.name = "Range Controller Safety"
+    controller_safety.enabled = 1
+    controller_safety.new_condition.timer(timer=1)
+    for player in PLAYERS:
+        selected = [penguin_by_player[player].reference_id]
+        controller_safety.new_effect.change_object_stance(
+            attack_stance=AttackStance.NO_ATTACK_STANCE,
+            source_player=-1,
+            selected_object_ids=selected,
+        )
+        controller_safety.new_effect.change_object_attack(
+            armour_attack_quantity=0,
+            source_player=-1,
+            selected_object_ids=selected,
+            operation=Operation.MULTIPLY,
+        )
+        controller_safety.new_effect.disable_unit_attackable(
+            source_player=-1,
+            selected_object_ids=[
+                sheep_by_player[player].reference_id,
+                penguin_by_player[player].reference_id,
+            ],
+        )
+
+    forbidden_effects = {
+        EffectId.CHANGE_OWNERSHIP,
+        EffectId.DAMAGE_OBJECT,
+        EffectId.DISABLE_OBJECT_SELECTION,
+        EffectId.FREEZE_OBJECT,
+        EffectId.STOP_OBJECT,
+        EffectId.KILL_OBJECT,
+        EffectId.REMOVE_OBJECT,
+        EffectId.REPLACE_OBJECT,
+        EffectId.TASK_OBJECT,
+    }
+    conflicts = [
+        (trigger.name, effect.effect_type, sorted(selected))
+        for trigger in ctx.tm.triggers
+        for effect in trigger.effects
+        if (selected := controller_references.intersection(effect.selected_object_ids or ()))
+        and effect.effect_type in forbidden_effects
+    ]
+    if conflicts:
+        raise RuntimeError(f"range controllers have conflicting effects: {conflicts}")
+
+    for player in PLAYERS:
+        for source_area in (
+            *SOURCE_ARMY_RANGE_AREAS,
+            *SOURCE_HERO_RANGE_AREAS,
+        ):
+            area_x1, area_y1, area_x2, area_y2 = transformed_area(
+                player,
+                source_area,
+            )
+            for y in range(area_y1, area_y2 + 1):
+                for x in range(area_x1, area_x2 + 1):
+                    if ctx.mm.get_tile(x=x, y=y).terrain_id in water:
+                        raise RuntimeError(
+                            f"P{int(player)} range lane cell ({x}, {y}) is water"
+                        )
 
 
 def _validate_army_spawn_geometry(ctx: BuildContext) -> None:
@@ -2700,136 +2946,6 @@ def _configure_sparse_center_rewards(
                 )
 
 
-def _align_selector_labels(ctx: BuildContext) -> None:
-    """Name every selector by the behavior of the rug it actually occupies.
-
-    Several reflected sectors kept the old left-to-right labels even though
-    their selector areas were mirrored.  Resolve names from final object and
-    trigger geometry so future map transforms cannot silently reverse them.
-    """
-    unit_by_reference = {
-        unit.reference_id: unit
-        for units in ctx.um.units
-        for unit in units
-    }
-
-    def align(
-        rename_messages: set[str],
-        behavior_names: dict[PlayerId, dict[str, str]],
-        public_names: dict[str, str],
-    ) -> None:
-        effects = [
-            effect
-            for trigger in ctx.tm.triggers
-            for effect in trigger.effects
-            if effect.effect_type == EffectId.CHANGE_OBJECT_NAME
-            and (effect.message or "") in rename_messages
-            and len(effect.selected_object_ids or ()) == 1
-        ]
-        expected_count = len(PLAYERS) * len(public_names)
-        if len(effects) != expected_count:
-            raise RuntimeError(
-                f"expected {expected_count} selector labels, found {len(effects)}"
-            )
-
-        unused_effects = set(range(len(effects)))
-        for player in PLAYERS:
-            slots = {}
-            selector_reference = None
-            for role, trigger_name in behavior_names[player].items():
-                trigger = _unique_trigger(ctx, trigger_name)
-                conditions = [
-                    condition
-                    for condition in trigger.conditions
-                    if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
-                    and condition.unit_object >= 0
-                ]
-                if len(conditions) != 1:
-                    raise RuntimeError(
-                        f"expected one selector area in {trigger_name!r}"
-                    )
-                condition = conditions[0]
-                if selector_reference is None:
-                    selector_reference = condition.unit_object
-                elif selector_reference != condition.unit_object:
-                    raise RuntimeError(
-                        f"selector reference mismatch for P{int(player)}"
-                    )
-                slots[role] = (
-                    (condition.area_x1 + condition.area_x2) / 2,
-                    (condition.area_y1 + condition.area_y2) / 2,
-                )
-
-            player_effects = []
-            for index in unused_effects:
-                reference_id = effects[index].selected_object_ids[0]
-                unit = unit_by_reference.get(reference_id)
-                if unit is None:
-                    raise RuntimeError(
-                        f"selector label references missing object {reference_id}"
-                    )
-                distances = {
-                    role: (unit.x - center_x) ** 2 + (unit.y - center_y) ** 2
-                    for role, (center_x, center_y) in slots.items()
-                }
-                nearest_role, nearest_distance = min(
-                    distances.items(), key=lambda item: item[1]
-                )
-                if nearest_distance <= 9:
-                    player_effects.append((index, nearest_role, nearest_distance))
-
-            if len(player_effects) != len(public_names):
-                raise RuntimeError(
-                    f"expected {len(public_names)} nearby selector labels for "
-                    f"P{int(player)}, found {len(player_effects)}"
-                )
-            assigned_roles = [role for _index, role, _distance in player_effects]
-            if set(assigned_roles) != set(public_names):
-                raise RuntimeError(
-                    f"ambiguous selector labels for P{int(player)}: {assigned_roles}"
-                )
-            for index, role, _distance in player_effects:
-                effects[index].message = public_names[role]
-                unused_effects.remove(index)
-
-        if unused_effects:
-            raise RuntimeError("not every selector label was aligned")
-
-    align(
-        {"Spawn - Close", "Spawn - Normal", "Spawn - Long"},
-        {
-            player: {
-                family: f"{family} (p{int(player)})"
-                for family in ("short", "med", "long")
-            }
-            for player in PLAYERS
-        },
-        {
-            "short": "Army Route - Short",
-            "med": "Army Route - Medium",
-            "long": "Army Route - Long",
-        },
-    )
-    align(
-        {"Hero Spawn Close", "Hero Spawn Open"},
-        {
-            player: {
-                family: (
-                    family
-                    if player == PlayerId.ONE
-                    else f"{family} (p{int(player)})"
-                )
-                for family in ("herospawnclose", "herospawnopen")
-            }
-            for player in PLAYERS
-        },
-        {
-            "herospawnclose": "Hero Spawn - Closed",
-            "herospawnopen": "Hero Spawn - Open",
-        },
-    )
-
-
 def _retire_obsolete_public_loops(ctx: BuildContext) -> None:
     """Remove obsolete every-pass effects and keep their useful labels once."""
     for name in ("Hawk", "==Move Vils=====", "Nome Razing ----- "):
@@ -2855,12 +2971,6 @@ def _retire_obsolete_public_loops(ctx: BuildContext) -> None:
     for effect in original_effects:
         effect.message = "Razings - health shows the current total"
         raze_rename.effects.append(effect)
-
-    selector_names = _unique_trigger(ctx, "Nome ---------------- ")
-    for effect in selector_names.effects:
-        if effect.effect_type == EffectId.CHANGE_OBJECT_NAME:
-            effect.message = "Move me to select an army route"
-
 
 def _neutralize_fixed_color_tags(ctx: BuildContext) -> None:
     """Let runtime-player chat coloring work after sparse color compaction."""
@@ -3106,8 +3216,9 @@ def _configure_sparse_late_hero_boosts(
     active_variables,
     world_variables,
     hero_move_pending_variables,
+    hero_range_variables,
 ) -> None:
-    """Continue the established Super Genghis phase at 3500/5000 kills."""
+    """Run the current 3500/5000 tier only while Hero production is on."""
     legacy = [
         trigger
         for trigger in ctx.tm.triggers
@@ -3128,20 +3239,36 @@ def _configure_sparse_late_hero_boosts(
         label: str,
         timer: int,
         location: tuple[int, int],
+        lower_kills: int,
+        upper_kills: int | None = None,
     ):
         trigger = ctx.tm.add_trigger(
             f"Hero Boost {label} S{int(color)} W{int(world_player)}",
             description_stid=0,
             short_description_stid=0,
-            enabled=0,
+            enabled=1,
             looping=1,
         )
         trigger.new_condition.timer(timer=timer)
         trigger.new_condition.own_fewer_objects(
-            quantity=300,
+            # The player's one controller Penguin is a military object, so
+            # exclude it from the inherited gameplay-unit ceiling.
+            quantity=301,
             source_player=world_player,
             object_type=ObjectType.MILITARY,
         )
+        trigger.new_condition.accumulate_attribute(
+            quantity=lower_kills,
+            attribute=Attribute.UNITS_KILLED,
+            source_player=world_player,
+        )
+        if upper_kills is not None:
+            trigger.new_condition.accumulate_attribute(
+                quantity=upper_kills,
+                attribute=Attribute.UNITS_KILLED,
+                source_player=world_player,
+                inverted=1,
+            )
         trigger.new_condition.variable_value(
             quantity=1,
             variable=active_variables[color],
@@ -3151,6 +3278,11 @@ def _configure_sparse_late_hero_boosts(
             quantity=int(world_player),
             variable=world_variables[color],
             comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=1,
+            variable=hero_range_variables[color],
+            comparison=Comparison.LARGER_OR_EQUAL,
         )
         x, y = location
         trigger.new_effect.remove_object(
@@ -3207,78 +3339,30 @@ def _configure_sparse_late_hero_boosts(
                     f"P{int(color)} {label} hero spawn ({x}, {y}) is water"
                 )
         for world_player in _possible_world_players(color):
-            milestone_2000 = _unique_trigger(
-                ctx,
-                f"Hero Milestone S{int(color)} W{int(world_player)} K2000",
+            add_loop(
+                color,
+                world_player,
+                "K3500",
+                3,
+                locations["K3500"],
+                3_500,
+                5_000,
             )
-            loop_3500 = add_loop(
-                color, world_player, "K3500", 3, locations["K3500"]
+            add_loop(
+                color,
+                world_player,
+                "K5000A",
+                3,
+                locations["K5000A"],
+                5_000,
             )
-            loop_5000_a = add_loop(
-                color, world_player, "K5000A", 3, locations["K5000A"]
-            )
-            loop_5000_b = add_loop(
-                color, world_player, "K5000B", 4, locations["K5000B"]
-            )
-
-            threshold_3500 = ctx.tm.add_trigger(
-                f"Hero Boost Unlock K3500 S{int(color)} W{int(world_player)}",
-                description_stid=0,
-                short_description_stid=0,
-            )
-            threshold_3500.new_condition.accumulate_attribute(
-                quantity=3_500,
-                attribute=Attribute.UNITS_KILLED,
-                source_player=world_player,
-            )
-            threshold_3500.new_condition.variable_value(
-                quantity=1,
-                variable=active_variables[color],
-                comparison=Comparison.EQUAL,
-            )
-            threshold_3500.new_condition.variable_value(
-                quantity=int(world_player),
-                variable=world_variables[color],
-                comparison=Comparison.EQUAL,
-            )
-            threshold_3500.new_effect.deactivate_trigger(
-                trigger_id=milestone_2000.trigger_id
-            )
-            threshold_3500.new_effect.activate_trigger(
-                trigger_id=loop_3500.trigger_id
-            )
-
-            threshold_5000 = ctx.tm.add_trigger(
-                f"Hero Boost Unlock K5000 S{int(color)} W{int(world_player)}",
-                description_stid=0,
-                short_description_stid=0,
-            )
-            threshold_5000.new_condition.accumulate_attribute(
-                quantity=5_000,
-                attribute=Attribute.UNITS_KILLED,
-                source_player=world_player,
-            )
-            threshold_5000.new_condition.variable_value(
-                quantity=1,
-                variable=active_variables[color],
-                comparison=Comparison.EQUAL,
-            )
-            threshold_5000.new_condition.variable_value(
-                quantity=int(world_player),
-                variable=world_variables[color],
-                comparison=Comparison.EQUAL,
-            )
-            threshold_5000.new_effect.deactivate_trigger(
-                trigger_id=milestone_2000.trigger_id
-            )
-            threshold_5000.new_effect.deactivate_trigger(
-                trigger_id=loop_3500.trigger_id
-            )
-            threshold_5000.new_effect.activate_trigger(
-                trigger_id=loop_5000_a.trigger_id
-            )
-            threshold_5000.new_effect.activate_trigger(
-                trigger_id=loop_5000_b.trigger_id
+            add_loop(
+                color,
+                world_player,
+                "K5000B",
+                4,
+                locations["K5000B"],
+                5_000,
             )
 
 
@@ -3287,14 +3371,17 @@ def _configure_sparse_hero_milestones(
     active_variables,
     world_variables,
     match_ready_variable,
+    hero_range_variables,
 ) -> dict[PlayerId, int]:
-    """Make every kill hero and its latched route follow the occupied color.
+    """Make every live hero tier and Penguin-selected route follow its color.
 
     The legacy P5/P6 milestones created their heroes on rear Stone Walls after
     the V2 perimeter was compacted.  They also read a fixed player number, so a
     sparse Teal slot mapped to runtime P2 never saw Teal's kills.  Use P3's
     complete milestone/order families as the semantic template, then bind each
     color to every possible runtime player behind the shared color resolver.
+    Mutually exclusive kill bands let Hero OFF pause production without leaving
+    stale lower tiers armed for a catch-up burst when the Penguin moves forward.
     """
     hero_move_pending_variables = {
         scenario_player: ctx.tm.add_variable(
@@ -3369,6 +3456,19 @@ def _configure_sparse_hero_milestones(
         source_name: deepcopy(order_targets[PlayerId.THREE, source_name])
         for source_name in HERO_ORDER_FAMILIES
     }
+    canonical_order_tasks = [
+        effect
+        for effect in order_templates["Curto"].effects
+        if effect.effect_type == EffectId.TASK_OBJECT
+    ]
+    if len(canonical_order_tasks) != 1:
+        raise RuntimeError("expected one canonical P3 hero task effect")
+    reusable_orders = list(order_targets.values())
+    _strip_trigger_references(
+        ctx,
+        {trigger.trigger_id for trigger in reusable_orders},
+    )
+    reusable_order_iter = iter(reusable_orders)
 
     for scenario_player, (spawn_x, spawn_y) in HERO_MILESTONE_SPAWN_TILES.items():
         tile = ctx.mm.get_tile(x=spawn_x, y=spawn_y)
@@ -3395,7 +3495,6 @@ def _configure_sparse_hero_milestones(
             )
 
         for world_player in _possible_world_players(scenario_player):
-            previous = None
             for threshold, expected_unit_id in HERO_MILESTONES:
                 template = milestone_templates[threshold]
                 if world_player == scenario_player:
@@ -3421,6 +3520,28 @@ def _configure_sparse_hero_milestones(
                     _copy_for_world_player(condition, PlayerId.THREE, world_player)
                     for condition in template.conditions
                 )
+                # Some imported milestones serialized their lower threshold as
+                # inverted.  State the active band explicitly: at least this
+                # threshold, but not yet the next threshold.
+                for condition in trigger.conditions:
+                    if (
+                        condition.condition_type
+                        == ConditionId.ACCUMULATE_ATTRIBUTE
+                        and condition.attribute == Attribute.UNITS_KILLED
+                        and condition.quantity == threshold
+                    ):
+                        condition.inverted = 0
+                    if (
+                        condition.condition_type == ConditionId.OWN_FEWER_OBJECTS
+                        and condition.object_type == ObjectType.MILITARY
+                    ):
+                        condition.quantity += 1
+                trigger.new_condition.accumulate_attribute(
+                    quantity=HERO_MILESTONE_UPPER_BOUNDS[threshold],
+                    attribute=Attribute.UNITS_KILLED,
+                    source_player=world_player,
+                    inverted=1,
+                )
                 trigger.new_condition.variable_value(
                     quantity=1,
                     variable=active_variables[scenario_player],
@@ -3431,18 +3552,14 @@ def _configure_sparse_hero_milestones(
                     variable=world_variables[scenario_player],
                     comparison=Comparison.EQUAL,
                 )
-                deactivations = 0
+                trigger.new_condition.variable_value(
+                    quantity=1,
+                    variable=hero_range_variables[scenario_player],
+                    comparison=Comparison.LARGER_OR_EQUAL,
+                )
                 creates = 0
                 for source_effect in template.effects:
                     if source_effect.effect_type == EffectId.DEACTIVATE_TRIGGER:
-                        if previous is None:
-                            raise RuntimeError(
-                                f"unexpected leading deactivation at {threshold} kills"
-                            )
-                        trigger.new_effect.deactivate_trigger(
-                            trigger_id=previous.trigger_id
-                        )
-                        deactivations += 1
                         continue
                     effect = _copy_for_world_player(
                         source_effect,
@@ -3473,10 +3590,9 @@ def _configure_sparse_hero_milestones(
                         effect.area_x1 = effect.area_x2 = spawn_x
                         effect.area_y1 = effect.area_y2 = spawn_y
                     trigger.effects.append(effect)
-                expected_deactivations = int(previous is not None)
-                if deactivations != expected_deactivations or creates != 1:
+                if creates != 1:
                     raise RuntimeError(
-                        f"invalid {threshold}-kill hero chain for "
+                        f"invalid {threshold}-kill hero band for "
                         f"S{int(scenario_player)} W{int(world_player)}"
                     )
                 trigger.new_effect.change_variable(
@@ -3484,53 +3600,24 @@ def _configure_sparse_hero_milestones(
                     operation=Operation.SET,
                     variable=hero_move_pending_variables[scenario_player],
                 )
-                previous = trigger
 
-            for source_name, public_name in HERO_ORDER_FAMILIES.items():
-                template = order_templates[source_name]
-                if world_player == scenario_player:
-                    trigger = order_targets[scenario_player, source_name]
-                    _reset_trigger(trigger)
-                    trigger.name = (
-                        f"Hero Orders {public_name} S{int(scenario_player)} "
-                        f"W{int(world_player)}"
-                    )
-                    trigger.enabled = 1
-                    trigger.looping = 1
-                else:
+            for level, source_destination in SOURCE_HERO_RANGE_DESTINATIONS.items():
+                trigger = next(reusable_order_iter, None)
+                if trigger is None:
                     trigger = ctx.tm.add_trigger(
-                        f"Hero Orders {public_name} S{int(scenario_player)} "
+                        f"Hero Range L{level} S{int(scenario_player)} "
                         f"W{int(world_player)}",
                         description_stid=0,
                         short_description_stid=0,
-                        enabled=1,
-                        looping=1,
                     )
-
-                removed_selectors = 0
-                for source_condition in template.conditions:
-                    if (
-                        source_condition.condition_type
-                        == ConditionId.BRING_OBJECT_TO_AREA
-                    ):
-                        removed_selectors += 1
-                        continue
-                    condition = _copy_for_world_player(
-                        source_condition,
-                        PlayerId.THREE,
-                        world_player,
-                    )
-                    _copy_v2_component_geometry(
-                        scenario_player,
-                        source_condition,
-                        condition,
-                    )
-                    trigger.conditions.append(condition)
-                if removed_selectors != 1:
-                    raise RuntimeError(
-                        f"expected one legacy selector condition in "
-                        f"{template.name!r}, found {removed_selectors}"
-                    )
+                _reset_trigger(trigger)
+                trigger.name = (
+                    f"Hero Range L{level} S{int(scenario_player)} "
+                    f"W{int(world_player)}"
+                )
+                trigger.enabled = 1
+                trigger.looping = 1
+                trigger.new_condition.timer(timer=1)
                 trigger.new_condition.variable_value(
                     quantity=1,
                     variable=active_variables[scenario_player],
@@ -3542,10 +3629,8 @@ def _configure_sparse_hero_milestones(
                     comparison=Comparison.EQUAL,
                 )
                 trigger.new_condition.variable_value(
-                    quantity=HERO_ROUTE_VALUES[source_name],
-                    variable=(
-                        ARMY_ROUTE_VARIABLE_BASE + int(scenario_player) - 1
-                    ),
+                    quantity=level,
+                    variable=hero_range_variables[scenario_player],
                     comparison=Comparison.EQUAL,
                 )
                 trigger.new_condition.variable_value(
@@ -3553,19 +3638,8 @@ def _configure_sparse_hero_milestones(
                     variable=hero_move_pending_variables[scenario_player],
                     comparison=Comparison.EQUAL,
                 )
-                trigger.new_condition.timer(timer=1)
-
-                task_effects = [
-                    effect
-                    for effect in template.effects
-                    if effect.effect_type == EffectId.TASK_OBJECT
-                ]
-                if len(task_effects) != 1:
-                    raise RuntimeError(
-                        f"expected one task effect in canonical {source_name} order"
-                    )
                 task = _copy_for_world_player(
-                    task_effects[0],
+                    canonical_order_tasks[0],
                     PlayerId.THREE,
                     world_player,
                 )
@@ -3575,8 +3649,7 @@ def _configure_sparse_hero_milestones(
                 task.area_y2 = spawn_y + 1
                 task.location_x, task.location_y = v2_cell_for_player(
                     scenario_player,
-                    task_effects[0].location_x,
-                    task_effects[0].location_y,
+                    *source_destination,
                 )
                 task.action_type = ActionType.MOVE
                 trigger.effects.append(task)
@@ -3585,6 +3658,9 @@ def _configure_sparse_hero_milestones(
                     operation=Operation.SET,
                     variable=hero_move_pending_variables[scenario_player],
                 )
+
+    if next(reusable_order_iter, None) is not None:
+        raise RuntimeError("not every legacy hero order trigger was reused")
 
     return hero_move_pending_variables
 
@@ -4297,8 +4373,8 @@ def _rewrite_public_messages(ctx: BuildContext) -> None:
     )
     messages.hints = (
         "Defeat enemy units to ascend through six hero tiers. Protect all four Castles, "
-        "choose an army route with the relic selectors, and use the rear gates to reinforce "
-        "your allies."
+        "move the Sheep to set Castle-army travel, move the Penguin to control Hero "
+        "production and travel, and use the rear gates to reinforce your allies."
     )
     messages.scouts = (
         "Blue/Red/Green/Yellow face Teal/Purple/Gray/Orange. Close unused slots while keeping "
@@ -4797,6 +4873,10 @@ def _configure_sparse_vote_kick(
 
     if configured != 24:
         raise RuntimeError(f"expected 24 safe vote-kick detectors, configured {configured}")
+    nonlooping_rename = [trigger for trigger in rename_triggers if not trigger.looping]
+    if len(nonlooping_rename) != 1:
+        raise RuntimeError("expected one combined range/vote label trigger")
+    nonlooping_rename[0].name = "Range And Vote Marker Labels"
 
 
 def build(ctx: BuildContext) -> None:
@@ -4830,7 +4910,11 @@ def build(ctx: BuildContext) -> None:
         eliminated_variables,
         match_ready_variable,
     )
-    _replace_legacy_army_spawns(ctx, active_variables, world_variables)
+    army_range_variables, hero_range_variables = _replace_legacy_army_spawns(
+        ctx,
+        active_variables,
+        world_variables,
+    )
     _add_sparse_feudal_upgrades(ctx, active_variables, world_variables)
     _add_rear_enclosures(ctx)
     _open_rear_technology_paths(ctx)
@@ -4844,9 +4928,12 @@ def build(ctx: BuildContext) -> None:
 
     v2_report = apply_v2_map(ctx)
     _remap_v2_trigger_geometry(ctx)
-    _restore_mobile_distance_movers(ctx)
+    _configure_range_sliders(
+        ctx,
+        army_range_variables,
+        hero_range_variables,
+    )
     _configure_sparse_center_rewards(ctx, active_variables, world_variables)
-    _align_selector_labels(ctx)
     _configure_sparse_wall_breaches(ctx, active_variables, world_variables)
     _configure_sparse_king_islands(ctx, active_variables, world_variables)
     _relocate_builder_spawn_flags(ctx)
@@ -4863,12 +4950,14 @@ def build(ctx: BuildContext) -> None:
         active_variables,
         world_variables,
         match_ready_variable,
+        hero_range_variables,
     )
     _configure_sparse_late_hero_boosts(
         ctx,
         active_variables,
         world_variables,
         hero_move_pending_variables,
+        hero_range_variables,
     )
     _configure_sparse_vote_kick(
         ctx,

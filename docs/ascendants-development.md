@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.12**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.13**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.12.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.13.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -32,7 +32,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 ```bash
 .venv/bin/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.12.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.13.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -41,20 +41,14 @@ itself fails closed on drift: exact trigger-family counts, eight-way symmetry of
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.12 passes with **0 errors and 0 warnings**.
+unconditional victory/defeat. v1.0.13 passes with **0 errors and 0 warnings**.
 
 `aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
 geometry. It is not a pass/fail gate; read the report and confirm the arena still holds
-its shape. For v1.0.12 that means: all eight base pockets sealed at **285 walkable tiles**
-with every gate shut, territory **911** tiles for the four edge colors and **879** for the
-four side colors, the same walk to the centre from every base (44–45 steps, the one-step
-spread being grid parity on an even-sized map), and terrain symmetry of
-**72** mismatched tiles under the mirror group against **296** under the diagonal group.
-Those two symmetry numbers are both intentional and both explainable — 72 is the eight 3x3
-color-painted doorways, and the extra 224 is the pair of team causeways that exist on the
-top and bottom edges only, because the left and right equivalents would join enemies. A
-number that moves without a matching map change in `v2_map.py` is the signal to
-investigate.
+its shape. v1.0.13 intentionally replaces each old selector corner with one transformed
+9×7 island containing two dry, separated lanes. Focused tests pin every lane cell,
+Castle pad, Hero pad, destination, wall, gate, shore repair, and eight-way transform.
+A map metric that moves without a matching geometry change is a signal to investigate.
 
 The decompiler still has a round-trip test — `tests/test_decompile.py` — but it points
 at `chieftains_4v4`, a mode that genuinely still is a decompile of its reference, plus a
@@ -62,9 +56,36 @@ synthetic scenario that pins trigger-variable ids and names across a decompile c
 
 The active issue inventory and manual acceptance cases are in
 [`ascendants-issue-register.md`](ascendants-issue-register.md).
-The exact Castle rows, Sheep references and zones, army/hero creation pads, route
+The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.13 independent proportional spawn controls
+
+The shared five-position Sheep mixed Castle-army routing with Hero Open/Closed state,
+depended on collision-heavy Relic/Rug targets, and was difficult to reason about after
+eight map transforms. v1.0.13 replaces it with exactly one Sheep for Castle armies and
+one War Penguin for Heroes per color.
+
+Each controller moves across a continuous six-level lane. Sheep level 0 parks new
+Castle waves one tile Castle-ward; levels 1–5 send them progressively farther into the
+arena. Penguin level 0 disables automatic Hero production; levels 1–5 enable it and
+route new Heroes progressively farther. Both start at level 3. Endpoint Signs and the
+controller names explain the controls in-game.
+
+Each controller's six detection bands cover the complete 9×7 island, including both
+beach caps. The visually separate Road and Road Gravel lanes still show where to move,
+but a Sheep or Penguin dragged across the separator cannot fall into a dead strip.
+
+The 96 selector triggers write separate variables. The 384 Castle-army and 320 Hero
+movement mappings retain the one-shot spawn-pulse rule, so slider changes affect only
+future spawns and manual return orders remain safe. All Hero loops now occupy exclusive
+kill bands; turning Heroes off cannot leave old tiers waiting to burst when the Penguin
+moves forward again. Controllers are undeletable and untargetable, and the Penguin has
+No Attack stance plus zero scenario attack. Its one real population slot is excluded
+from custom army and Hero ceilings, while a hard cap of 251 preserves 250 gameplay
+slots. Old selector Relics, Rugs, Torches, blocking Castle Hay markers, and the
+shoreline blocker toggle are removed.
 
 ## v1.0.12 Goth Palisade mechanic removal
 
@@ -133,11 +154,12 @@ or unrelated rows remain inert. This expansion was correct for trigger condition
 effects, including Green/P4 and Yellow/P3. Reusing its value inside XS was not correct;
 v1.0.11 replaces that XS path with the engine's `xsGetWorldPlayerId` conversion.
 
-Army pads are no longer eight hand-maintained tables. All 32 positions come from one P3
-row through the continuous-coordinate V2 transform, and a build-time geometry audit
-requires dry, unique, unoccupied pads that are closest to their own four Castles. Hay
-markers are assigned to the nearest Castle/pad pair and moved one cell Castle-ward;
-none can share a runtime wave-creation cell.
+At the v1.0.8 stage, Army pads stopped being eight hand-maintained tables. v1.0.13
+finishes that repair by transforming map cells, creating XS waves at their `.5` cell
+centres, and selecting only the exact creation cell. All 32 pads are dry, unique,
+unoccupied, and closest to their own four Castles. The 32 two-by-two Hay Stack creates
+are now removed because footprint checks proved that anchor-only validation had missed
+their overlap with 16 pads and eight level-0 destinations.
 
 ## v1.0.7 five-position Sheep repair
 
@@ -186,9 +208,10 @@ undeletable, untargetable, and unattackable prop, outside player and AI control.
 
 ## v1.0.4 graph migration
 
-The final build now removes 810 conditionless/effectless imported shells. Before
-removal it proves that their only 16 external references are no-op deactivations of
-the retired `no wall` family, then strips those references. It also groups the legacy
+The final build removes 810 conditionless/effectless imported shells plus the 32 Hay
+marker triggers retired in v1.0.13. Before removal it proves that the imported shells'
+only 16 external references are no-op deactivations of the retired `no wall` family,
+then strips those references. It also groups the legacy
 kill-based age-up chains by every serialized field, merges 189 byte-identical copies,
 and rewires all 346 incoming activations to 99 canonical triggers. Three non-identical
 P7 parser variants are preserved and named explicitly.
@@ -207,12 +230,16 @@ Age of Empires II engine. Keep these as explicit in-game checks for every candid
 - shuffled full lobbies with Red/Green reversed and Yellow before Green, checking that
   Castle territory, army ownership, civilization, Sheep route, heroes, HUD, rewards,
   resignation, and victory remain attached to the same color;
-- automatic armies, builders, six hero milestones, and all five distance positions;
+- automatic armies, builders, six Hero milestones, all six Sheep levels, and all six
+  Penguin levels including Hero OFF;
 - vote-kick resolution, resignation/defeat, and team victory for both sides;
 - local HUD values, player names, zero costs/resources, and post-game combat score;
 - unit pathing through every allied route and around all eight rear walls;
 - manually returning an army across each Castle launch line without its order changing;
-- moving every Sheep to Short, Medium, and Long and confirming the next wave follows it;
+- moving every Sheep through levels 0–5 and confirming only the next Castle wave uses
+  the selected distance;
+- moving every Penguin through levels 0–5, confirming level 0 pauses Heroes and levels
+  1–5 route only the current Hero tier without catch-up spawning;
 - placing buildings across every milestone-shore repair strip;
 - confirming all eight shores have no Transport Ship while milestone heroes still spawn;
 - revealing all four outer corners and confirming no static Palisade Wall or Saboteur

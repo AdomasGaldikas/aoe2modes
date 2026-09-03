@@ -1,12 +1,40 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.12 source review. Most of it is closed in **v1.0.12**;
+Open work from the v1.0.7–v1.0.13 source review. Most of it is closed in **v1.0.13**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## Closed in v1.0.13
+
+### [x] G1 — independent Castle-army and Hero controls
+
+The shared five-position Sheep system is removed. Every color now has one Sheep with
+six proportional Castle-army levels and one War Penguin with Hero OFF at level 0 plus
+five progressively farther active levels. Both begin at level 3 on separate dry lanes.
+Their reference-specific detectors cover the complete island, including both beach
+caps, so neither can be stranded between levels. The old selector Relics, Rugs,
+Torches, and Hero shoreline blocker toggle are absent.
+
+### [x] G2 — Hero OFF could not leave stale tiers armed
+
+The six milestone loops and late 3500/5000 loops now have mutually exclusive kill
+bands and require Hero level 1 or greater. Re-enabling Heroes starts only the current
+tier. All active Hero routes retain a one-shot creation pulse, so later manual orders
+cannot be reclaimed at a spawn line.
+
+### [x] G3 — controller clarity and safety
+
+Endpoint Signs identify `CASTLE HOLD / HERO OFF` and `FAR BATTLE ROUTE`; both
+controller names explain their role. Sheep and Penguins are undeletable and
+untargetable. Penguins additionally use No Attack stance and zero scenario attack.
+Their one real population slot is excluded from custom caps, and a 251 hard cap keeps
+250 normal gameplay slots. Tests pin all 96 selector areas, 704 movement mappings,
+controller references, terrain, destinations, and eight player transforms. All 32
+blocking Castle Hay creates are removed after footprint checks found pad overlap.
 
 ## Closed in v1.0.12
 
@@ -172,20 +200,22 @@ baseline it before making the audit a repo-wide release gate.
 
 ## Engine acceptance — nothing static can close these
 
-`docs/ascendants-issue-register.md` marks ASC-001…ASC-025 "Guarded" or statically
+`docs/ascendants-issue-register.md` marks ASC-001…ASC-026 "Guarded" or statically
 resolved, which that doc
 correctly defines as *"the serialized scenario and tests contain the intended
 correction; it does not mean the engine has been observed running it"*. Engine reports
-confirmed the old ASC-019/ASC-020 behavior was still broken in v1.0.10; the v1.0.11
-correction has not yet been engine-verified.
+confirmed the old ASC-019/ASC-020 behavior was still broken in v1.0.10. v1.0.13 replaces
+the ASC-019 control mechanism; the new controls and ownership boundary still require
+engine verification.
 
 - [ ] **ASC-021 / v1.0.9 regression** — an enemy Trebuchet beside P4/P6/P7/P8's Castles is now
       removed, matching P1/P2/P3/P5. This is the only behavior change in v1.0.9.
 - [ ] **ASC-003** — territory equality. C1 was a static counterexample; recheck.
 - [ ] **ASC-005** — sparse-lobby spawn, including the unsupported-civilization message.
       Test P1 vs P5 and P2+P4 vs P5+P8.
-- [ ] **ASC-019** — five-position Sheep routing after the ownership correction. All
-      eight colors, full and sparse, normal waves and 200/400/600/800/1000/2000 heroes.
+- [ ] **ASC-019 / ASC-026** — independent sliders in all eight colors, full and sparse:
+      Sheep L0–L5 for Castle waves; Penguin L0 OFF and L1–L5 for the current Hero tier.
+      Confirm no lower-tier catch-up burst after re-enabling Heroes.
 - [ ] **ASC-020** — shuffled lobby ownership: Red/Green reversed, Yellow before Green,
       then another nonnumeric order. Check ownership and civilization at every Castle.
 - [ ] **ASC-022** — return milestone and 3500/5000 heroes through their spawn pads after
@@ -227,3 +257,7 @@ correction has not yet been engine-verified.
   triggers, 1,012 units, 113 variables; 69 focused and 114 repository tests pass;
   `ruff` clean; all 6 modes build. The final artifact hash is recorded in
   `RELEASE_NOTES_v1.0.12.md`.
+- v1.0.13 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,535
+  triggers, 924 units, 121 variables; 54 focused and 114 repository tests pass;
+  `ruff` clean; the full XS build succeeds. The final artifact hash is recorded in
+  `RELEASE_NOTES_v1.0.13.md`.

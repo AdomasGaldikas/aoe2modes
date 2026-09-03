@@ -1,20 +1,20 @@
-# Ascendants v1.0.12 candidate issue register
+# Ascendants v1.0.13 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.12** is the active source-verified candidate; v1.0.11 remains the
+repair targets. **v1.0.13** is the active source-verified candidate; v1.0.12 remains the
 immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.12 candidate is 123,686 bytes with SHA-256
-`b9096bf0140c4b1db87d9bbe37d2dafc20c1dd3ac0ab7bdc2f7899f12eb2622f`.
+The v1.0.13 candidate is 131,255 bytes with SHA-256
+`41d907e24018d5453f2dbd51abff6b04a85a5cc5a4f75a2f7dd80fbaa719d4c0`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.12 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.13 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -30,40 +30,42 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-012 | Allied paths must be walkable and protected without opening enemy shortcuts. | Guarded | Top/bottom team causeways are land; enemy-side corridors remain water; protected wall/gate references are included in anti-delete effects. | Test allied reinforcement and enemy pathfinding from every orientation. |
 | ASC-013 | Objectives and public text must be clean and contain no development/AI references. | Resolved statically | Scenario messages are rewritten for Ascendants and serialized labels are sanitized; regression tests reject development references. | Review the lobby instructions, objectives panel, start messages, victory, and defeat text. |
 | ASC-014 | Two score numbers appeared beside a player. | Not a scenario defect | The second number is Definitive Edition's team-average display, not another custom score field. | No change unless the game offers a supported UI option to hide it. |
-| ASC-015 | Armies ordered back toward their Castles turned around at an invisible line. | Guarded | All 192 full/sparse Short, Medium, and Long route triggers require a color-specific new-wave variable set by XS only after unit creation. The selected owner route consumes the pulse once; no pulse means no task effect. | For all eight colors, let a wave leave, order it back across all four spawn pads, and confirm the manual order remains. |
+| ASC-015 | Armies ordered back toward their Castles turned around at an invisible line. | Guarded and expanded in v1.0.13 | All 384 level 0–5 Castle-army route triggers require a color-specific new-wave variable set by XS only after unit creation. Each task captures only its exact cell-centred creation pad, and the selected owner route consumes the pulse once; no pulse means no task effect. | For all eight colors and every Sheep level, let a wave leave, order it back across all four spawn pads, and confirm the manual order remains. |
 | ASC-016 | The marked milestone shoreline rejected building placement. | Guarded | The exact 20-cell Beach ribbon is transformed eight ways into 160 unique Grass 2 cells. Tests pin its terrain, elevation, layer, symmetry, and whole-map terrain hash. | Place representative buildings throughout every repaired shore strip, including the former corners. |
 | ASC-017 | Marker ships added no value and could not be made reliable. | Resolved by removal | The serialized scenario contains zero Transport Ships. Their creation pass and all 56 marker protection effects are deleted; milestone hero creation and orders remain independently tested. | Confirm all eight shores are clear and milestone heroes still spawn normally. |
 | ASC-018 | A resigned player's units and buildings remained on the map. | Guarded | Each of the 64 color/runtime resignation resolvers has one full-map `REMOVE_OBJECT` effect scoped to its resolved runtime player, alongside the eliminated/active state changes. | Resign one player in full 4v4 and a compacted sparse lobby; all of that player's objects must disappear without touching anyone else. |
-| ASC-019 | None of the five Sheep positions worked reliably; 200/400+ kill heroes always took the default Medium route. | Corrected and guarded in v1.0.11 | All 40 selectors use one exact Sheep reference per color, cover mutually exclusive reachable approach cells, and write that color's route variable. Normal-wave and hero movers read the same variable. The v1.0.10 cross-owned XS spawn could leave the correctly mapped mover with no selectable army; v1.0.11 repairs that identity boundary. An integrated regression follows Sheep → route variable → normal wave and hero route for all eight colors under identity, Red/Green swap, and full rotation mappings. | For every color in full and sparse lobbies, move the Sheep to Short, Medium, Long, Closed, and Open. Normal waves and 200/400/600/800/1000/2000 heroes must follow the selected route; Closed/Open must add/remove the shore blocker without resetting that route. |
-| ASC-020 | Red/Green and Green/Yellow armies spawned from or routed through one another's Castle territories in shuffled lobbies. | Corrected and guarded in v1.0.11 | The v1.0.8–v1.0.10 implementation conflated trigger player selectors with XS world players. XS now uses the engine's `xsGetWorldPlayerId(scenarioPlayer)` conversion, while trigger effects keep the independent Castle-row resolver. Tests pin that boundary and the complete control chain; all 32 pads are dry, unique, empty, transformed from one canonical row, and closest to their own Castles. | Start a full lobby with Red and Green reversed, then Yellow before Green, then another shuffled order. Confirm each territory's army color/civilization, Sheep route, heroes, HUD, rewards, resignation, and victory stay with that Castle row. |
+| ASC-019 | None of the five shared Sheep positions worked reliably; 200/400+ kill Heroes always took the default route. | Replaced and guarded in v1.0.13 | The five-point mechanism is gone. Per color, 6 Sheep selectors write Castle-army level 0–5 and 6 Penguin selectors write Hero level 0–5. Each family partitions the entire 9×7 island, including both caps. Exactly 384 Castle and 320 Hero owner mappings consume separate one-shot pulses. | For every color in full and sparse lobbies, move the Sheep and Penguin through every level and across the separator. New units must follow the selected controller only; existing units must retain manual orders. |
+| ASC-020 | Red/Green and Green/Yellow armies spawned from or routed through one another's Castle territories in shuffled lobbies. | Corrected and guarded in v1.0.11 | The v1.0.8–v1.0.10 implementation conflated trigger player selectors with XS world players. XS now uses the engine's `xsGetWorldPlayerId(scenarioPlayer)` conversion, while trigger effects keep the independent Castle-row resolver. Tests pin that boundary and the complete control chain; all 32 pads are dry, unique, empty, transformed as cells from one canonical row, created at their centres, and closest to their own Castles. | Start a full lobby with Red and Green reversed, then Yellow before Green, then another shuffled order. Confirm each territory's army color/civilization, Sheep route, heroes, HUD, rewards, resignation, and victory stay with that Castle row. |
 | ASC-021 | Anti-Trebuchet protection did not cover the Castles of P4, P6, P7, or P8. | Guarded in v1.0.9 | Both cleanup families now derive from one canonical P3 rectangle through an independent eight-way transform. Every color's anti-Trebuchet zone is one mirror orbit, covers all four of its Castles, and stays clear of its rear route. Effects remain restricted to an enemy player's packed Trebuchets. | Place an enemy packed Trebuchet beside each Castle row, especially P4/P6/P7/P8; it must be removed without affecting friendly rear-route units. |
-| ASC-022 | Milestone heroes could be turned back by the invisible spawn line after the player ordered them toward the Castles. | Guarded in v1.0.10 | All 192 Short/Medium/Long hero movers now require and consume one of eight hero-creation pulses. The six 200–2000 milestones and all three 3500/5000 Genghis loops arm that pulse only after creating a hero. | For every color and each route, return milestone and late Genghis heroes through the three hero spawn cells; later player orders must remain intact. |
+| ASC-022 | Milestone Heroes could be turned back by the invisible spawn line after the player ordered them toward the Castles. | Guarded and expanded in v1.0.13 | All 320 level 1–5 Hero movers require and consume one of eight Hero-creation pulses. The six 200–2000 bands and all three 3500/5000 Genghis loops arm that pulse only after creating a Hero. | For every color and active Penguin level, return milestone and late Genghis Heroes through the three Hero spawn cells; later player orders must remain intact. |
 | ASC-023 | Raze-reward builders could have later orders overwritten when they returned across their creation pads. | Guarded in v1.0.10 | All 64 builder movers require and consume one of eight builder-creation pulses. Each reward arms the pulse after creating the pair, and only the resolved runtime owner can consume it once. | Earn a pair for every color orientation, let it auto-park, then move both villagers back across both spawn pads; they must obey the player. |
 | ASC-024 | Obsolete wooden walls and Saboteurs were visible in the outer map corners. | Resolved statically in v1.0.11 | Exactly 56 submerged static Palisade Walls and eight static Saboteurs are removed after assertions pin their types, counts, water terrain, and corner locations. Their 64 object references are absent from all conditions/effects. | Reveal all four corners and confirm no Palisade Wall or Saboteur remains. |
 | ASC-025 | The hidden Goth Palisade HP mechanic is unnecessary and must not remain. | Resolved statically in v1.0.12 | The mechanic required Elite Huskarl plus 12 Palisade Walls in a fixed row, then added 2,750 HP. All eight imported triggers and 64 color/player replacements are absent. Tests reject every serialized Palisade condition/effect while preserving the separate Goth Anarchy/Barracks family. | As Goths, research Elite Huskarl and build Palisades near the Castle lane; they must retain ordinary game HP and receive no scenario bonus. |
+| ASC-026 | Spawn controls should be simple and independent: one Sheep for Castle armies and one Penguin for Hero OFF/ON plus distance. | Implemented and guarded in v1.0.13 | Every color has exactly one Sheep and one War Penguin on separate visual lanes with six full-depth detection bands. L0 is Castle hold / Hero OFF; L1–L5 progress toward battle. Controllers are named, endpoint Signs are named, both are owner-resolved, undeletable, and untargetable, and Penguins cannot attack. The 251 hard cap plus custom-cap compensation preserves 250 gameplay slots. Mutually exclusive kill bands prevent stale Hero tiers after OFF. | Check visibility and movement on every orientation; leave Penguin at L0 across a milestone, then enable it and confirm only the current tier begins spawning. |
+| ASC-027 | Decorative Castle Hay markers could block army creation or L0 holding cells. | Resolved statically in v1.0.13 | Footprint-aware validation found that the 32 two-by-two Hay Stack creates covered 16 of 32 launch pads and eight L0 destinations even though their anchors were distinct. All 32 Hay creation triggers are retired; tests reject any surviving Hay create and the path audit checks every pad/destination footprint. | Confirm all four Castle waves appear and clear L0 without displacement for every color, especially during sustained spawning. |
 
 ## Additional parser findings
 
-The v1.0.12 candidate passes the strict structural audit with **0 errors and 0 warnings**:
+The v1.0.13 candidate passes the strict structural audit with **0 errors and 0 warnings**:
 
-- 3,319 uniquely named, non-empty triggers and a complete display order;
-- 1,012 unique object references, all on-map, with no dangling garrisons;
-- 113 unique variable ids and no dangling variable use;
+- 3,535 uniquely named, non-empty triggers and a complete display order;
+- 924 unique object references, all on-map, with no dangling garrisons;
+- 121 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
 - no partial, inverted, or out-of-bounds trigger geometry;
 - no reachable looping trigger without a Timer condition;
 - no reachable unconditional remove, kill, victory, or defeat trigger.
 
-The dedicated migration removed all prior audit debt. It deleted 810 proven empty
-shells, merged 189 byte-identical age-up copies, rewired 346 incoming activations, and
-retained/name-disambiguated the three non-identical P7 variants. Exact baseline counts
+The dedicated migration removed all prior audit debt. It deleted 810 proven imported
+empty shells plus 32 retired Hay triggers, merged 189 byte-identical age-up copies,
+rewired 346 incoming activations, and retained/name-disambiguated the three non-identical P7 variants. Exact baseline counts
 and reference-shape assertions make the migration fail closed if the imported graph
 ever changes.
 
 Run the same audit after every build:
 
 ```bash
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.12.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.13.aoe2scenario" --strict
 ```
 
 `--strict` passes too. The normal command fails only on structural errors; strict also
@@ -78,7 +80,7 @@ cases are recorded in-game.
 | Case | Lobby | Must be observed |
 | --- | --- | --- |
 | Full initialization | P1–P4 vs P5–P8 | No early defeat; equal starts; all eight armies; complete walls and dry paths. |
-| Shuffled full lobby | Red/Green reversed, Yellow before Green, then another nonnumeric order | Every Castle row creates its own color/civilization; its Sheep route, heroes, HUD, rewards, resignation, and victory stay attached to that territory. |
+| Shuffled full lobby | Red/Green reversed, Yellow before Green, then another nonnumeric order | Every Castle row creates its own color/civilization; its Sheep/Penguin controls, Heroes, HUD, rewards, resignation, and victory stay attached to that territory. |
 | Minimum sparse | P1 vs P5 | Correct P5 ownership/spawns, no startup cleanup, normal final victory. |
 | Non-adjacent sparse | P2+P4 vs P5+P8 | Correct color bases, HUD rows, upgrades, builders, heroes, and victory owner. |
 | Vote success | Any side with at least three live colors | Two distinct teammate marker deletions defeat only the target. |
@@ -89,7 +91,10 @@ cases are recorded in-game.
 | Manual army return | All eight colors, full and sparse | Returning units cross the four launch pads without being sent back toward the arena. |
 | Manual hero return | All eight colors, full and sparse | Returning 200–2000 and 3500/5000 heroes cross all three hero pads without being sent back toward the arena. |
 | Manual builder return | All eight colors, full and sparse | After auto-parking, both raze-reward villagers can cross their two creation pads without being retasked. |
-| Five Sheep controls | All eight colors, full and sparse | Short/Medium/Long route the next normal wave and every kill hero identically; Closed/Open add/remove the shore blocker without resetting the route; existing armies keep manual orders. |
+| Sheep Castle slider | All eight colors, full and sparse | L0 parks each new wave Castle-ward; L1–L5 move progressively farther; existing armies keep manual orders. |
+| Penguin Hero slider | All eight colors, full and sparse | L0 produces no Heroes; L1–L5 enable and route only the current kill tier progressively farther; no stale-tier burst occurs after OFF. |
+| Controller population | Any color near the hard cap | The Penguin occupies the reserved 251st slot; normal gameplay still reaches 250 slots and custom army/Hero ceilings behave as before. |
+| Castle launch pads | All eight colors | All four waves appear at their exact pads and clear L0; no Hay Stack is created or displaces a unit. |
 | Milestone shore | All eight colors | Buildings can be placed on the repaired strip; hero spawns and nearby water remain clear. |
 | Marker removal | All eight colors | No Transport Ship is present; milestone heroes still spawn and route normally. |
 | Corner cleanup | All four outer corners | No static Palisade Wall or Saboteur remains. |

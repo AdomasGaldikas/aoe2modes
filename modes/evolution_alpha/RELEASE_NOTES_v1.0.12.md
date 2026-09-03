@@ -1,5 +1,8 @@
 # CBA Hero: Ascendants v1.0.12 candidate
 
+> Superseded by v1.0.13, which replaces the shared five-position Sheep with separate
+> six-level Castle-army and Hero controls.
+
 This candidate removes the last Palisade-specific gameplay mechanic. It contains the
 v1.0.11 shuffled-lobby ownership, Sheep, army, and hero route fixes unchanged.
 

@@ -49,7 +49,8 @@ def apply(ctx) -> None:
     p.starting_age = StartingAge.FEUDAL_AGE
     p.lock_civ = False
     p.lock_personality = False
-    p.population_cap = 250
+    # Reserve one hard-pop slot for the permanent War Penguin controller.
+    p.population_cap = 251
     p.food = 1000
     p.wood = 1000
     p.gold = 1000
@@ -73,7 +74,8 @@ def apply(ctx) -> None:
     p.starting_age = StartingAge.FEUDAL_AGE
     p.lock_civ = False
     p.lock_personality = False
-    p.population_cap = 250
+    # Reserve one hard-pop slot for the permanent War Penguin controller.
+    p.population_cap = 251
     p.food = 1000
     p.wood = 1000
     p.gold = 1000
@@ -97,7 +99,8 @@ def apply(ctx) -> None:
     p.starting_age = StartingAge.FEUDAL_AGE
     p.lock_civ = False
     p.lock_personality = False
-    p.population_cap = 250
+    # Reserve one hard-pop slot for the permanent War Penguin controller.
+    p.population_cap = 251
     p.food = 1000
     p.wood = 1000
     p.gold = 1000
@@ -121,7 +124,8 @@ def apply(ctx) -> None:
     p.starting_age = StartingAge.FEUDAL_AGE
     p.lock_civ = False
     p.lock_personality = False
-    p.population_cap = 250
+    # Reserve one hard-pop slot for the permanent War Penguin controller.
+    p.population_cap = 251
     p.food = 1000
     p.wood = 1000
     p.gold = 1000
@@ -145,7 +149,8 @@ def apply(ctx) -> None:
     p.starting_age = StartingAge.FEUDAL_AGE
     p.lock_civ = False
     p.lock_personality = False
-    p.population_cap = 250
+    # Reserve one hard-pop slot for the permanent War Penguin controller.
+    p.population_cap = 251
     p.food = 1000
     p.wood = 1000
     p.gold = 1000
@@ -169,7 +174,8 @@ def apply(ctx) -> None:
     p.starting_age = StartingAge.FEUDAL_AGE
     p.lock_civ = False
     p.lock_personality = False
-    p.population_cap = 250
+    # Reserve one hard-pop slot for the permanent War Penguin controller.
+    p.population_cap = 251
     p.food = 1000
     p.wood = 1000
     p.gold = 1000
@@ -193,7 +199,8 @@ def apply(ctx) -> None:
     p.starting_age = StartingAge.FEUDAL_AGE
     p.lock_civ = False
     p.lock_personality = False
-    p.population_cap = 250
+    # Reserve one hard-pop slot for the permanent War Penguin controller.
+    p.population_cap = 251
     p.food = 1000
     p.wood = 1000
     p.gold = 1000
@@ -217,7 +224,8 @@ def apply(ctx) -> None:
     p.starting_age = StartingAge.FEUDAL_AGE
     p.lock_civ = False
     p.lock_personality = False
-    p.population_cap = 250
+    # Reserve one hard-pop slot for the permanent War Penguin controller.
+    p.population_cap = 251
     p.food = 1000
     p.wood = 1000
     p.gold = 1000
