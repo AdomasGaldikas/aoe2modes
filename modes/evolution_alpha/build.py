@@ -62,6 +62,46 @@ from .v2_map import apply_v2_map, v2_cell_for_player, v2_position_for_player
 PLAYERS = tuple(PlayerId.all(exclude_gaia=True))
 
 
+def _mirrored_area_bounds(
+    source_area: tuple[int, int, int, int],
+) -> dict[PlayerId, tuple[int, int, int, int]]:
+    """Mirror one P3-frame trigger area into all eight color sectors.
+
+    Trigger areas are inclusive tile rectangles, so each corner goes through
+    ``v2_cell_for_player`` and the result is re-normalised to (x1, y1, x2, y2) with
+    x1 <= x2 and y1 <= y2 — the transposing sectors swap which corner is which.
+    """
+    source_x1, source_y1, source_x2, source_y2 = source_area
+    bounds = {}
+    for player in PLAYERS:
+        corner_a = v2_cell_for_player(player, source_x1, source_y1)
+        corner_b = v2_cell_for_player(player, source_x2, source_y2)
+        x1, x2 = sorted((corner_a[0], corner_b[0]))
+        y1, y2 = sorted((corner_a[1], corner_b[1]))
+        bounds[player] = (x1, y1, x2, y2)
+    return bounds
+
+
+def _mirrored_position_bounds(
+    source_area: tuple[int, int, int, int],
+) -> dict[PlayerId, tuple[int, int, int, int]]:
+    """Mirror bounds expressed by object positions rather than tile cells.
+
+    Even-footprint buildings on whole coordinates reflect across axis 144, while tile
+    cells reflect across 143. Castle-owner conditions deliberately use the Castle
+    anchors, so applying the tile transform would shift four mirrored rows by one.
+    """
+    source_x1, source_y1, source_x2, source_y2 = source_area
+    bounds = {}
+    for player in PLAYERS:
+        corner_a = v2_position_for_player(player, source_x1, source_y1)
+        corner_b = v2_position_for_player(player, source_x2, source_y2)
+        x1, x2 = sorted((int(corner_a[0]), int(corner_b[0])))
+        y1, y2 = sorted((int(corner_a[1]), int(corner_b[1])))
+        bounds[player] = (x1, y1, x2, y2)
+    return bounds
+
+
 def _possible_world_players(color: PlayerId):
     """Runtime slots a scenario color can occupy in the lobby.
 
@@ -169,16 +209,8 @@ SPAWN_POINTS = {
     )
     for player in PLAYERS
 }
-BASE_CASTLE_AREAS = {
-    PlayerId.ONE: (48, 19, 60, 19),
-    PlayerId.TWO: (84, 19, 96, 19),
-    PlayerId.THREE: (19, 48, 19, 60),
-    PlayerId.FOUR: (125, 48, 125, 60),
-    PlayerId.FIVE: (19, 84, 19, 96),
-    PlayerId.SIX: (125, 84, 125, 96),
-    PlayerId.SEVEN: (48, 125, 60, 125),
-    PlayerId.EIGHT: (84, 125, 96, 125),
-}
+BASE_CASTLE_SOURCE_AREA = (19, 48, 19, 60)
+BASE_CASTLE_AREAS = _mirrored_position_bounds(BASE_CASTLE_SOURCE_AREA)
 BUILDER_SPAWN_POINTS = {
     player: {
         UnitInfo.VILLAGER_MALE.ID: v2_cell_for_player(player, 10, 54),
@@ -195,16 +227,8 @@ BUILDER_DESTINATION_POINTS = {
 }
 SOURCE_BUILDER_FLAG_POSITIONS = ((22.5, 40.5), (23.5, 40.5))
 SOURCE_BUILDER_FLAG_TARGETS = ((10.5, 53.5), (10.5, 55.5))
-BLACKSMITH_AREAS = {
-    PlayerId.ONE: (50, 1, 58, 6),
-    PlayerId.TWO: (85, 1, 93, 6),
-    PlayerId.THREE: (1, 50, 6, 58),
-    PlayerId.FOUR: (137, 50, 142, 58),
-    PlayerId.FIVE: (1, 85, 6, 93),
-    PlayerId.SIX: (137, 85, 142, 93),
-    PlayerId.SEVEN: (50, 137, 58, 142),
-    PlayerId.EIGHT: (85, 137, 93, 142),
-}
+BLACKSMITH_SOURCE_AREA = (1, 50, 6, 58)
+BLACKSMITH_AREAS = _mirrored_area_bounds(BLACKSMITH_SOURCE_AREA)
 # Civilization ID -> (spawned unit ID, military population cap, interval seconds).
 # These reproduce the 59 legacy civilization loops without binding a color to a
 # compacted runtime player number.
@@ -648,26 +672,6 @@ def _assert_variable_ids_are_contiguous(ctx: BuildContext) -> None:
             f"trigger variable ids must be contiguous from 0; {len(ids)} declared, "
             f"missing {missing[:10]}, highest {max(ids) if ids else -1}"
         )
-
-
-def _mirrored_area_bounds(
-    source_area: tuple[int, int, int, int],
-) -> dict[int, tuple[int, int, int, int]]:
-    """Mirror one P3-frame trigger area into all eight color sectors.
-
-    Trigger areas are inclusive tile rectangles, so each corner goes through
-    ``v2_cell_for_player`` and the result is re-normalised to (x1, y1, x2, y2) with
-    x1 <= x2 and y1 <= y2 — the transposing sectors swap which corner is which.
-    """
-    source_x1, source_y1, source_x2, source_y2 = source_area
-    bounds = {}
-    for player in PLAYERS:
-        corner_a = v2_cell_for_player(player, source_x1, source_y1)
-        corner_b = v2_cell_for_player(player, source_x2, source_y2)
-        x1, x2 = sorted((corner_a[0], corner_b[0]))
-        y1, y2 = sorted((corner_a[1], corner_b[1]))
-        bounds[int(player)] = (x1, y1, x2, y2)
-    return bounds
 
 
 def _unique_trigger(ctx: BuildContext, name: str):

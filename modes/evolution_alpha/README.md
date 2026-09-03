@@ -270,8 +270,8 @@ Ascendants behavior goes in `build.py` or `v2_map.py` — those run after
 `apply_scenario_source(ctx)` and override anything. Structural arena changes (terrain,
 unit placement, the legacy trigger graph) go in `scenario/`, which is ordinary
 hand-maintained source: edit it directly, and do **not** run
-`aoe2modes decompile --mode evolution_alpha`, which would overwrite it with a dump of
-one of this mode's own build outputs.
+`aoe2modes decompile --mode evolution_alpha`; the command refuses because this mode has
+no binary base or reference to decompile.
 
 ## Build
 

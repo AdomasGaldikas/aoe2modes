@@ -50,14 +50,30 @@ Replaced with a property test (one mirror orbit; every zone covers its own four
 Castles) that uses the test file's independent transform rather than restating
 `build.py`'s constants.
 
-### [x] P5 — docs, Makefile, CI
+### [x] T2 — sweep the remaining Ascendants tests for the T1 pattern
+
+All 50 Ascendants tests were reviewed. The wall-cleanup test was the remaining weak
+case: it repeated all eight production rectangles without proving its stated rear-route
+property. It now derives the serialized cleanup zones, proves they form one independent
+mirror orbit, confirms they never intersect the protected rear paths, and still checks
+the correct destroyed gate and runtime owner. Three repeated Castle-row tables were
+also replaced by bounds derived directly from the four serialized Castles per color.
+
+### [x] P5 — docs, Makefile, local release gate
 
 Variable range corrected to 0–96 in `CLAUDE.md` / `AGENTS.md` / `docs/authoring.md`; a
 fourth "code-defined" mode flavour documented; `README.md` verify claim fixed;
-`mode.toml`'s `[xs]` block explains why it is empty; `make check-ascendants` and CI
-derive the filename from `mode.toml` via the new `aoe2modes info --output-name`; CI now
-runs `aoe2modes audit`; stale `dist/` artifacts removed; the audit verdict line is
-ASCII.
+`mode.toml`'s `[xs]` block explains why it is empty; `make check-ascendants` derives
+the filename from `mode.toml` via the new `aoe2modes info --output-name` and runs
+`aoe2modes audit`; stale `dist/` artifacts were removed; the audit verdict line is
+ASCII. No hosted GitHub Actions workflow is committed, so pushes cannot consume
+runner minutes.
+
+### [x] Local `make` availability
+
+`/usr/bin/make` is available on the current development machine, and
+`make check-ascendants` completed successfully for v1.0.9. The explicit equivalent
+commands remain in `docs/ascendants-development.md` for environments without `make`.
 
 ---
 
@@ -71,37 +87,24 @@ deliberately — it is a call for the maintainer, not a defect. Either populate 
 and credit the original author in `README.md`, or record that the derivation is distant
 enough not to warrant it.
 
-### [ ] `make` is unavailable on the current machine
-
-`make check-ascendants` is documented as the verification route but `make` is not on
-PATH here. `docs/ascendants-development.md` now lists the three equivalent commands;
-consider whether the Makefile is worth keeping as the primary interface.
-
 ### [ ] `chieftains_ffa` fails `aoe2modes audit`
 
 24 `dangling-unit-reference` errors in trigger 889 `==Rename======`, all
 `change_object_name` effects selecting objects 106643–106671 that do not exist. The
 same 24 errors are present in `modes/chieftains_ffa/base.aoe2scenario`, so this is
-inherited from the community scenario and is not an Ascendants problem — but it is why
-CI audits the other modes informationally rather than gating on them. Fix or baseline
-it if the audit should ever become a repo-wide gate.
-
-### [ ] Sweep the remaining tests for the T1 pattern
-
-`tests/test_evolution_alpha.py` is ~3,900 lines and 49 tests. One was tautological and
-hid a real defect; the others have not been individually checked for the same shape
-(restating `build.py`'s literals rather than asserting a property).
+inherited from the community scenario and is not an Ascendants problem. Fix or
+baseline it before making the audit a repo-wide release gate.
 
 ---
 
 ## Engine acceptance — nothing static can close these
 
-`docs/ascendants-issue-register.md` marks ASC-001…ASC-020 "Guarded", which that doc
+`docs/ascendants-issue-register.md` marks ASC-001…ASC-021 "Guarded", which that doc
 correctly defines as *"the serialized scenario and tests contain the intended
 correction; it does not mean the engine has been observed running it"*. **None has been
 engine-verified.**
 
-- [ ] **v1.0.9 regression** — an enemy Trebuchet beside P4/P6/P7/P8's Castles is now
+- [ ] **ASC-021 / v1.0.9 regression** — an enemy Trebuchet beside P4/P6/P7/P8's Castles is now
       removed, matching P1/P2/P3/P5. This is the only behavior change in v1.0.9.
 - [ ] **ASC-003** — territory equality. C1 was a static counterexample; recheck.
 - [ ] **ASC-005** — sparse-lobby spawn, including the unsupported-civilization message.
@@ -126,5 +129,6 @@ engine-verified.**
   rewire any trigger logic.
 - `_compact_legacy_trigger_graph` fails closed on exact counts and asserts no empty or
   duplicate-named triggers survive.
-- v1.0.9 build: `aoe2modes audit` PASS, 0 errors / 0 warnings; 3,383 triggers, 1,076
-  units, 97 variables; 97 tests pass; `ruff` clean; all 6 modes build.
+- v1.0.9 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,383 triggers,
+  1,076 units, 97 variables; 65 focused and 110 repository tests pass; `ruff` clean;
+  all 6 modes build.

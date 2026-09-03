@@ -1,6 +1,6 @@
 """The decompiler's contract: generated source must rebuild the scenario it came from.
 
-The end-to-end test uses ``big_ytri``, a mode that genuinely still is a decompile of
+The end-to-end test uses ``chieftains_4v4``, a mode that genuinely still is a decompile of
 its ``scenario.reference``. It decompiles that reference into a tempdir, rebuilds from
 the fresh output, and diffs — so it tests the decompiler, not any committed package.
 

@@ -1,19 +1,20 @@
-# Ascendants v1.0.8 candidate issue register
+# Ascendants v1.0.9 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.8** is the active source-verified candidate.
+repair targets. **v1.0.9** is the active source-verified candidate; v1.0.8 remains the
+immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.8 candidate is 120,284 bytes with SHA-256
-`e9c8760f9078903045deb82c2f5f8f70d26f5598a7ae38dc0cef187e74eef3af`.
+The v1.0.9 candidate is 120,590 bytes with SHA-256
+`4639e893b1dbfb0ca2c0a4979eb9d226d680fc9abdd7ded988af863c50e59ea5`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.8 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.9 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -35,10 +36,11 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-018 | A resigned player's units and buildings remained on the map. | Guarded | Each of the 64 color/runtime resignation resolvers has one full-map `REMOVE_OBJECT` effect scoped to its resolved runtime player, alongside the eliminated/active state changes. | Resign one player in full 4v4 and a compacted sparse lobby; all of that player's objects must disappear without touching anyone else. |
 | ASC-019 | None of the five Sheep positions worked reliably; 200/400+ kill heroes always took the default Medium route. | Guarded since v1.0.7 | Engine evidence disproved the narrow v1.0.6 zones. All 40 selectors cover collision-limited approach cells, and all five regions are mutually exclusive. All 192 normal-wave and 192 milestone-hero route triggers read the same eight latched route variables. The 36 fixed-Medium Open fallbacks are absent. | For every color in full and sparse lobbies, move the Sheep to Short, Medium, Long, Closed, and Open. Normal waves and 200/400/600/800/1000/2000 heroes must follow the selected route; Closed/Open must add/remove the shore blocker without resetting that route. |
 | ASC-020 | Green and Yellow armies spawned or routed through each other's Castle territories when their lobby rows were reversed. | Guarded in v1.0.8 | Runtime order is independent of color order. Every mapped family now covers all 64 pairs, including Green→W4 and Yellow→W3; tests exercise all 8! full-lobby orders. All 32 wave pads derive from one canonical row and are dry, unique, empty, and closest to their own Castles. Hay markers no longer occupy P4/P7 pads. | Start a full lobby with Yellow listed before Green, then other shuffled color orders. Confirm every army, route, HUD, reward, resignation, and victory result stays with its Castle territory. |
+| ASC-021 | Anti-Trebuchet protection did not cover the Castles of P4, P6, P7, or P8. | Guarded in v1.0.9 | Both cleanup families now derive from one canonical P3 rectangle through an independent eight-way transform. Every color's anti-Trebuchet zone is one mirror orbit, covers all four of its Castles, and stays clear of its rear route. Effects remain restricted to an enemy player's packed Trebuchets. | Place an enemy packed Trebuchet beside each Castle row, especially P4/P6/P7/P8; it must be removed without affecting friendly rear-route units. |
 
 ## Additional parser findings
 
-The v1.0.8 candidate passes the structural audit with **0 errors and 0 warnings**:
+The v1.0.9 candidate passes the strict structural audit with **0 errors and 0 warnings**:
 
 - 3,383 uniquely named, non-empty triggers and a complete display order;
 - 1,076 unique object references, all on-map, with no dangling garrisons;
@@ -57,7 +59,7 @@ ever changes.
 Run the same audit after every build:
 
 ```bash
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.8.aoe2scenario"
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.9.aoe2scenario" --strict
 ```
 
 `--strict` passes too. The normal command fails only on structural errors; strict also
@@ -85,6 +87,7 @@ cases are recorded in-game.
 | Milestone shore | All eight colors | Buildings can be placed on the repaired strip; hero spawns and nearby water remain clear. |
 | Marker removal | All eight colors | No Transport Ship is present; milestone heroes still spawn and route normally. |
 | Resignation cleanup | Full and sparse | Every unit and building owned by the resigned runtime player disappears; other colors remain intact. |
+| Anti-Trebuchet parity | All eight colors | An enemy packed Trebuchet beside any Castle row is removed, including P4/P6/P7/P8; no friendly rear-route unit is touched. |
 
 For a failure, record the exact selected colors, runtime player numbers, civilizations,
 game time, action, observed result, and expected result. That is enough to turn most

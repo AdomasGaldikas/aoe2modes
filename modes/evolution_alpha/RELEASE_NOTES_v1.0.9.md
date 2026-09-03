@@ -56,6 +56,10 @@ redesigned; the trigger, object, condition and effect totals are unchanged.
 - Names the last two bare variable bases (`PENDING_BUILDER_VARIABLE_BASE`,
   `COMBAT_ROW_VARIABLE_BASE`) and interpolates them into the XS, so the Python and XS
   sides of every variable block are now stated once.
+- Derives the Castle-owner rows and Blacksmith areas from one P3 source rectangle
+  instead of maintaining eight color-specific tables. Castle rows intentionally use
+  the continuous-coordinate transform (axis 144), while tile areas use the cell
+  transform (axis 143); focused tests pin that distinction.
 - Deletes `free_costs.py`. Its 128 lines of object ids were never imported by
   anything; costs are zeroed by the XS `main()` loop.
 
@@ -65,12 +69,17 @@ redesigned; the trigger, object, condition and effect totals are unchanged.
   `build.py` used, so it could not fail for a wrong-but-consistent value — and did not:
   it pinned the asymmetry above in place. It now asserts the properties (one mirror
   orbit; every zone covers its own four Castles) using an independent transform.
-- `make check-ascendants` and the CI audit derive the scenario filename from
+- Reviews all 50 Ascendants tests for the same failure mode. The wall-cleanup test now
+  derives zones from the serialized effects and proves mirror parity plus rear-route
+  separation; shared Castle-row expectations come from the serialized Castle objects
+  rather than copied coordinate tables.
+- `make check-ascendants` derives the scenario filename from
   `mode.toml` via a new `aoe2modes info --output-name`, instead of hardcoding a version
   that goes stale on every bump.
-- CI now runs `aoe2modes audit`. Ascendants gates on it; the other modes are audited
-  informationally, because `chieftains_ffa` inherits 24 dangling object references from
-  the community scenario it was decompiled from.
+- The local Ascendants gate runs `aoe2modes audit`; no hosted GitHub Actions workflow is
+  committed, so ordinary pushes cannot consume runner minutes. `chieftains_ffa` still
+  inherits 24 dangling object references from the community scenario it was decompiled
+  from and is tracked separately in `TODO.md`.
 - `aoe2modes audit`'s verdict line is ASCII, so a default-codepage Windows console no
   longer mangles it.
 
@@ -78,12 +87,13 @@ redesigned; the trigger, object, condition and effect totals are unchanged.
 
 Produces 3,383 uniquely named non-empty triggers, 1,076 objects, 11,384 conditions,
 9,975 effects, and 97 variables — identical to v1.0.8. Passes the parser structural
-audit with 0 errors and 0 warnings. 97 tests pass; `ruff` is clean.
+audit with 0 errors and 0 warnings. The 65 focused decompile/Ascendants tests and all
+110 repository tests pass; `ruff` is clean; all six modes build.
 
-File size: 113,335 bytes
+File size: 120,590 bytes
 
 SHA-256:
-`9a9372baffa382797af14d31ad4324e26db2044f4d8369ebb0325b115c206342`
+`4639e893b1dbfb0ca2c0a4979eb9d226d680fc9abdd7ded988af863c50e59ea5`
 
 Definitive Edition multiplayer, pathfinding, and UI acceptance still require an
 in-game check. The anti-trebuchet change is the one behavior difference from v1.0.8:

@@ -64,6 +64,28 @@ def v2_position_for_player(player, source_x, source_y):
     )[int(player) - 1]
 
 
+def castle_row_areas(scenario):
+    """Derive each objective row from the serialized Castles, not build.py literals."""
+    areas = {}
+    for player in PlayerId.all(exclude_gaia=True):
+        positions = [
+            (int(unit.x), int(unit.y))
+            for unit in scenario.unit_manager.units[player]
+            if unit.unit_const == BuildingInfo.CASTLE.ID
+        ]
+        assert len(positions) == 4
+        xs = {x for x, _y in positions}
+        ys = {y for _x, y in positions}
+        assert len(xs) == 1 or len(ys) == 1
+        areas[int(player)] = (
+            min(xs),
+            min(ys),
+            max(xs),
+            max(ys),
+        )
+    return areas
+
+
 VALID_COLOR_WORLD_PAIRS = {
     (color, world_player)
     for color in range(1, 9)
@@ -1563,32 +1585,81 @@ def test_evolution_alpha_forces_the_original_bombard_tower_unlock(evolution_alph
 
 def test_evolution_alpha_remaps_sparse_feudal_upgrades(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    sparse = {trigger.name: trigger for trigger in triggers if trigger.name.startswith("Sparse Feudal S")}
+    pattern = re.compile(r"Sparse Feudal S([1-8]) W([1-8])")
+    sparse = {
+        tuple(map(int, match.groups())): trigger
+        for trigger in triggers
+        if (match := pattern.fullmatch(trigger.name))
+    }
     assert len(sparse) == 56
-    assert {
-        tuple(map(int, re.fullmatch(r"Sparse Feudal S([1-8]) W([1-8])", name).groups()))
-        for name in sparse
-    } == VALID_COLOR_WORLD_PAIRS - {(color, color) for color in range(1, 9)}
+    assert set(sparse) == VALID_COLOR_WORLD_PAIRS - {
+        (color, color) for color in range(1, 9)
+    }
 
-    teal_for_compacted_p2 = sparse["Sparse Feudal S5 W2"]
-    blacksmith = next(
-        condition
-        for condition in teal_for_compacted_p2.conditions
-        if condition.condition_type == ConditionId.OBJECTS_IN_AREA
-    )
-    assert blacksmith.source_player == PlayerId.TWO
-    assert blacksmith.object_list == BuildingInfo.BLACKSMITH.ID
-    assert (blacksmith.area_x1, blacksmith.area_y1, blacksmith.area_x2, blacksmith.area_y2) == (
-        1,
-        85,
-        6,
-        93,
-    )
-    assert {
-        (effect.source_player, effect.technology)
-        for effect in teal_for_compacted_p2.effects
-        if effect.effect_type == EffectId.RESEARCH_TECHNOLOGY
-    } == {(PlayerId.TWO, technology) for technology in (211, 199, 67, 81, 74, 1036, 1115, 1125)}
+    areas = {}
+    for color in range(1, 9):
+        color_areas = set()
+        own_blacksmiths = [
+            (int(unit.x), int(unit.y))
+            for unit in evolution_alpha.unit_manager.units[color]
+            if unit.unit_const == BuildingInfo.BLACKSMITH.ID
+        ]
+        assert own_blacksmiths
+        for world_player in range(1, 9):
+            if world_player == color:
+                continue
+            trigger = sparse[color, world_player]
+            conditions = [
+                condition
+                for condition in trigger.conditions
+                if condition.condition_type == ConditionId.OBJECTS_IN_AREA
+            ]
+            assert len(conditions) == 1
+            blacksmith = conditions[0]
+            assert (
+                blacksmith.source_player,
+                blacksmith.object_list,
+            ) == (world_player, BuildingInfo.BLACKSMITH.ID)
+            bounds = (
+                blacksmith.area_x1,
+                blacksmith.area_y1,
+                blacksmith.area_x2,
+                blacksmith.area_y2,
+            )
+            color_areas.add(bounds)
+            assert all(
+                bounds[0] <= x <= bounds[2] and bounds[1] <= y <= bounds[3]
+                for x, y in own_blacksmiths
+            )
+            assert {
+                (condition.variable, condition.quantity, condition.comparison)
+                for condition in trigger.conditions
+                if condition.condition_type == ConditionId.VARIABLE_VALUE
+            } == {
+                (31 + color, 1, Comparison.EQUAL),
+                (39 + color, world_player, Comparison.EQUAL),
+            }
+            assert {
+                (effect.source_player, effect.technology)
+                for effect in trigger.effects
+                if effect.effect_type == EffectId.RESEARCH_TECHNOLOGY
+            } == {
+                (world_player, technology)
+                for technology in (211, 199, 67, 81, 74, 1036, 1115, 1125)
+            }
+        assert len(color_areas) == 1
+        areas[color] = color_areas.pop()
+
+    source = areas[3]
+    for color, bounds in areas.items():
+        corner_a = v2_cell_for_player(color, source[0], source[1])
+        corner_b = v2_cell_for_player(color, source[2], source[3])
+        assert bounds == (
+            min(corner_a[0], corner_b[0]),
+            min(corner_a[1], corner_b[1]),
+            max(corner_a[0], corner_b[0]),
+            max(corner_a[1], corner_b[1]),
+        )
 
 
 def test_evolution_alpha_maps_center_rewards_to_runtime_players(evolution_alpha):
@@ -1914,16 +1985,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
     assert len(movers) == len(VALID_COLOR_WORLD_PAIRS)
     assert legacy_stages == []
 
-    areas = {
-        1: (48, 19, 60, 19),
-        2: (84, 19, 96, 19),
-        3: (19, 48, 19, 60),
-        4: (125, 48, 125, 60),
-        5: (19, 84, 19, 96),
-        6: (125, 84, 125, 96),
-        7: (48, 125, 60, 125),
-        8: (84, 125, 96, 125),
-    }
+    areas = castle_row_areas(evolution_alpha)
     source_points = {
         UnitInfo.VILLAGER_MALE.ID: (10, 54),
         UnitInfo.VILLAGER_FEMALE.ID: (11, 54),
@@ -2222,16 +2284,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
     assert len(resolver_ids) == 8
     assert all(len(ids) == 8 for ids in resolver_ids_by_target.values())
 
-    castle_areas = {
-        1: (48, 19, 60, 19),
-        2: (84, 19, 96, 19),
-        3: (19, 48, 19, 60),
-        4: (125, 48, 125, 60),
-        5: (19, 84, 19, 96),
-        6: (125, 84, 125, 96),
-        7: (48, 125, 60, 125),
-        8: (84, 125, 96, 125),
-    }
+    castle_areas = castle_row_areas(evolution_alpha)
     marker_units = [
         unit
         for units in evolution_alpha.unit_manager.units
@@ -2443,16 +2496,7 @@ def test_evolution_alpha_detects_every_color_owner_from_its_castles(
         if (match := pattern.fullmatch(trigger.name))
     }
     assert set(detectors) == VALID_COLOR_WORLD_PAIRS
-    castle_areas = {
-        1: (48, 19, 60, 19),
-        2: (84, 19, 96, 19),
-        3: (19, 48, 19, 60),
-        4: (125, 48, 125, 60),
-        5: (19, 84, 19, 96),
-        6: (125, 84, 125, 96),
-        7: (48, 125, 60, 125),
-        8: (84, 125, 96, 125),
-    }
+    castle_areas = castle_row_areas(evolution_alpha)
     for (color, world_player), detector in detectors.items():
         assert detector.enabled and detector.looping
         assert len(detector.conditions) == 3
@@ -2572,16 +2616,6 @@ def test_evolution_alpha_anti_treb_zones_are_mirrored_and_cover_their_castles(
 
 def test_evolution_alpha_wall_cleanup_stays_off_rear_routes(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    wall_cleanup_bounds = {
-        1: (43, 17, 64, 38),
-        2: (79, 17, 100, 38),
-        3: (17, 43, 38, 64),
-        4: (105, 43, 126, 64),
-        5: (17, 79, 38, 100),
-        6: (105, 79, 126, 100),
-        7: (43, 105, 64, 126),
-        8: (79, 105, 100, 126),
-    }
     wall_pattern = re.compile(r"Wall Breach S([1-8]) W([1-8])")
     wall_breaches = {
         tuple(map(int, match.groups())): trigger
@@ -2589,7 +2623,43 @@ def test_evolution_alpha_wall_cleanup_stays_off_rear_routes(evolution_alpha):
         if (match := wall_pattern.fullmatch(trigger.name))
     }
     assert set(wall_breaches) == VALID_COLOR_WORLD_PAIRS
-    for player, bounds in wall_cleanup_bounds.items():
+
+    cleanup_bounds = {}
+    for player in range(1, 9):
+        areas = {
+            (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2)
+            for world_player in range(1, 9)
+            for effect in wall_breaches[player, world_player].effects
+            if effect.effect_type == EffectId.REMOVE_OBJECT
+        }
+        assert len(areas) == 1
+        cleanup_bounds[player] = areas.pop()
+
+    # Every cleanup area is one independent mirror orbit of P3's serialized area.
+    source = cleanup_bounds[3]
+    for player, bounds in cleanup_bounds.items():
+        corner_a = v2_cell_for_player(player, source[0], source[1])
+        corner_b = v2_cell_for_player(player, source[2], source[3])
+        assert bounds == (
+            min(corner_a[0], corner_b[0]),
+            min(corner_a[1], corner_b[1]),
+            max(corner_a[0], corner_b[0]),
+            max(corner_a[1], corner_b[1]),
+        )
+
+        x1, y1, x2, y2 = bounds
+        cleanup_cells = {
+            (x, y)
+            for x in range(x1, x2 + 1)
+            for y in range(y1, y2 + 1)
+        }
+        rear_route = {
+            v2_cell_for_player(player, source_x, source_y)
+            for source_x in range(7, 17)
+            for source_y in (53, 54, 55)
+        }
+        assert cleanup_cells.isdisjoint(rear_route)
+
         for world_player in range(1, 9):
             trigger = wall_breaches[player, world_player]
             effects = [
@@ -2614,7 +2684,6 @@ def test_evolution_alpha_wall_cleanup_stays_off_rear_routes(evolution_alpha):
                 for unit in units
                 if unit.reference_id == gate_condition.unit_object
             )
-            x1, y1, x2, y2 = bounds
             assert x1 <= int(gate.x) <= x2
             assert y1 <= int(gate.y) <= y2
             assert {
@@ -3206,7 +3275,12 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     assert owner.condition_type == ConditionId.OBJECTS_IN_AREA
     assert owner.source_player == PlayerId.TWO
     assert owner.object_list == BuildingInfo.CASTLE.ID
-    assert (owner.area_x1, owner.area_y1, owner.area_x2, owner.area_y2) == (19, 84, 19, 96)
+    assert (
+        owner.area_x1,
+        owner.area_y1,
+        owner.area_x2,
+        owner.area_y2,
+    ) == castle_row_areas(evolution_alpha)[5]
 
     tasks = [effect for effect in teal_for_compacted_p2.effects if effect.effect_type == EffectId.TASK_OBJECT]
     assert len(tasks) == 4

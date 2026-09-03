@@ -8,8 +8,8 @@ still a separate step from anything described here.
 **The Python is the scenario.** There is no `scenario.base` and no
 `scenario.reference`, and `dist/CBA Hero Ascendants v1.0.9.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
-this mode — running `decompile --mode evolution_alpha` would overwrite the source with
-a dump of one of its own outputs.
+this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
+binary base or reference.
 
 Two source layers, both hand-maintained:
 
@@ -30,10 +30,10 @@ v1.0.9 removes the reference, the stale binary, and the claim.
 ### What is checked now
 
 ```bash
-.venv/Scripts/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
-.venv/Scripts/python -m aoe2modes build evolution_alpha
-.venv/Scripts/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.9.aoe2scenario"
-.venv/Scripts/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
+.venv/bin/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
+.venv/bin/python -m aoe2modes build evolution_alpha
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.9.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
 `make check-ascendants` runs the same four steps where `make` is available. The build
