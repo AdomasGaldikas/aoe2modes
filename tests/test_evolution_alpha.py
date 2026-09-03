@@ -1152,6 +1152,14 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
         (88 + player, f"army_route_p{player}")
         for player in range(1, 9)
     }
+    expected_variables |= {
+        (96 + player, f"hero_move_pending_p{player}")
+        for player in range(1, 9)
+    }
+    expected_variables |= {
+        (104 + player, f"builder_move_pending_p{player}")
+        for player in range(1, 9)
+    }
     assert {
         (variable.variable_id, variable.name) for variable in trigger_manager.variables
     } == expected_variables
@@ -2094,13 +2102,22 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 for effect in reward.effects
                 if effect.effect_type == EffectId.CHANGE_VARIABLE
             ]
-            assert len(variable_effects) == 1
-            consume_pending = variable_effects[0]
+            assert len(variable_effects) == 2
+            consume_pending = next(
+                effect for effect in variable_effects if effect.variable == color - 1
+            )
             assert (
                 consume_pending.variable,
                 consume_pending.operation,
                 consume_pending.quantity,
             ) == (color - 1, Operation.SUBTRACT, 1)
+            arm_movement = next(
+                effect for effect in variable_effects if effect.variable == 104 + color
+            )
+            assert (
+                arm_movement.operation,
+                arm_movement.quantity,
+            ) == (Operation.SET, 1)
 
             mover = movers[f"Builder Move S{color} W{world_player}"]
             assert mover.enabled and mover.looping
@@ -2109,6 +2126,15 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 and condition.timer == 1
                 for condition in mover.conditions
             )
+            assert {
+                (condition.variable, condition.quantity, condition.comparison)
+                for condition in mover.conditions
+                if condition.condition_type == ConditionId.VARIABLE_VALUE
+            } == {
+                (104 + color, 1, Comparison.EQUAL),
+                (31 + color, 1, Comparison.EQUAL),
+                (39 + color, world_player, Comparison.EQUAL),
+            }
             tasks = {
                 (
                     effect.object_list_unit_id,
@@ -2140,6 +2166,17 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 )
                 for unit_id, spawn in spawns.items()
             }
+            movement_resets = [
+                effect
+                for effect in mover.effects
+                if effect.effect_type == EffectId.CHANGE_VARIABLE
+                and effect.variable == 104 + color
+            ]
+            assert len(movement_resets) == 1
+            assert (
+                movement_resets[0].operation,
+                movement_resets[0].quantity,
+            ) == (Operation.SET, 0)
 
     xs_trigger = next(trigger for trigger in triggers if trigger.name == "XS SCRIPT")
     xs_source = xs_trigger.effects[0].message
@@ -3604,6 +3641,17 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                     creates[0].location_x,
                     creates[0].location_y,
                 ) == (world_player, unit_id, *spawn)
+                movement_arms = [
+                    effect
+                    for effect in trigger.effects
+                    if effect.effect_type == EffectId.CHANGE_VARIABLE
+                    and effect.variable == 96 + color
+                ]
+                assert len(movement_arms) == 1
+                assert (
+                    movement_arms[0].operation,
+                    movement_arms[0].quantity,
+                ) == (Operation.SET, 1)
 
                 deactivations = [
                     effect
@@ -3679,6 +3727,7 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                     (31 + color, 1, Comparison.EQUAL),
                     (39 + color, world_player, Comparison.EQUAL),
                     (88 + color, route_value, Comparison.EQUAL),
+                    (96 + color, 1, Comparison.EQUAL),
                 }
                 tasks = [
                     effect
@@ -3696,6 +3745,116 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                 ) == (spawn_x - 1, spawn_y - 1, spawn_x + 1, spawn_y + 1)
                 assert (task.location_x, task.location_y) == destination
                 assert task.action_type == ActionType.MOVE
+                movement_resets = [
+                    effect
+                    for effect in trigger.effects
+                    if effect.effect_type == EffectId.CHANGE_VARIABLE
+                    and effect.variable == 96 + color
+                ]
+                assert len(movement_resets) == 1
+                assert (
+                    movement_resets[0].operation,
+                    movement_resets[0].quantity,
+                ) == (Operation.SET, 0)
+
+
+def test_evolution_alpha_late_heroes_arm_one_shot_route_orders(evolution_alpha):
+    pattern = re.compile(r"Hero Boost (K3500|K5000A|K5000B) S([1-8]) W([1-8])")
+    boosts = {
+        (match.group(1), int(match.group(2)), int(match.group(3))): trigger
+        for trigger in evolution_alpha.trigger_manager.triggers
+        if (match := pattern.fullmatch(trigger.name))
+    }
+    assert len(boosts) == 3 * len(VALID_COLOR_WORLD_PAIRS)
+
+    source_locations = {
+        "K3500": (16, 38),
+        "K5000A": (15, 38),
+        "K5000B": (17, 38),
+    }
+    for label, source_location in source_locations.items():
+        for color, world_player in VALID_COLOR_WORLD_PAIRS:
+            trigger = boosts[label, color, world_player]
+            assert not trigger.enabled and trigger.looping
+            creates = [
+                effect
+                for effect in trigger.effects
+                if effect.effect_type == EffectId.CREATE_OBJECT
+            ]
+            assert len(creates) == 1
+            assert (
+                creates[0].object_list_unit_id,
+                creates[0].source_player,
+                creates[0].location_x,
+                creates[0].location_y,
+            ) == (
+                HeroInfo.GENGHIS_KHAN.ID,
+                world_player,
+                *v2_cell_for_player(color, *source_location),
+            )
+            movement_arms = [
+                effect
+                for effect in trigger.effects
+                if effect.effect_type == EffectId.CHANGE_VARIABLE
+                and effect.variable == 96 + color
+            ]
+            assert len(movement_arms) == 1
+            assert (
+                movement_arms[0].operation,
+                movement_arms[0].quantity,
+            ) == (Operation.SET, 1)
+
+
+def test_evolution_alpha_all_looping_move_orders_consume_one_spawn_pulse(
+    evolution_alpha,
+):
+    """No periodic task may reclaim a unit after the player gives it a new order."""
+    triggers = evolution_alpha.trigger_manager.triggers
+    referenced_trigger_ids = {
+        effect.trigger_id
+        for trigger in triggers
+        for effect in trigger.effects
+        if effect.effect_type
+        in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+    }
+    move_loops = [
+        trigger
+        for trigger in triggers
+        if trigger.looping
+        and (trigger.enabled or trigger.trigger_id in referenced_trigger_ids)
+        and any(
+            effect.effect_type == EffectId.TASK_OBJECT
+            for effect in trigger.effects
+        )
+    ]
+    assert len(move_loops) == 448
+
+    for trigger in move_loops:
+        armed_variables = {
+            condition.variable
+            for condition in trigger.conditions
+            if condition.condition_type == ConditionId.VARIABLE_VALUE
+            and condition.quantity == 1
+            and condition.comparison == Comparison.EQUAL
+        }
+        consumed_variables = {
+            effect.variable
+            for effect in trigger.effects
+            if effect.effect_type == EffectId.CHANGE_VARIABLE
+            and effect.operation == Operation.SET
+            and effect.quantity == 0
+        }
+        assert len(armed_variables & consumed_variables) == 1, trigger.name
+        assert any(
+            condition.condition_type == ConditionId.TIMER
+            and condition.timer == 1
+            for condition in trigger.conditions
+        ), trigger.name
+        assert all(
+            effect.action_type == ActionType.MOVE
+            for effect in trigger.effects
+            if effect.effect_type == EffectId.TASK_OBJECT
+        ), trigger.name
 
 
 def test_evolution_alpha_remaps_location_sensitive_triggers_to_v2(evolution_alpha):

@@ -28,7 +28,7 @@ Six modes ship with the repo, illustrating both authoring styles:
 | [`cba_hero`](modes/cba_hero/) | blank build | 8-player 4v4 hero arena. 45 triggers, 16 units, XS wave clock — everything is Python. The canonical example. |
 | [`cba_hero_duel`](modes/cba_hero_duel/) | blank build | 1v1 sudden-death cut of the above, on a smaller map. Same library, different pacing. |
 | [`big_ytri`](modes/big_ytri/) | decompiled | Big_Ytri's Royal 4v4, decompiled to Python: 2993 triggers, 3314 conditions, 7814 effects, 1123 units, 20736 terrain tiles. `verify` compares 100,857 fields against the original. |
-| [`evolution_alpha`](modes/evolution_alpha/) | code-defined | **CBA Hero: Ascendants v1.0.9 candidate** — evolved from the sole v1.0.3 historical baseline, with arbitrary lobby color order, Castle-bound army spawns, five Sheep controls, shared army/hero routes, one-shot army launches, buildable milestone shores, unobstructed hero spawns, resignation cleanup, mirrored anti-Trebuchet protection, six hero tiers, protected team routes, center rewards, vote-kicks, live K/D/R, and a warning-free trigger graph. 3383 triggers, 1076 units. |
+| [`evolution_alpha`](modes/evolution_alpha/) | code-defined | **CBA Hero: Ascendants v1.0.10 candidate** — evolved from the sole v1.0.3 historical baseline, with arbitrary lobby color order, Castle-bound army spawns, five Sheep controls, shared army/hero routes, one-shot army, milestone-hero, and builder orders, buildable milestone shores, unobstructed hero spawns, resignation cleanup, mirrored anti-Trebuchet protection, six hero tiers, protected team routes, center rewards, vote-kicks, live K/D/R, and a warning-free trigger graph. 3383 triggers, 1076 units. |
 | [`chieftains_4v4`](modes/chieftains_4v4/) | decompiled | Big_Ytri's published Chieftains 2026 4v4 (workshop `469500`) — Royal 4v4 plus the Chieftains/Greece/Three Kingdoms DLC blocks and a team vote-kick. 3184 triggers, 1171 units; `verify` compares 117,824 fields. |
 | [`chieftains_ffa`](modes/chieftains_ffa/) | decompiled | The free-for-all cut of the same 2026 release (workshop `469501`): all-enemy diplomacy, no vote-kick. 3151 triggers, 1059 units; `verify` compares 115,299 fields. |
 
@@ -68,7 +68,7 @@ Six CLI commands cover the loop from opaque binary to code-generated mode:
 
 ```bash
 aoe2modes inspect "input/CBA Hero Royal 4v4 Big_Ytri.aoe2scenario" --triggers
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.9.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.10.aoe2scenario" --strict
 aoe2modes map evolution_alpha --html dist/ascendants-map.html
 aoe2modes diff modes/chieftains_4v4/base.aoe2scenario modes/chieftains_ffa/base.aoe2scenario
 aoe2modes decompile "input/CBA Hero.aoe2scenario" --out scratch/generated/
@@ -139,7 +139,7 @@ The full architecture, gotchas (AoE2ScenarioParser has a real version-state leak
 - [`docs/authoring.md`](docs/authoring.md) — writing a mode from scratch.
 - [`docs/cba-hero.md`](docs/cba-hero.md) — what CBA Hero is, what mechanics a build has to provide, and how this repo models each one.
 - [`docs/tooling.md`](docs/tooling.md) — the landscape of AoE2 scenario tooling, why this repo uses AoE2ScenarioParser, and how DE actually distributes XS.
-- [`docs/ascendants-development.md`](docs/ascendants-development.md) — the sole v1.0.3 historical baseline, v1.0.9 candidate, verification layers, and safe issue-fixing loop.
+- [`docs/ascendants-development.md`](docs/ascendants-development.md) — the sole v1.0.3 historical baseline, v1.0.10 candidate, verification layers, and safe issue-fixing loop.
 - [`docs/ascendants-issue-register.md`](docs/ascendants-issue-register.md) — reports recovered from the publishing task, parser evidence, and the in-game acceptance matrix.
 - [AoE2ScenarioParser docs](https://ksneijders.github.io/AoE2ScenarioParser/) — upstream. Ahead of the pinned 0.8.4 in places; the version-pinned reference in `.claude/skills/aoe2-scenario-parser/` calls out the divergences.
 - [Castle Blood Automatic — Age of Empires Wiki](https://ageofempires.fandom.com/wiki/Castle_Blood_Automatic) — background on the scenario family this repo is aimed at.

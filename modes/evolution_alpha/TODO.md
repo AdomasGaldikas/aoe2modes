@@ -1,12 +1,42 @@
 # Ascendants TODO
 
-Open work from the v1.0.7/v1.0.8 source review. Most of it was closed in **v1.0.9**;
+Open work from the v1.0.7–v1.0.10 source review. Most of it is closed in **v1.0.10**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
-Status key: `[x]` done in v1.0.9 · `[~]` decision needed · `[ ]` open
+Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## Closed in v1.0.10
+
+### [x] D1 — milestone heroes continuously reclaimed player control
+
+All 192 hero route triggers used to poll the three-by-three milestone spawn area every
+second. A hero sent back toward its Castle could therefore be caught and turned around
+again. Eight color-specific hero pulses now arm only when a 200–2000 milestone or
+3500/5000 Genghis loop creates a unit; the matching runtime-owner route consumes the
+pulse once.
+
+### [x] D2 — builder movers had the same continuous-order defect
+
+All 64 builder movers now require and consume a separate color-specific pulse armed by
+the raze reward that creates the villager pair. The initial auto-park remains, but a
+later player order cannot be overwritten merely because a builder re-enters its spawn
+pad.
+
+### [x] D3 — no whole-scenario order-overwrite invariant
+
+A new regression scans all 448 reachable looping `Task Object` triggers. Every one must
+have a one-second timer, an explicit Move action, and exactly one variable that is both
+required at value 1 and reset to 0 by the same trigger. This covers normal armies,
+milestone/late heroes, and builders as one gameplay rule.
+
+### [x] D4 — stale variable-range authoring note
+
+The general authoring guide still said Ascendants occupied ids 0–80 even though the
+v1.0.9 docs claimed it had been corrected to 0–96. All live guidance now records the
+v1.0.10 range, 0–112.
 
 ## Closed in v1.0.9
 
@@ -61,7 +91,7 @@ also replaced by bounds derived directly from the four serialized Castles per co
 
 ### [x] P5 — docs, Makefile, local release gate
 
-Variable range corrected to 0–96 in `CLAUDE.md` / `AGENTS.md` / `docs/authoring.md`; a
+Variable range corrected to 0–96 in `CLAUDE.md` / `AGENTS.md`; a
 fourth "code-defined" mode flavour documented; `README.md` verify claim fixed;
 `mode.toml`'s `[xs]` block explains why it is empty; `make check-ascendants` derives
 the filename from `mode.toml` via the new `aoe2modes info --output-name` and runs
@@ -99,7 +129,7 @@ baseline it before making the audit a repo-wide release gate.
 
 ## Engine acceptance — nothing static can close these
 
-`docs/ascendants-issue-register.md` marks ASC-001…ASC-021 "Guarded", which that doc
+`docs/ascendants-issue-register.md` marks ASC-001…ASC-023 "Guarded", which that doc
 correctly defines as *"the serialized scenario and tests contain the intended
 correction; it does not mean the engine has been observed running it"*. **None has been
 engine-verified.**
@@ -112,6 +142,10 @@ engine-verified.**
 - [ ] **ASC-019** — five-position Sheep routing, reworked twice. All eight colors, full
       and sparse, normal waves and 200/400/600/800/1000/2000 heroes.
 - [ ] **ASC-020** — arbitrary lobby color order; a full lobby with Yellow before Green.
+- [ ] **ASC-022** — return milestone and 3500/5000 heroes through their spawn pads after
+      they have received their automatic route.
+- [ ] **ASC-023** — return both raze-reward villagers through their creation pads after
+      the initial auto-park.
 - [ ] **ASC-006** — vote kick with three and four teammates, and proof that two cannot.
 - [ ] ASC-001, 002, 004, 007–018 — per the register's own "Required game check" column.
 
@@ -132,3 +166,7 @@ engine-verified.**
 - v1.0.9 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,383 triggers,
   1,076 units, 97 variables; 65 focused and 110 repository tests pass; `ruff` clean;
   all 6 modes build.
+- v1.0.10 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,383
+  triggers, 1,076 units, 113 variables; 67 focused and 112 repository tests pass;
+  `ruff` clean; all 6 modes build. Final artifact hash is recorded in
+  `RELEASE_NOTES_v1.0.10.md`.

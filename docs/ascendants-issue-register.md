@@ -1,20 +1,20 @@
-# Ascendants v1.0.9 candidate issue register
+# Ascendants v1.0.10 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.9** is the active source-verified candidate; v1.0.8 remains the
+repair targets. **v1.0.10** is the active source-verified candidate; v1.0.9 remains the
 immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.9 candidate is 120,590 bytes with SHA-256
-`4639e893b1dbfb0ca2c0a4979eb9d226d680fc9abdd7ded988af863c50e59ea5`.
+The v1.0.10 candidate is 125,566 bytes with SHA-256
+`03d1e97ce5a01bdf36ca22c72e959d55c3c1e015424d707ca71b14fafa0a161e`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.9 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.10 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -37,14 +37,16 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-019 | None of the five Sheep positions worked reliably; 200/400+ kill heroes always took the default Medium route. | Guarded since v1.0.7 | Engine evidence disproved the narrow v1.0.6 zones. All 40 selectors cover collision-limited approach cells, and all five regions are mutually exclusive. All 192 normal-wave and 192 milestone-hero route triggers read the same eight latched route variables. The 36 fixed-Medium Open fallbacks are absent. | For every color in full and sparse lobbies, move the Sheep to Short, Medium, Long, Closed, and Open. Normal waves and 200/400/600/800/1000/2000 heroes must follow the selected route; Closed/Open must add/remove the shore blocker without resetting that route. |
 | ASC-020 | Green and Yellow armies spawned or routed through each other's Castle territories when their lobby rows were reversed. | Guarded in v1.0.8 | Runtime order is independent of color order. Every mapped family now covers all 64 pairs, including Green→W4 and Yellow→W3; tests exercise all 8! full-lobby orders. All 32 wave pads derive from one canonical row and are dry, unique, empty, and closest to their own Castles. Hay markers no longer occupy P4/P7 pads. | Start a full lobby with Yellow listed before Green, then other shuffled color orders. Confirm every army, route, HUD, reward, resignation, and victory result stays with its Castle territory. |
 | ASC-021 | Anti-Trebuchet protection did not cover the Castles of P4, P6, P7, or P8. | Guarded in v1.0.9 | Both cleanup families now derive from one canonical P3 rectangle through an independent eight-way transform. Every color's anti-Trebuchet zone is one mirror orbit, covers all four of its Castles, and stays clear of its rear route. Effects remain restricted to an enemy player's packed Trebuchets. | Place an enemy packed Trebuchet beside each Castle row, especially P4/P6/P7/P8; it must be removed without affecting friendly rear-route units. |
+| ASC-022 | Milestone heroes could be turned back by the invisible spawn line after the player ordered them toward the Castles. | Guarded in v1.0.10 | All 192 Short/Medium/Long hero movers now require and consume one of eight hero-creation pulses. The six 200–2000 milestones and all three 3500/5000 Genghis loops arm that pulse only after creating a hero. | For every color and each route, return milestone and late Genghis heroes through the three hero spawn cells; later player orders must remain intact. |
+| ASC-023 | Raze-reward builders could have later orders overwritten when they returned across their creation pads. | Guarded in v1.0.10 | All 64 builder movers require and consume one of eight builder-creation pulses. Each reward arms the pulse after creating the pair, and only the resolved runtime owner can consume it once. | Earn a pair for every color orientation, let it auto-park, then move both villagers back across both spawn pads; they must obey the player. |
 
 ## Additional parser findings
 
-The v1.0.9 candidate passes the strict structural audit with **0 errors and 0 warnings**:
+The v1.0.10 candidate passes the strict structural audit with **0 errors and 0 warnings**:
 
 - 3,383 uniquely named, non-empty triggers and a complete display order;
 - 1,076 unique object references, all on-map, with no dangling garrisons;
-- 97 unique variable ids and no dangling variable use;
+- 113 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
 - no partial, inverted, or out-of-bounds trigger geometry;
 - no reachable looping trigger without a Timer condition;
@@ -59,7 +61,7 @@ ever changes.
 Run the same audit after every build:
 
 ```bash
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.9.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.10.aoe2scenario" --strict
 ```
 
 `--strict` passes too. The normal command fails only on structural errors; strict also
@@ -83,6 +85,8 @@ cases are recorded in-game.
 | Route/pathing | All eight colors | Friendly rear and team routes work; walls have no diagonal gap; enemies cannot bypass. |
 | Score/UI | Full and sparse | K/D/R updates, starting scores are neutral, and post-game combat/razing totals are credible. |
 | Manual army return | All eight colors, full and sparse | Returning units cross the four launch pads without being sent back toward the arena. |
+| Manual hero return | All eight colors, full and sparse | Returning 200–2000 and 3500/5000 heroes cross all three hero pads without being sent back toward the arena. |
+| Manual builder return | All eight colors, full and sparse | After auto-parking, both raze-reward villagers can cross their two creation pads without being retasked. |
 | Five Sheep controls | All eight colors, full and sparse | Short/Medium/Long route the next normal wave and every kill hero identically; Closed/Open add/remove the shore blocker without resetting the route; existing armies keep manual orders. |
 | Milestone shore | All eight colors | Buildings can be placed on the repaired strip; hero spawns and nearby water remain clear. |
 | Marker removal | All eight colors | No Transport Ship is present; milestone heroes still spawn and route normally. |

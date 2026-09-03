@@ -153,6 +153,8 @@ MATCH_READY_VARIABLE_ID = 56
 VOTE_MARKER_VARIABLE_BASE = 57
 ARMY_MOVE_PENDING_VARIABLE_BASE = 81
 ARMY_ROUTE_VARIABLE_BASE = 89
+HERO_MOVE_PENDING_VARIABLE_BASE = 97
+BUILDER_MOVE_PENDING_VARIABLE_BASE = 105
 ROUTE_MEDIUM = 0
 ROUTE_SHORT = 1
 ROUTE_LONG = 2
@@ -3143,6 +3145,7 @@ def _configure_sparse_late_hero_boosts(
     ctx: BuildContext,
     active_variables,
     world_variables,
+    hero_move_pending_variables,
 ) -> None:
     """Continue the established Super Genghis phase at 3500/5000 kills."""
     legacy = [
@@ -3223,6 +3226,11 @@ def _configure_sparse_late_hero_boosts(
             area_x2=x,
             area_y2=y,
             operation=Operation.ADD,
+        )
+        trigger.new_effect.change_variable(
+            quantity=1,
+            operation=Operation.SET,
+            variable=hero_move_pending_variables[color],
         )
         return trigger
 
@@ -3319,7 +3327,7 @@ def _configure_sparse_hero_milestones(
     active_variables,
     world_variables,
     match_ready_variable,
-) -> None:
+) -> dict[PlayerId, int]:
     """Make every kill hero and its latched route follow the occupied color.
 
     The legacy P5/P6 milestones created their heroes on rear Stone Walls after
@@ -3328,6 +3336,16 @@ def _configure_sparse_hero_milestones(
     complete milestone/order families as the semantic template, then bind each
     color to every possible runtime player behind the shared color resolver.
     """
+    hero_move_pending_variables = {
+        scenario_player: ctx.tm.add_variable(
+            f"hero_move_pending_p{int(scenario_player)}",
+            variable_id=(
+                HERO_MOVE_PENDING_VARIABLE_BASE + int(scenario_player) - 1
+            ),
+        ).variable_id
+        for scenario_player in PLAYERS
+    }
+
     milestone_targets = {}
     for scenario_player in PLAYERS:
         for threshold, unit_id in HERO_MILESTONES:
@@ -3501,6 +3519,11 @@ def _configure_sparse_hero_milestones(
                         f"invalid {threshold}-kill hero chain for "
                         f"S{int(scenario_player)} W{int(world_player)}"
                     )
+                trigger.new_effect.change_variable(
+                    quantity=1,
+                    operation=Operation.SET,
+                    variable=hero_move_pending_variables[scenario_player],
+                )
                 previous = trigger
 
             for source_name, public_name in HERO_ORDER_FAMILIES.items():
@@ -3565,6 +3588,11 @@ def _configure_sparse_hero_milestones(
                     ),
                     comparison=Comparison.EQUAL,
                 )
+                trigger.new_condition.variable_value(
+                    quantity=1,
+                    variable=hero_move_pending_variables[scenario_player],
+                    comparison=Comparison.EQUAL,
+                )
                 trigger.new_condition.timer(timer=1)
 
                 task_effects = [
@@ -3592,6 +3620,13 @@ def _configure_sparse_hero_milestones(
                 )
                 task.action_type = ActionType.MOVE
                 trigger.effects.append(task)
+                trigger.new_effect.change_variable(
+                    quantity=0,
+                    operation=Operation.SET,
+                    variable=hero_move_pending_variables[scenario_player],
+                )
+
+    return hero_move_pending_variables
 
 
 def _add_sparse_feudal_upgrades(
@@ -3675,6 +3710,15 @@ def _remap_raze_villagers(
         scenario_player: ctx.tm.add_variable(
             f"pending_builders_p{int(scenario_player)}",
             variable_id=PENDING_BUILDER_VARIABLE_BASE + int(scenario_player) - 1,
+        ).variable_id
+        for scenario_player in PLAYERS
+    }
+    move_pending_variables = {
+        scenario_player: ctx.tm.add_variable(
+            f"builder_move_pending_p{int(scenario_player)}",
+            variable_id=(
+                BUILDER_MOVE_PENDING_VARIABLE_BASE + int(scenario_player) - 1
+            ),
         ).variable_id
         for scenario_player in PLAYERS
     }
@@ -3796,6 +3840,11 @@ def _remap_raze_villagers(
                 reward.effects.append(effect)
             reward.new_effect.change_variable(
                 quantity=1,
+                operation=Operation.SET,
+                variable=move_pending_variables[scenario_player],
+            )
+            reward.new_effect.change_variable(
+                quantity=1,
                 operation=Operation.SUBTRACT,
                 variable=pending_variables[scenario_player],
             )
@@ -3808,6 +3857,11 @@ def _remap_raze_villagers(
                 looping=1,
             )
             mover.new_condition.timer(timer=1)
+            mover.new_condition.variable_value(
+                quantity=1,
+                variable=move_pending_variables[scenario_player],
+                comparison=Comparison.EQUAL,
+            )
             mover.new_condition.variable_value(
                 quantity=1,
                 variable=active_variables[scenario_player],
@@ -3837,6 +3891,11 @@ def _remap_raze_villagers(
                     area_y2=spawn_y + 1,
                     action_type=ActionType.MOVE,
                 )
+            mover.new_effect.change_variable(
+                quantity=0,
+                operation=Operation.SET,
+                variable=move_pending_variables[scenario_player],
+            )
 
 
 def _relocate_builder_spawn_flags(ctx: BuildContext) -> None:
@@ -4802,7 +4861,7 @@ def build(ctx: BuildContext) -> None:
         world_variables,
         match_ready_variable,
     )
-    _configure_sparse_hero_milestones(
+    hero_move_pending_variables = _configure_sparse_hero_milestones(
         ctx,
         active_variables,
         world_variables,
@@ -4812,6 +4871,7 @@ def build(ctx: BuildContext) -> None:
         ctx,
         active_variables,
         world_variables,
+        hero_move_pending_variables,
     )
     _configure_sparse_vote_kick(
         ctx,

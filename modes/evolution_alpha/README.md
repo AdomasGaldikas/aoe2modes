@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.9
+# CBA Hero: Ascendants v1.0.10
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,13 +7,13 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.9 |
+| | Baseline | Ascendants v1.0.10 |
 | --- | --- | --- |
 | Triggers | 2,993 | 3,383 |
-| Conditions | 3,314 | 11,384 |
-| Effects | 7,814 | 9,975 |
+| Conditions | 3,314 | 11,640 |
+| Effects | 7,814 | 10,871 |
 | Units | 1,123 | 1,076 |
-| Runtime variables | 0 | 97 |
+| Runtime variables | 0 | 113 |
 | Scenario version | v1.51 | v1.58 |
 
 ## What changed from the baseline
@@ -69,9 +69,10 @@ trigger graph.
 The same territory/runtime mapping now covers the automatic Feudal upgrade package.
 Builder rewards use a separate color-indexed queue: XS resolves the selected color's
 runtime civilization and razing total, then the matching color trigger creates the
-villagers in its own base. A persistent color/runtime-aware movement pass catches
-each new pair on the next tick and parks one builder at each protected side of the
-Castle row, away from the automatic army lane. Each civilization keeps its original one-to-four-raze
+villagers in its own base. A color/runtime-aware one-shot movement pulse catches
+each new pair and parks one builder at each protected side of the Castle row, away
+from the automatic army lane; after that, player orders are not overwritten. Each
+civilization keeps its original one-to-four-raze
 threshold; the first pair arrives at that threshold and every later razing earns
 another pair. A short local chat line at match start states the player's civilization
 and first-builder threshold. The two-second Bombard Tower grant is forced for every
@@ -80,7 +81,7 @@ runtime player so the free tower is reliably available once a builder is earned.
 Kill heroes are color-aware as well. Every 200/400/600/800/1000/2000 milestone reads
 the occupied color's resolved runtime player, creates the correct hero on an empty
 mirrored grass tile, and applies the same latched Short/Medium/Long route used by that
-color's normal waves. Moving the Sheep to Hero Spawn Closed or Open changes only the
+color's normal waves through a one-shot creation pulse. Moving the Sheep to Hero Spawn Closed or Open changes only the
 shoreline blocker and preserves the selected route. This keeps Teal and Purple clear
 of the compact rear walls and makes the complete ladder
 work identically for all eight colors in both full and sparse lobbies.
@@ -242,10 +243,25 @@ pad closer to another color's Castles. All 32 decorative Hay Stacks are moved on
 toward their own Castle; none occupies a wave pad. The candidate has 3,383 triggers,
 1,076 objects, 11,384 conditions, 9,975 effects, and 97 variables.
 
+Version 1.0.9 makes the mode code-defined and repairs the asymmetric anti-Trebuchet
+zones. P4/P6/P7/P8 now receive the same Castle-row protection as the other four
+colors. It also derives XS civilization-array sizes from the complete ids 1–59 tables,
+reports unsupported later civilizations instead of silently failing, and adds stronger
+source/audit release gates. Its gameplay counts remain those of v1.0.8.
+
+Version 1.0.10 completes the one-shot movement model. The 192 milestone-hero order
+triggers and 64 builder order triggers previously polled their spawn pads every second,
+so a player-issued return order could be overwritten when a hero or builder crossed
+that area. New color-specific pulses are armed only by a hero or builder creation and
+consumed by exactly one matching runtime-owner route. The same pulse covers the
+3500/5000-kill Genghis loops. A whole-scenario regression now rejects any reachable
+looping Task Object trigger that does not consume one spawn pulse. The candidate has
+3,383 triggers, 1,076 objects, 11,640 conditions, 10,871 effects, and 113 variables.
+
 ## Source of truth
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`: `dist/CBA Hero Ascendants v1.0.9.aoe2scenario` is a build
+`scenario.reference`: `dist/CBA Hero Ascendants v1.0.10.aoe2scenario` is a build
 product, and nothing here is verified back against a binary.
 
 `build.py` starts with `apply_scenario_source(ctx)` — the arena in `scenario/` — then

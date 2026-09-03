@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.9**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.10**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.9.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.10.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -25,14 +25,14 @@ every run. Neither held: the committed package differed from the declared refere
 8,811 fields, the reference was itself an output of an earlier Ascendants build rather
 than an upstream source, and the test that appeared to check the round trip actually
 decompiled the reference into a temporary directory and compared *that* against itself.
-v1.0.9 removes the reference, the stale binary, and the claim.
+v1.0.9 removed the reference, the stale binary, and the claim.
 
 ### What is checked now
 
 ```bash
 .venv/bin/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.9.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.10.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -41,11 +41,11 @@ itself fails closed on drift: exact trigger-family counts, eight-way symmetry of
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.9 passes with **0 errors and 0 warnings**.
+unconditional victory/defeat. v1.0.10 passes with **0 errors and 0 warnings**.
 
 `aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
 geometry. It is not a pass/fail gate; read the report and confirm the arena still holds
-its shape. For v1.0.9 that means: all eight base pockets sealed at **285 walkable tiles**
+its shape. For v1.0.10 that means: all eight base pockets sealed at **285 walkable tiles**
 with every gate shut, territory **911** tiles for the four edge colors and **879** for the
 four side colors, the same walk to the centre from every base (44–45 steps, the one-step
 spread being grid parity on an even-sized map), and terrain symmetry of
@@ -62,6 +62,21 @@ synthetic scenario that pins trigger-variable ids and names across a decompile c
 
 The active issue inventory and manual acceptance cases are in
 [`ascendants-issue-register.md`](ascendants-issue-register.md).
+
+## v1.0.10 one-shot order completion
+
+A full scan of every reachable looping `Task Object` effect found two families that
+still polled their spawn pads continuously: 192 milestone-hero route triggers and 64
+builder movers. Like the normal-wave defect fixed in v1.0.5, either family could take
+control back after a player manually returned a unit across its creation area.
+
+Each color now has a dedicated hero pulse and builder pulse. Creation arms the pulse;
+only the active color/runtime-owner trigger with the selected route can consume it;
+the move effect then resets it to zero. The 3500/5000-kill Genghis loops arm the same
+hero pulse. This preserves automatic departure for newly created units while leaving
+all later player orders alone. A scenario-wide regression checks all 448 reachable
+looping move triggers and fails if any lacks a one-shot pulse, one-second pacing, or an
+explicit Move action.
 
 ## v1.0.8 arbitrary lobby-order repair
 
