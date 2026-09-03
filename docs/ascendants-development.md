@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.10**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.11**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.10.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.11.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -32,7 +32,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 ```bash
 .venv/bin/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.10.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.11.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -41,11 +41,11 @@ itself fails closed on drift: exact trigger-family counts, eight-way symmetry of
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.10 passes with **0 errors and 0 warnings**.
+unconditional victory/defeat. v1.0.11 passes with **0 errors and 0 warnings**.
 
 `aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
 geometry. It is not a pass/fail gate; read the report and confirm the arena still holds
-its shape. For v1.0.10 that means: all eight base pockets sealed at **285 walkable tiles**
+its shape. For v1.0.11 that means: all eight base pockets sealed at **285 walkable tiles**
 with every gate shut, territory **911** tiles for the four edge colors and **879** for the
 four side colors, the same walk to the centre from every base (44–45 steps, the one-step
 spread being grid parity on an even-sized map), and terrain symmetry of
@@ -62,6 +62,33 @@ synthetic scenario that pins trigger-variable ids and names across a decompile c
 
 The active issue inventory and manual acceptance cases are in
 [`ascendants-issue-register.md`](ascendants-issue-register.md).
+The exact Castle rows, Sheep references and zones, army/hero creation pads, route
+variables, and destinations for all eight colors are in
+[`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.11 player-identity boundary and corner cleanup
+
+Engine testing of v1.0.10 exposed a defect that parser-only permutation tests had
+missed: trigger player selectors and XS world-player ids are separate identity
+domains. The Castle-row detector resolves the player value used by trigger conditions
+and effects. XS player APIs instead require the engine conversion
+`xsGetWorldPlayerId(scenarioPlayer)`. v1.0.8 through v1.0.10 incorrectly shared the
+trigger-derived value with XS, allowing Red, Green, or another shuffled color to spawn
+an army owned by a different lobby player. The Sheep changed the correct color route
+variable, but the correctly mapped route trigger could not select that cross-owned
+army, so its failure appeared to be a second route-selector defect.
+
+XS now performs the official conversion at one explicit boundary, while the trigger
+graph retains the Castle resolver only for trigger-side player fields. An integrated
+regression follows each of the eight Sheep selectors through normal-wave and hero
+movement under identity order, an explicit Red/Green swap, and a full eight-color
+rotation. The old 8! loop was removed: it only proved that dictionary keys existed and
+never modeled the engine identity boundary that had failed.
+
+The same release removes 56 submerged static Palisade Walls and eight static
+Saboteurs from the outer corners. None had a trigger, garrison, or object reference.
+The Goth Palisade reward is created later by a gameplay trigger inside the base and is
+not affected.
 
 ## v1.0.10 one-shot order completion
 
@@ -78,7 +105,7 @@ all later player orders alone. A scenario-wide regression checks all 448 reachab
 looping move triggers and fails if any lacks a one-shot pulse, one-second pacing, or an
 explicit Move action.
 
-## v1.0.8 arbitrary lobby-order repair
+## v1.0.8 trigger-side lobby candidate expansion (superseded for XS)
 
 Runtime player order follows lobby rows, not numeric colors. A full lobby can therefore
 map Yellow to runtime P3 and Green to runtime P4. The earlier compact-lobby model only
@@ -86,10 +113,11 @@ generated mappings where the runtime number was no greater than the color number
 valid reversed and shuffled rows were absent from army movement, rewards, defeat,
 resignation, HUD, vote, upgrade, and hero systems.
 
-Every mapped family now contains all 64 color/runtime candidates. Castle-row owner
-detection activates exactly one candidate per occupied color, so closed or unrelated
-rows remain inert. Regression tests require the Green/P4 and Yellow/P3 pair explicitly,
-exercise all 8! full-lobby color orders, and model reversed victory ownership.
+Every trigger-mapped family contains all 64 color/player candidates. Castle-row owner
+detection activates exactly one trigger-side candidate per occupied color, so closed
+or unrelated rows remain inert. This expansion was correct for trigger conditions and
+effects, including Green/P4 and Yellow/P3. Reusing its value inside XS was not correct;
+v1.0.11 replaces that XS path with the engine's `xsGetWorldPlayerId` conversion.
 
 Army pads are no longer eight hand-maintained tables. All 32 positions come from one P3
 row through the continuous-coordinate V2 transform, and a build-time geometry audit
@@ -162,6 +190,9 @@ The parser and regression suite can prove scenario structure, but they do not ru
 Age of Empires II engine. Keep these as explicit in-game checks for every candidate:
 
 - full 4v4 and at least one sparse lobby with closed colors on both teams;
+- shuffled full lobbies with Red/Green reversed and Yellow before Green, checking that
+  Castle territory, army ownership, civilization, Sheep route, heroes, HUD, rewards,
+  resignation, and victory remain attached to the same color;
 - automatic armies, builders, six hero milestones, and all five distance positions;
 - vote-kick resolution, resignation/defeat, and team victory for both sides;
 - local HUD values, player names, zero costs/resources, and post-game combat score;
@@ -170,6 +201,8 @@ Age of Empires II engine. Keep these as explicit in-game checks for every candid
 - moving every Sheep to Short, Medium, and Long and confirming the next wave follows it;
 - placing buildings across every milestone-shore repair strip;
 - confirming all eight shores have no Transport Ship while milestone heroes still spawn;
+- revealing all four outer corners and confirming no static Palisade Wall or Saboteur
+  remains there;
 - resigning in full and sparse lobbies and confirming all owned units/buildings disappear.
 
 When one fails, record the exact lobby colors, civilization, trigger-visible symptom,

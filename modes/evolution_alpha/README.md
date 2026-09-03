@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.10
+# CBA Hero: Ascendants v1.0.11
 
 An expanded 144×144 CBA Hero arena rebuilt for reliable full and compact lobbies,
 equal territory geometry, predictable automatic movement, and complete
@@ -7,12 +7,12 @@ while making every color, route, reward, and late-game system work as one cohere
 
 ## Shape
 
-| | Baseline | Ascendants v1.0.10 |
+| | Baseline | Ascendants v1.0.11 |
 | --- | --- | --- |
 | Triggers | 2,993 | 3,383 |
 | Conditions | 3,314 | 11,640 |
 | Effects | 7,814 | 10,871 |
-| Units | 1,123 | 1,076 |
+| Units | 1,123 | 1,012 |
 | Runtime variables | 0 | 113 |
 | Scenario version | v1.51 | v1.58 |
 
@@ -50,21 +50,23 @@ until an occupied-player gate confirms it is present.
 
 ## Color-aware army spawning
 
-DE assigns occupied colors to consecutive runtime player numbers, but lobby row
-order can differ from numeric color order. For example, Teal/P5 can become runtime
-P2 in a sparse lobby, while a full lobby can put Yellow at runtime P3 and Green at
-runtime P4. The legacy army loops used the color slot as the runtime player, leaving
-some colors without waves or routing them through the wrong owner. Ascendants detects
-the runtime owner directly from each color's fixed Castle row and covers all 64
-color/runtime combinations. It then spawns that civilization's original unit at the
-correct color territory with the original population cap and interval. Runtime-owner move
-triggers send each newly created wave out of the matching base, consume a one-shot
+DE distinguishes the scenario player index (the fixed color/Castle territory) from
+the runtime world player (the lobby slot). A full lobby can put Red, Green, or Yellow
+in a different lobby order without changing which Castle row belongs to that color.
+Every XS player operation converts the scenario color with the engine's
+`xsGetWorldPlayerId` function before reading civilization/statistics or creating an
+army. Trigger player fields remain behind their separate Castle-row resolver; its
+trigger-derived value is never passed to XS. The selected civilization's original
+unit then spawns in the correct color territory with its original population cap and
+interval. Runtime-owner move triggers send each newly created wave out of the matching
+base, consume a one-shot
 launch pulse, and then remain inert until the next wave. A returning army can cross
 the spawn line without the scenario overwriting the player's order. Each color's Sheep
 writes a persistent Short, Medium, or Long route value directly. All full and compacted
 owner movement triggers read that value, so route choice no longer depends on fragile
 trigger activation state. The 472 retired static army shells are removed from the final
-trigger graph.
+trigger graph. The exact Sheep zones, creation pads, and army/hero destinations for
+all eight colors are recorded in `docs/ascendants-control-map.md`.
 
 The same territory/runtime mapping now covers the automatic Feudal upgrade package.
 Builder rewards use a separate color-indexed queue: XS resolves the selected color's
@@ -146,7 +148,10 @@ so its sand-looking legacy terrain cannot reject construction. Legacy
 wall cleanup stops before them so last-ditch defenses remain available. The obsolete
 `no wall` cleanup family is removed so it
 cannot erase the side walls of Red, Teal, Purple, or Orange at match start. The map has
-1,076 total objects; every added wall is attached to its owner's anti-delete protection.
+1,012 total objects; every added wall is attached to its owner's anti-delete protection.
+The 56 submerged Palisade Walls and eight Saboteurs inherited as outer-corner staging
+art are absent; they had no gameplay references. This does not remove the separate
+trigger-created Goth Palisade reward inside a playable base.
 The broad outer aprons at all four allied team corners are cut back to matching
 five-tile L routes. The straight allied causeways at the top and bottom are four tiles
 wide, matching their gate openings. The corresponding left and right corridors remain
@@ -234,14 +239,16 @@ normal-wave routes. The 36 later fixed-Medium Open fallbacks are removed, elimin
 the order that overrode Short or Long. The candidate has 2,291 triggers, 1,076 objects,
 6,904 conditions, 6,475 effects, and 97 variables.
 
-Version 1.0.8 removes the remaining assumption that runtime rows follow numeric color
-order. Every mapped system now covers all 64 color/runtime combinations, including
-Green at runtime P4 and Yellow at runtime P3. The four wave pads for every color are
-derived from one canonical P3 row with the continuous-coordinate V2 transforms, and
-the build rejects overlaps, water, static occupants, trigger-created occupants, or a
-pad closer to another color's Castles. All 32 decorative Hay Stacks are moved one cell
-toward their own Castle; none occupies a wave pad. The candidate has 3,383 triggers,
-1,076 objects, 11,384 conditions, 9,975 effects, and 97 variables.
+Version 1.0.8 expands every trigger-mapped system to all 64 color/player candidates,
+including Green with trigger player P4 and Yellow with trigger player P3. That is the
+correct model for trigger conditions/effects, but this release also reused the value
+inside XS; v1.0.11 supersedes that part with the engine's world-player conversion. The
+four wave pads for every color are derived from one canonical P3 row with the
+continuous-coordinate V2 transforms, and the build rejects overlaps, water, static
+occupants, trigger-created occupants, or a pad closer to another color's Castles. All
+32 decorative Hay Stacks are moved one cell toward their own Castle; none occupies a
+wave pad. The candidate has 3,383 triggers, 1,076 objects, 11,384 conditions, 9,975
+effects, and 97 variables.
 
 Version 1.0.9 makes the mode code-defined and repairs the asymmetric anti-Trebuchet
 zones. P4/P6/P7/P8 now receive the same Castle-row protection as the other four
@@ -258,10 +265,20 @@ consumed by exactly one matching runtime-owner route. The same pulse covers the
 looping Task Object trigger that does not consume one spawn pulse. The candidate has
 3,383 triggers, 1,076 objects, 11,640 conditions, 10,871 effects, and 113 variables.
 
+Version 1.0.11 separates trigger player selectors from XS world-player ids. The
+v1.0.8–v1.0.10 implementation fed the trigger-side Castle mapping into XS, so shuffled
+lobby rows could make one color's Castle spawn another color's army. XS now uses the
+engine's `xsGetWorldPlayerId(scenarioPlayer)` conversion for spawning, civilization,
+population, HUD, razing, and active-player state. One integrated regression follows
+the Sheep-selected route through both the normal-wave and every hero route under an
+explicit Red/Green swap and a full eight-color rotation. This release also removes 56
+static corner Palisade Walls and eight static corner Saboteurs. The candidate has
+3,383 triggers, 1,012 objects, 11,640 conditions, 10,871 effects, and 113 variables.
+
 ## Source of truth
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`: `dist/CBA Hero Ascendants v1.0.10.aoe2scenario` is a build
+`scenario.reference`: `dist/CBA Hero Ascendants v1.0.11.aoe2scenario` is a build
 product, and nothing here is verified back against a binary.
 
 `build.py` starts with `apply_scenario_source(ctx)` — the arena in `scenario/` — then

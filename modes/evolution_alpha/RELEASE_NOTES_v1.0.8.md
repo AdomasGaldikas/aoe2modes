@@ -1,5 +1,10 @@
 # CBA Hero: Ascendants v1.0.8 candidate
 
+> Superseded by v1.0.11. The 64 trigger-side candidates introduced here are valid for
+> trigger player fields, but the candidate incorrectly reused that value in XS. Its 8!
+> Python enumeration did not model the engine boundary and must not be treated as
+> shuffled-lobby acceptance.
+
 This candidate fixes Castle-territory ownership for arbitrary lobby color order.
 
 - Removes the invalid assumption that a color can only map to an equal-or-lower

@@ -103,12 +103,11 @@ def _mirrored_position_bounds(
 
 
 def _possible_world_players(color: PlayerId):
-    """Runtime slots a scenario color can occupy in the lobby.
+    """Trigger-side player selectors that may resolve a scenario color.
 
-    Lobby rows follow join/order choices, not numeric color order. Yellow can
-    therefore be runtime P3 while Green is runtime P4, and the same is true for
-    every other permutation. Castle-row detection selects the one real owner;
-    the generated trigger families must cover all eight candidates.
+    The serialized trigger graph retains all eight candidates for compatibility with
+    full and sparse lobbies. These ids belong only in trigger condition/effect fields;
+    XS player APIs require ``xsGetWorldPlayerId(color)`` instead.
     """
     del color
     return PLAYERS
@@ -147,6 +146,9 @@ PENDING_BUILDER_VARIABLE_BASE = 0
 COMBAT_ROW_VARIABLE_BASE = 8
 COMBAT_ROW_VARIABLE_STRIDE = 3
 COLOR_ACTIVE_VARIABLE_BASE = 32
+# Trigger-side selector chosen by the Castle-row detector. Despite the historical
+# serialized name ``p#worldplayer``, this value must never be passed to an XS player
+# API. XS has its own authoritative conversion: xsGetWorldPlayerId(scenario color).
 COLOR_WORLD_VARIABLE_BASE = 40
 COLOR_ELIMINATED_VARIABLE_BASE = 48
 MATCH_READY_VARIABLE_ID = 56
@@ -1380,11 +1382,12 @@ def _add_color_runtime_variables(ctx: BuildContext):
 
 
 def _add_color_owner_detection(ctx: BuildContext, active_variables, world_variables) -> None:
-    """Latch each scenario color to the runtime owner of its Castle row.
+    """Latch the trigger-side player selector that owns each Castle row.
 
-    Lobby order and color order are independent. Detecting the actual owner of
-    a color's fixed starting Castles avoids assumptions about either ordering
-    and gives triggers and XS one shared, map-verified mapping.
+    Trigger player fields and XS player arguments are separate identity domains in
+    custom-scenario lobbies. These variables are intentionally consumed only by
+    trigger conditions/effects. XS must translate the scenario color with
+    ``xsGetWorldPlayerId`` instead of reading this trigger-derived value.
     """
     configured = 0
     for color in PLAYERS:
@@ -1695,9 +1698,9 @@ def _render_color_spawn_xs() -> str:
         for attribute in SCORE_NEUTRAL_ATTRIBUTES
     )
     return f"""// Sparse-lobby color-aware army spawning.
-// DE assigns occupied colors to runtime lobby rows whose order can differ from
-// numeric color order. Castle-row detectors write the verified mapping shared
-// by this XS and every mapped trigger family.
+// Scenario colors and runtime lobby slots are different identity domains. Trigger
+// player fields use the trigger-side Castle resolver, while every XS player API must
+// use the engine's scenario-color-to-lobby-slot conversion below.
 
 int gCbaNextSpawnByColor = -1;
 int gCbaUnitByCiv = -1;
@@ -1708,9 +1711,7 @@ int gCbaBuilderThresholdByCiv = -1;
 int gCbaEarnedBuilderPairsByColor = -1;
 
 int cbaWorldPlayerForColor(int scenarioPlayer = 0) {{
-    return(xsTriggerVariable(
-        {COLOR_WORLD_VARIABLE_BASE} + scenarioPlayer - 1
-    ));
+    return(xsGetWorldPlayerId(scenarioPlayer));
 }}
 
 void cbaCreateWave(int scenarioPlayer = 0, int worldPlayer = 0, int unitId = -1) {{
@@ -3954,6 +3955,47 @@ def _remove_remaining_ice_decorations(ctx: BuildContext) -> None:
         ctx.um.remove_unit(unit=unit)
 
 
+def _remove_corner_staging_objects(ctx: BuildContext) -> None:
+    """Remove obsolete underwater Palisade/Saboteur staging art.
+
+    The imported scenario carried one Saboteur and seven Palisade Walls per color in
+    the four extreme map corners. Nothing references them; they are visible leftovers,
+    not gameplay markers. The Goth Palisade reward is trigger-created and is therefore
+    unaffected by removing these 64 static objects.
+    """
+    expected_counts = {
+        BuildingInfo.PALISADE_WALL.ID: 56,
+        HeroInfo.SABOTEUR.ID: 8,
+    }
+    staging_objects = [
+        unit
+        for units in ctx.um.units
+        for unit in units
+        if unit.unit_const in expected_counts
+    ]
+    actual_counts = {
+        unit_id: sum(unit.unit_const == unit_id for unit in staging_objects)
+        for unit_id in expected_counts
+    }
+    if actual_counts != expected_counts:
+        raise RuntimeError(
+            "unexpected corner staging-object counts: "
+            f"expected {expected_counts}, found {actual_counts}"
+        )
+
+    water = {int(terrain) for terrain in TerrainId.water_terrains()}
+    for unit in staging_objects:
+        near_x_edge = unit.x < 16 or unit.x > 128
+        near_y_edge = unit.y < 16 or unit.y > 128
+        terrain = ctx.mm.get_tile(x=int(unit.x), y=int(unit.y)).terrain_id
+        if not (near_x_edge and near_y_edge and terrain in water):
+            raise RuntimeError(
+                "refusing to remove non-corner Palisade/Saboteur object "
+                f"{unit.reference_id} at ({unit.x}, {unit.y})"
+            )
+        ctx.um.remove_unit(unit=unit)
+
+
 def _force_bombard_tower_unlock(ctx: BuildContext) -> None:
     """Grant Bombard Towers through the confirmed color-to-runtime mapping."""
     legacy = _unique_trigger(ctx, "BT -------------------- By: System")
@@ -4855,6 +4897,7 @@ def build(ctx: BuildContext) -> None:
     _configure_sparse_king_islands(ctx, active_variables, world_variables)
     _relocate_builder_spawn_flags(ctx)
     _remove_remaining_ice_decorations(ctx)
+    _remove_corner_staging_objects(ctx)
     _remap_raze_villagers(
         ctx,
         active_variables,

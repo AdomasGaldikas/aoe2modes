@@ -6,7 +6,6 @@ import hashlib
 import json
 import re
 from collections import Counter, defaultdict, deque
-from itertools import permutations
 
 import pytest
 from AoE2ScenarioParser.datasets.buildings import BuildingInfo
@@ -107,7 +106,7 @@ def evolution_alpha(tmp_path_factory, repo):
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
     assert len(triggers) == 3_383
-    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_076
+    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 1_012
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
     assert len(names) == len(set(names))
@@ -328,9 +327,9 @@ def test_evolution_alpha_keeps_v2_objects_and_playable_gate_holes(evolution_alph
         json.dumps(sorted(additions), separators=(",", ":")).encode()
     ).hexdigest()
 
-    assert len(original) == 992
+    assert len(original) == 928
     assert original_digest == (
-        "253ac71abcdab09f490905f74bbf03f6f10230312551f1425fe12f15799e5b5e"
+        "631fe28911f15bcd75fe21c7cc68a3ace3011a68590b33bf2f1272022882aace"
     )
     assert len(additions) == 84
     assert additions_digest == (
@@ -775,32 +774,48 @@ def test_evolution_alpha_places_vote_flags_beside_their_markers(evolution_alpha)
     assert actual_flags == expected_flags
 
 
-def test_evolution_alpha_keeps_visible_land_objects_out_of_water(evolution_alpha):
+def test_evolution_alpha_removes_corner_staging_objects_and_submerged_clutter(
+    evolution_alpha,
+):
     water = {int(terrain) for terrain in TerrainId.water_terrains()}
-    intentional_submerged = {
+    removed_types = {
         BuildingInfo.PALISADE_WALL.ID,
         HeroInfo.SABOTEUR.ID,
+        OtherInfo.ICE_NAVIGABLE.ID,
     }
-    submerged = [
+    all_units = [
         unit
         for units in evolution_alpha.unit_manager.units
         for unit in units
-        if evolution_alpha.map_manager.get_tile(
+    ]
+    assert all(unit.unit_const not in removed_types for unit in all_units)
+    assert all(
+        evolution_alpha.map_manager.get_tile(
             x=int(unit.x),
             y=int(unit.y),
-        ).terrain_id in water
-    ]
-    assert Counter(unit.unit_const for unit in submerged) == Counter(
-        {
-            BuildingInfo.PALISADE_WALL.ID: 56,
-            HeroInfo.SABOTEUR.ID: 8,
-        }
+        ).terrain_id
+        not in water
+        for unit in all_units
     )
-    assert all(unit.unit_const in intentional_submerged for unit in submerged)
+
+
+def test_evolution_alpha_static_corner_clutter_is_not_referenced(evolution_alpha):
+    removed_reference_ids = (
+        set(range(67_515, 67_529))
+        | set(range(67_593, 67_626))
+        | set(range(67_627, 67_636))
+        | set(range(67_700, 67_708))
+    )
     assert all(
-        unit.unit_const != OtherInfo.ICE_NAVIGABLE.ID
-        for units in evolution_alpha.unit_manager.units
-        for unit in units
+        not set(effect.selected_object_ids or ()) & removed_reference_ids
+        for trigger in evolution_alpha.trigger_manager.triggers
+        for effect in trigger.effects
+    )
+    assert all(
+        condition.unit_object not in removed_reference_ids
+        for trigger in evolution_alpha.trigger_manager.triggers
+        for condition in trigger.conditions
+        if condition.unit_object is not None
     )
 
 
@@ -1211,9 +1226,9 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
     assert "cAttributeKills" in xs_source
     assert "cAttributeKilledByOthers" in xs_source
     assert "cAttributeRazings" in xs_source
-    assert "xsGetWorldPlayerId(" not in xs_source
-    assert "return(xsTriggerVariable(" in xs_source
-    assert "40 + scenarioPlayer - 1" in xs_source
+    assert "return(xsGetWorldPlayerId(scenarioPlayer));" in xs_source
+    assert "return(xsTriggerVariable(" not in xs_source
+    assert "40 + scenarioPlayer - 1" not in xs_source
     assert xs_source.count("cbaWorldPlayerForColor(scenarioPlayer)") == 4
     assert "int variableBase = 8 + ((scenarioPlayer - 1) * 3);" in xs_source
     assert "xsSetTriggerVariable(variableBase, kills);" in xs_source
@@ -2515,11 +2530,11 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
     xs_trigger = next(trigger for trigger in triggers if trigger.name == "XS SCRIPT")
     xs_source = xs_trigger.effects[0].message
     assert "void cbaUpdateColorRuntime(int scenarioPlayer = 0)" in xs_source
-    assert "xsGetWorldPlayerId(" not in xs_source
+    assert "return(xsGetWorldPlayerId(scenarioPlayer));" in xs_source
     assert "int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);" in xs_source
     assert "rule cbaColorRuntimeState" in xs_source
     assert xs_source.count("cbaUpdateColorRuntime(") == 9
-    assert "40 + scenarioPlayer - 1" in xs_source
+    assert "40 + scenarioPlayer - 1" not in xs_source
     assert "48 + scenarioPlayer - 1" in xs_source
 
 
@@ -2570,14 +2585,9 @@ def test_evolution_alpha_detects_every_color_owner_from_its_castles(
         assert len(deactivations) == 1
         assert deactivations[0].trigger_id == detector.trigger_id
 
-    # Lobby rows can present the eight colors in any order. Exercise all
-    # 8! full-lobby assignments, including the observed Green/Yellow reversal.
-    for world_order in permutations(range(1, 9)):
-        selected = {
-            detectors[color, world_order[color - 1]].name
-            for color in range(1, 9)
-        }
-        assert len(selected) == 8
+    # This proves complete trigger-side candidate coverage only. XS lobby-slot
+    # ownership is a different identity domain and is guarded separately by the
+    # direct xsGetWorldPlayerId(scenarioPlayer) assertion.
     assert detectors[3, 4].name == "Color Owner Detect S3 W4"
     assert detectors[4, 3].name == "Color Owner Detect S4 W3"
 
@@ -3257,6 +3267,121 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
     }
 
 
+def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_domains(
+    evolution_alpha,
+):
+    """A shuffled lobby must keep one color's complete control chain together.
+
+    Parser tests cannot execute DE's lobby mapping. They can prove that XS delegates
+    that mapping to the engine, while every trigger-side candidate uses one consistent
+    owner for milestone creation and normal/hero movement in the color's own geometry.
+    """
+    triggers = evolution_alpha.trigger_manager.triggers
+    by_name = {trigger.name: trigger for trigger in triggers}
+    xs_source = by_name["XS SCRIPT"].effects[0].message
+    assert xs_source.count("xsGetWorldPlayerId(scenarioPlayer)") == 1
+    assert "40 + scenarioPlayer - 1" not in xs_source
+
+    route_specs = (
+        ("short", "move short", " Short", "Short", 1),
+        ("med", "move", "", "Medium", 0),
+        ("long", "move long", " Long", "Long", 2),
+    )
+    mappings = (
+        {color: color for color in range(1, 9)},
+        {1: 1, 2: 3, 3: 2, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8},
+        {color: (color % 8) + 1 for color in range(1, 9)},
+    )
+
+    for mapping in mappings:
+        assert set(mapping) == set(range(1, 9))
+        assert set(mapping.values()) == set(range(1, 9))
+        for color, trigger_player in mapping.items():
+            spawn_areas = {
+                (x - 1, y - 1, x + 1, y + 1)
+                for x, y in (
+                    v2_position_for_player(color, x, y)
+                    for x, y in ((22, 48), (22, 52), (22, 55), (22, 59))
+                )
+            }
+            hero_x, hero_y = v2_cell_for_player(color, 16, 38)
+            milestone = by_name[
+                f"Hero Milestone S{color} W{trigger_player} K200"
+            ]
+            milestone_create = next(
+                effect
+                for effect in milestone.effects
+                if effect.effect_type == EffectId.CREATE_OBJECT
+            )
+            assert (
+                milestone_create.source_player,
+                milestone_create.location_x,
+                milestone_create.location_y,
+            ) == (trigger_player, hero_x, hero_y)
+
+            for selector_name, family, sparse_label, hero_label, route_value in route_specs:
+                selector = by_name[f"{selector_name} (p{color})"]
+                assert any(
+                    effect.effect_type == EffectId.CHANGE_VARIABLE
+                    and effect.variable == 88 + color
+                    and effect.quantity == route_value
+                    and effect.operation == Operation.SET
+                    for effect in selector.effects
+                )
+
+                normal_name = (
+                    f"{family} (p{color})"
+                    if trigger_player == color
+                    else f"Sparse Move{sparse_label} S{color} W{trigger_player}"
+                )
+                normal = by_name[normal_name]
+                normal_tasks = [
+                    effect
+                    for effect in normal.effects
+                    if effect.effect_type == EffectId.TASK_OBJECT
+                ]
+                assert len(normal_tasks) == 4
+                assert {effect.source_player for effect in normal_tasks} == {
+                    trigger_player
+                }
+                assert {
+                    (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2)
+                    for effect in normal_tasks
+                } == spawn_areas
+                assert {
+                    (condition.variable, condition.quantity)
+                    for condition in normal.conditions
+                    if condition.condition_type == ConditionId.VARIABLE_VALUE
+                } >= {
+                    (39 + color, trigger_player),
+                    (88 + color, route_value),
+                }
+
+                hero = by_name[
+                    f"Hero Orders {hero_label} S{color} W{trigger_player}"
+                ]
+                hero_task = next(
+                    effect
+                    for effect in hero.effects
+                    if effect.effect_type == EffectId.TASK_OBJECT
+                )
+                assert hero_task.source_player == trigger_player
+                assert (
+                    hero_task.area_x1,
+                    hero_task.area_y1,
+                    hero_task.area_x2,
+                    hero_task.area_y2,
+                ) == (hero_x - 1, hero_y - 1, hero_x + 1, hero_y + 1)
+                assert {
+                    (condition.variable, condition.quantity)
+                    for condition in hero.conditions
+                    if condition.condition_type == ConditionId.VARIABLE_VALUE
+                } >= {
+                    (39 + color, trigger_player),
+                    (88 + color, route_value),
+                }
+
+
 def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
     disabled_spawners = [
@@ -3269,7 +3394,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     assert len(xs_trigger.effects) == 1
     assert xs_trigger.effects[0].effect_type == EffectId.SCRIPT_CALL
     xs_source = xs_trigger.effects[0].message
-    assert "xsGetWorldPlayerId(" not in xs_source
+    assert "return(xsGetWorldPlayerId(scenarioPlayer));" in xs_source
     assert "int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);" in xs_source
     assert "xsGetPlayerCivilization(worldPlayer)" in xs_source
     assert "xsPlayerAttribute(worldPlayer, cAttributeMilitaryPopulation)" in xs_source

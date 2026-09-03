@@ -79,6 +79,16 @@ Documented at length in `docs/tooling.md`. Short version:
 - **The bridge is a trigger variable**: `variables.py` declares ids on the Python side; `xs/lib/util.xs` mirrors them as `const int VAR_*`. Keep both sides in sync when adding one.
 - **XS must be embedded, not referenced.** DE does *not* ship loose `.xs` files to other players in a lobby; the parser embeds the whole script into a disabled trigger's script-call effect. This is why the repo keeps XS in normal files and concatenates at build time. `xs_manager.add_script(xs_string=...)` is the only reliable distribution path.
 
+### Custom-scenario player identity is two separate domains
+
+Do not pass Ascendants' Castle-detector variable `p#worldplayer` into XS. Despite its
+historical name, that variable is a trigger-side player selector for trigger conditions
+and effects. XS player APIs take a runtime world player (the lobby slot). Convert a
+scenario player/color with the engine function `xsGetWorldPlayerId(scenarioPlayer)` at
+the XS boundary. Treating the two numbers as interchangeable caused Red/Green and
+Green/Yellow cross-owned army spawns in shuffled lobbies. Tests must assert the engine
+conversion itself; enumerating Python permutations does not simulate the DE engine.
+
 ### Shared libraries
 
 `src/aoe2modes/lib/` is where cross-mode helpers live:

@@ -1,5 +1,9 @@
 # CBA Hero: Ascendants v1.0.10 candidate
 
+> Superseded by v1.0.11. In-game shuffled-lobby testing exposed cross-owned Castle
+> spawns and downstream route failures because v1.0.10 shared a trigger player selector
+> with XS. Keep this file as historical evidence; do not publish this candidate.
+
 This candidate completes the one-shot movement model after a full gameplay-oriented
 audit of the v1.0.3-derived trigger graph. It fixes two real order-overwrite defects
 without changing civilization units, spawn pacing, builder thresholds, age thresholds,

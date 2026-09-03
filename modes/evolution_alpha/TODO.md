@@ -1,12 +1,44 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.10 source review. Most of it is closed in **v1.0.10**;
+Open work from the v1.0.7–v1.0.11 source review. Most of it is closed in **v1.0.11**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## Closed in v1.0.11
+
+### [x] E1 — trigger and XS player identities were conflated
+
+The v1.0.8–v1.0.10 implementation passed the Castle detector's trigger-side player
+selector into XS. Engine reports proved that this could create Red-owned units from a
+Green Castle, Green-owned units from a Red Castle, or Green/Yellow cross-spawns under
+other lobby orders. XS now calls `xsGetWorldPlayerId(scenarioPlayer)` at one explicit
+boundary. Trigger conditions and effects continue to use the independently resolved
+Castle owner. The distinction is documented in both repository guidance files.
+
+### [x] E2 — the ownership test did not model the failing boundary
+
+The former 8! Python loop only selected eight existing dictionary keys for each
+permutation; it never executed or modeled the DE engine. It is removed. A replacement
+regression asserts the engine conversion in generated XS and follows every color's
+Sheep-selected route through normal-wave and hero creation/movement under identity,
+an explicit Red/Green swap, and a full rotation. Exact control geometry is recorded in
+`docs/ascendants-control-map.md`.
+
+### [x] E3 — obsolete corner staging objects
+
+Exactly 56 submerged static Palisade Walls and eight static Saboteurs are removed from
+the outer corners. A regression pins their reference ids and proves no trigger refers
+to them. The separate trigger-created Goth Palisade reward remains intact.
+
+### [x] E4 — current artifact and issue documentation lagged the engine reports
+
+The issue register now distinguishes source/parser proof from required engine
+acceptance, records the Red/Green and Green/Yellow failures, adds the corner cleanup,
+and links the exact eight-color control map.
 
 ## Closed in v1.0.10
 
@@ -129,24 +161,29 @@ baseline it before making the audit a repo-wide release gate.
 
 ## Engine acceptance — nothing static can close these
 
-`docs/ascendants-issue-register.md` marks ASC-001…ASC-023 "Guarded", which that doc
+`docs/ascendants-issue-register.md` marks ASC-001…ASC-024 "Guarded" or statically
+resolved, which that doc
 correctly defines as *"the serialized scenario and tests contain the intended
-correction; it does not mean the engine has been observed running it"*. **None has been
-engine-verified.**
+correction; it does not mean the engine has been observed running it"*. Engine reports
+confirmed the old ASC-019/ASC-020 behavior was still broken in v1.0.10; the v1.0.11
+correction has not yet been engine-verified.
 
 - [ ] **ASC-021 / v1.0.9 regression** — an enemy Trebuchet beside P4/P6/P7/P8's Castles is now
       removed, matching P1/P2/P3/P5. This is the only behavior change in v1.0.9.
 - [ ] **ASC-003** — territory equality. C1 was a static counterexample; recheck.
 - [ ] **ASC-005** — sparse-lobby spawn, including the unsupported-civilization message.
       Test P1 vs P5 and P2+P4 vs P5+P8.
-- [ ] **ASC-019** — five-position Sheep routing, reworked twice. All eight colors, full
-      and sparse, normal waves and 200/400/600/800/1000/2000 heroes.
-- [ ] **ASC-020** — arbitrary lobby color order; a full lobby with Yellow before Green.
+- [ ] **ASC-019** — five-position Sheep routing after the ownership correction. All
+      eight colors, full and sparse, normal waves and 200/400/600/800/1000/2000 heroes.
+- [ ] **ASC-020** — shuffled lobby ownership: Red/Green reversed, Yellow before Green,
+      then another nonnumeric order. Check ownership and civilization at every Castle.
 - [ ] **ASC-022** — return milestone and 3500/5000 heroes through their spawn pads after
       they have received their automatic route.
 - [ ] **ASC-023** — return both raze-reward villagers through their creation pads after
       the initial auto-park.
 - [ ] **ASC-006** — vote kick with three and four teammates, and proof that two cannot.
+- [ ] **ASC-024** — no static Palisade Wall or Saboteur in any outer corner; Goth's
+      separate earned Palisade reward still works.
 - [ ] ASC-001, 002, 004, 007–018 — per the register's own "Required game check" column.
 
 ---
@@ -170,3 +207,7 @@ engine-verified.**
   triggers, 1,076 units, 113 variables; 67 focused and 112 repository tests pass;
   `ruff` clean; all 6 modes build. Final artifact hash is recorded in
   `RELEASE_NOTES_v1.0.10.md`.
+- v1.0.11 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,383
+  triggers, 1,012 units, 113 variables; 69 focused and 114 repository tests pass;
+  `ruff` clean; all 6 modes build. The final artifact hash is recorded in
+  `RELEASE_NOTES_v1.0.11.md`.
