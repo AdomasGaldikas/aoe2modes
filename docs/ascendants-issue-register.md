@@ -1,20 +1,20 @@
-# Ascendants v1.0.14 candidate issue register
+# Ascendants v1.0.15 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.14** is the active source-verified candidate;
-v1.0.13 remains the immediately preceding candidate for focused comparison only.
+repair targets. **v1.0.15** is the active source-verified candidate;
+v1.0.14 remains the immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.14 candidate is 133,107 bytes with SHA-256
-`cbb122c1b6bad41f5472b039f669ebfaea7d5e9b17a05556cf868ea4ba8095ea`.
+The v1.0.15 candidate is 152,537 bytes with SHA-256
+`320c52ce11ad304645cea706a81362f1ed48198c623ef037dd255fda2c96b209`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.14 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.15 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -44,38 +44,46 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-026 | Spawn controls should be simple and independent: one Sheep for Castle armies and one Penguin for Hero OFF/ON plus distance. | Implemented in v1.0.13; clarified in v1.0.14 | Every color has exactly one Sheep and one War Penguin on separate water-isolated tracks, each with six detection bands. Snow is exactly L0 Castle HOLD / Hero OFF; L1–L5 progress toward battle. Controllers and four per-color Signs have short role-specific names. Both controllers are owner-resolved, undeletable, and untargetable, and Penguins cannot attack. The 251 hard cap plus custom-cap compensation preserves 250 gameplay slots. Mutually exclusive kill bands prevent stale Hero tiers after OFF. | Check visibility and movement on every orientation; leave Penguin at L0 across a milestone, then enable it and confirm only the current tier begins spawning. |
 | ASC-027 | Decorative Castle Hay markers could block army creation or L0 holding cells. | Resolved statically in v1.0.13 | Footprint-aware validation found that the 32 two-by-two Hay Stack creates covered 16 of 32 launch pads and eight L0 destinations even though their anchors were distinct. All 32 Hay creation triggers are retired; tests reject any surviving Hay create and the path audit checks every pad/destination footprint. | Confirm all four Castle waves appear and clear L0 without displacement for every color, especially during sustained spawning. |
 | ASC-028 | Sheep and Penguin could leave their own trigger line; HOLD/OFF endpoints and controller names were unclear. | Guarded in v1.0.14 | Each canonical track is 9×2, separated by three rows of Deep Water without beach bridges. Each controller's selectors partition only its own dry track. Snow covers exactly L0; the road begins at L1. Four per-color endpoint Signs leave a row clear, and controller names are `Army range - snow = HOLD` / `Hero range - snow = OFF`. Connectivity checks prove every level reachable without leaving the selector union; no recurring task/stop/freeze correction is added. | For every color, order both controllers beyond every track edge and across the water gap. They must remain on their own track and still reach all levels. Check that Snow means HOLD/OFF, the first road tile changes to L1, and all signs/names are readable. HOLD must keep producing Castle waves; OFF must pause new Heroes only. |
-| ASC-029 | Gate-triggered wall removal could delete long side walls and rear joins, opening unintended bypasses. | Guarded in v1.0.14 | The 64 `Wall Breach` mappings remove exact static Castle-yard shoulder references: 14 walls for P1/P2/P7/P8, 18 for P3/P4/P5/P6. The side/rear switch at canonical `(23.0,43.5)` is separate from the protected University gate at `(14.5,54.0)`. Long flanks, front-gate end caps, and the University enclosure retain manual-delete protection under wildcard and owner-resolved setup; independent readback confirms 484 permanent references. The 16 legacy 220-wall warning/removal triggers are retired. Static closed-gate checks find no new front-arena or University path after the permitted deletion, in all eight transforms. | Delete the side/rear Castle-yard switch for every color and verify only the short shoulders disappear. Long flanks, front end caps, rear joins, University walls/gate, and other players' fortifications must remain intact. Attempt manual deletion and closed-gate bypasses; exceed 220 walls without a full-map purge. Repeat with shuffled and sparse owners. |
+| ASC-029 | Side-wall deletion must not open a path around the front gates or remove the rear University boundary. | Corrected and guarded in v1.0.15 | v1.0.14 wrongly preserved the long side walls. The 64 `Wall Breach` mappings now remove the exact short shoulders plus 30 long side-wall references per color: 44 walls for P1/P2/P7/P8, 48 for P3/P4/P5/P6. The three front gates and complete front wall row remain, with two new end posts per color closing the bypass. The rear University wall/gate, joins, and teammate access gates remain protected. The switch at canonical `(23.0,43.5)` is separate from the University gate at `(14.5,54.0)`. | Delete the switch for every color: short and long side walls disappear; the front and University barriers remain. With other gates shut, test both front ends and the rear University route for bypasses. Repeat with sparse and shuffled owners; other players' fortifications must remain intact. |
+| ASC-030 | The wall-limit wipe must remain active while sparing the permanent front and University barriers. | Restored and guarded in v1.0.15 | v1.0.14 wrongly removed the rule. There are now 64 owner-resolved warning/wipe pairs: one-shot warning at 200 owned WALL-class objects, then wipe at 220, including preplaced walls in the count. Each wipe selects only that owner's WALL class through 49 rectangles covering all 20,368 cells outside 368 protected barrier cells. Permanent references retain wildcard and owner-resolved manual-delete protection; the switch remains deletable. Some side walls retain legacy Delete protection, which scripted removal ignores. No ownership swap or remove/recreate workaround is used. | Reach 200 then 220 WALL-class objects for each color; confirm the warning, then removal of that owner's walls outside protected barrier cells. Front gates/posts, the University wall/gate, teammate access gates, and other owners' walls must survive. Test after side-wall deletion, in sparse/shuffled lobbies, and confirm the warning/wipe remains one-shot. |
 
 ## Additional parser findings
 
-The v1.0.14 serialized candidate passes the strict structural audit with **0 errors and
+The v1.0.15 serialized candidate passes the strict structural audit with **0 errors and
 0 warnings**, with:
 
-- 3,519 uniquely named, non-empty triggers and a complete display order;
-- 3,123 initially enabled triggers and 3,510 conservatively reachable triggers;
-- 940 unique object references, all on-map, with no dangling garrisons;
+- 3,647 uniquely named, non-empty triggers and a complete display order;
+- 3,187 initially enabled triggers and 3,638 conservatively reachable triggers;
+- 14,561 conditions and 15,183 effects;
+- 956 unique object references, all on-map, with no dangling garrisons;
 - 121 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
 - no partial, inverted, or out-of-bounds trigger geometry;
 - no reachable looping trigger without a Timer condition;
 - no reachable unconditional remove, kill, victory, or defeat trigger.
 
-All 57 Ascendants-focused tests and all 117 repository tests pass, as do repository
-Ruff checks. Independent artifact readback confirms all 64 exact wall breaches and
-16 isolated controllers. The installed game scenario has the same SHA-256 recorded
-above. None of these checks substitutes for the engine acceptance matrix below.
+All 59 Ascendants-focused tests and all 60 remaining repository tests pass in
+complementary runs, totaling 119/119. Repository Ruff checks and the full 616-line
+embedded XS build pass. Readback comparison confirms every terrain cell and all 940
+pre-existing objects are unchanged, with only 16 front end posts added. The installed
+game scenario matches the SHA-256 above. None of these checks substitutes for the
+engine acceptance matrix below.
 
 The dedicated migration removed all prior audit debt. It deleted 810 proven imported
-empty shells plus 32 retired Hay triggers and 16 retired wall-penalty triggers,
+empty shells plus 32 retired Hay triggers,
 merged 189 byte-identical age-up copies,
 rewired 346 incoming activations, and retained/name-disambiguated the three non-identical P7 variants. Exact baseline counts
 and reference-shape assertions make the migration fail closed if the imported graph
-ever changes.
+ever changes. v1.0.15 restores the wall-limit rule by resetting/reusing the 16 imported
+warning/wipe shells and adding 112 owner-resolved mappings; the old activation chain
+does not return.
 
 Run the same audit after every build:
 
 ```bash
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.14.aoe2scenario" --strict
+.venv/bin/pytest -q tests/test_evolution_alpha.py
+.venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.15.aoe2scenario" --strict
 ```
 
 The normal command fails only on structural errors; `--strict` also
@@ -105,8 +113,9 @@ cases are recorded in-game.
 | Penguin Hero slider | All eight colors, full and sparse | L0 produces no Heroes; L1–L5 enable and route only the current kill tier progressively farther; no stale-tier burst occurs after OFF. |
 | Controller confinement | All eight colors | Orders across the Deep Water gap or beyond every track edge cannot leave the controller's own track; every level remains reachable without getting stuck at a Sign. |
 | HOLD/OFF clarity | All eight colors | Every snowy track cell selects L0; the first road cell selects L1. The four endpoint Signs and two short controller names are readable and distinguish Castle HOLD from Hero production OFF. |
-| Yard gate switch | All eight colors, full/sparse/shuffled | Deleting the side/rear switch removes only short yard shoulders, not long flanks, front-gate end caps, or the University enclosure. With other gates shut, no new front-arena or University bypass opens. |
-| Permanent wall safety | All eight colors, full/sparse/shuffled | Permanent walls/gates reject manual deletion; the switch remains deletable. Reaching 220 walls never triggers a full-map wall purge. Defeat/resignation cleanup still removes the eliminated player's objects. |
+| Yard gate switch | All eight colors, full/sparse/shuffled | Deleting the side/rear switch removes the short shoulders and long side walls, but not the front gates/posts, University walls/gate, or teammate access gates. With other gates shut, no front-arena or University bypass opens. |
+| Wall-limit warning/wipe | All eight colors, full/sparse/shuffled | At 200 owned WALL-class objects, warn once; at 220, wipe that owner's walls outside protected permanent barrier footprints. Include preplaced walls in the count. Front and University barriers, teammate access gates, and other owners' walls survive. Repeat after side-wall deletion. |
+| Permanent wall safety | All eight colors, full/sparse/shuffled | Permanent walls/gates reject manual deletion; the switch remains deletable. Any legacy manual-delete protection on side walls must not prevent scripted side-wall removal. Defeat/resignation cleanup still removes all of the eliminated player's objects, including protected barriers. |
 | Controller population | Any color near the hard cap | The Penguin occupies the reserved 251st slot; normal gameplay still reaches 250 slots and custom army/Hero ceilings behave as before. |
 | Castle launch pads | All eight colors | All four waves appear at their exact pads and clear L0; no Hay Stack is created or displaces a unit. |
 | Milestone shore | All eight colors | Buildings can be placed on the repaired strip; hero spawns and nearby water remain clear. |

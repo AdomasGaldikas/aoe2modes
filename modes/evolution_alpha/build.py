@@ -195,16 +195,17 @@ ANTI_TREB_NAME = re.compile(r"No trebs in p([1-8]) base(?: \(p[1-8]\))?")
 #: and keeps each zone clear of its own rear route by construction (the source rect
 #: starts at x=18; the rear route land is x=14..16).
 ANTI_TREB_SOURCE_AREA = (18, 38, 25, 64)
-# Deleting the side/rear switch gate opens only the short Castle-yard shoulders.
-# The long flanks and front-gate end caps must remain, as must the complete rear
-# University enclosure. Resolve these exact object positions after the V2 pass;
-# inclusive mirrored rectangles can consume an extra wall at the opposite edge.
+# Both short shoulders and long side walls are disposable. The x=39.5 front
+# gate row and the complete rear University enclosure are not. Resolve exact
+# object positions after V2, never a mirrored inclusive removal rectangle.
 SOURCE_BREACH_REMOVABLE_WALL_POSITIONS = frozenset(
     {
         *((x + 0.5, y) for x in range(17, 25) for y in (43.5, 64.5)),
         *((24.5, y + 0.5) for y in (*range(44, 47), *range(61, 64))),
+        *((x + 0.5, y) for x in range(24, 39) for y in (47.5, 60.5)),
     }
 )
+SOURCE_FRONT_WIPE_END_POSTS = ((39.5, 45.5), (39.5, 62.5))
 LOBBY_SETTLE_SECONDS = 3
 VICTORY_RESOLVE_SECONDS = 5
 SOURCE_ARMY_SPAWN_POINTS = ((22, 48), (22, 52), (22, 55), (22, 59))
@@ -601,6 +602,10 @@ PUBLIC_INSTRUCTIONS = (
     "snow = HOLD (new armies stay by your Castles); Penguin on snow = OFF (no new Heroes). "
     "The road begins exactly where HOLD/OFF ends. Water keeps each controller on its "
     "own track. Existing units keep your manual orders.\r\r"
+    "WALL WIPE\r"
+    "Delete the side switch gate to remove your side walls. Front gates/walls and the "
+    "University gate/enclosure stay. At 200 walls you get a warning; at 220 the wall-limit "
+    "wipe clears other walls once. Fixed barriers are excluded.\r\r"
     "VOTE KICK\r"
     "Delete the matching Vote Kick marker to vote against a teammate. Two occupied "
     "teammates must vote. Voting is disabled when fewer than three colors remain on that "
@@ -972,10 +977,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
         for trigger in ctx.tm.triggers
         if not trigger.conditions and not trigger.effects
     ]
-    if len(empty_triggers) != 858:
+    if len(empty_triggers) != 842:
         raise RuntimeError(
-            "expected 810 empty imported shells, 32 retired Hay markers, "
-            "and 16 retired wall-cap triggers, "
+            "expected 810 empty imported shells plus 32 retired Hay markers, "
             f"found {len(empty_triggers)}"
         )
     empty_ids = {trigger.trigger_id for trigger in empty_triggers}
@@ -1021,9 +1025,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_518:
+    if len(ctx.tm.triggers) != 3_646:
         raise RuntimeError(
-            f"expected 3,518 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,646 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -3077,23 +3081,73 @@ def _configure_sparse_center_views(
             )
 
 
+def _wall_wipe_areas(map_size: int, protected_cells: set[tuple[int, int]]):
+    """Partition the map minus fixed barrier footprints into disjoint rectangles.
+
+    Remove Object has no exclude-reference option. Cell-centred static walls
+    and four-cell gates supply the holes; merging identical row spans keeps the
+    one-shot wall-limit wipe small without ownership swaps or object recreation.
+    """
+    active = {}
+    completed = []
+    for y in range(map_size):
+        spans = []
+        start = None
+        for x in range(map_size + 1):
+            available = x < map_size and (x, y) not in protected_cells
+            if available and start is None:
+                start = x
+            elif not available and start is not None:
+                spans.append((start, x - 1))
+                start = None
+        current = {}
+        for span in spans:
+            current[span] = active.pop(span, y)
+        completed.extend((x1, y1, x2, y - 1) for (x1, x2), y1 in active.items())
+        active = current
+    completed.extend((x1, y1, x2, map_size - 1) for (x1, x2), y1 in active.items())
+    return tuple(sorted(completed))
+
+
 def _configure_sparse_wall_breaches(
     ctx: BuildContext,
     active_variables,
     world_variables,
 ) -> None:
-    """Open only the rear yard; never delete the front flanks or Uni enclosure."""
-    # The old 220-wall penalty removed ALL walls across the map, including fixed
-    # defenses, irrespective of Antidelete. Retire its warning/activation chain.
-    cap_triggers = [
-        _unique_trigger(ctx, f"{family} (p{int(color)})")
+    """Restore side-wall and 220-wall wipes while retaining front/rear barriers."""
+    # Reuse the old warning/wipe shells, but rebuild their scope and owner
+    # guards. Antidelete alone cannot exempt a wall from a scripted Remove.
+    cap_triggers = {
+        (color, family): _unique_trigger(ctx, f"{family} (p{int(color)})")
         for color in PLAYERS
         for family in ("warn", "remove walls")
-    ]
-    _strip_trigger_references(ctx, {trigger.trigger_id for trigger in cap_triggers})
-    for trigger in cap_triggers:
+    }
+    _strip_trigger_references(ctx, {trigger.trigger_id for trigger in cap_triggers.values()})
+    for trigger in cap_triggers.values():
         _reset_trigger(trigger)
 
+    # Two front-row posts meet the shoreline once the long side walls vanish.
+    # Keeping side walls to plug that gap would defeat the requested wipe.
+    for color in PLAYERS:
+        source_front = [
+            unit for unit in ctx.um.units[color]
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
+            and (unit.x, unit.y) == v2_position_for_player(color, 39.5, 46.5)
+        ]
+        if len(source_front) != 1:
+            raise RuntimeError(f"P{int(color)} front end-wall anchor is missing")
+        for position in SOURCE_FRONT_WIPE_END_POSTS:
+            x, y = v2_position_for_player(color, *position)
+            if any((unit.x, unit.y) == (x, y) for unit in ctx.um.get_all_units()):
+                raise RuntimeError(f"P{int(color)} front wipe end-post slot is occupied")
+            ctx.um.add_unit(
+                player=color,
+                unit_const=source_front[0].unit_const,
+                x=x, y=y,
+                rotation=source_front[0].rotation,
+            )
+
+    protected_cells = set()
     templates = {
         color: deepcopy(_unique_trigger(ctx, f"Elimina Walls P{int(color)}"))
         for color in PLAYERS
@@ -3137,12 +3191,12 @@ def _configure_sparse_wall_breaches(
             if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
             and (unit.x, unit.y) in removable_positions
         }
-        expected_count = 14 if color in {
+        expected_count = 44 if color in {
             PlayerId.ONE, PlayerId.TWO, PlayerId.SEVEN, PlayerId.EIGHT
-        } else 18
+        } else 48
         if len(removable) != expected_count:
             raise RuntimeError(
-                f"P{int(color)} expected {expected_count} removable yard walls, "
+                f"P{int(color)} expected {expected_count} removable side walls, "
                 f"found {len(removable)}"
             )
         permanent = sorted(
@@ -3155,6 +3209,19 @@ def _configure_sparse_wall_breaches(
             }
             and unit.reference_id not in removable | {switch_reference}
         )
+        for unit in player_units:
+            if unit.reference_id not in permanent:
+                continue
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}:
+                if unit.x % 1 != 0.5 or unit.y % 1 != 0.5:
+                    raise RuntimeError("fixed wall is not cell-centred")
+                protected_cells.add((int(unit.x), int(unit.y)))
+            elif unit.x % 1 == 0 and unit.y % 1 == 0.5:
+                protected_cells.update((int(unit.x) - 2 + dx, int(unit.y)) for dx in range(4))
+            elif unit.y % 1 == 0 and unit.x % 1 == 0.5:
+                protected_cells.update((int(unit.x), int(unit.y) - 2 + dy) for dy in range(4))
+            else:
+                raise RuntimeError("fixed gate has an unexpected footprint axis")
         _unique_trigger(ctx, f"Antidelete P{int(color)}").new_effect.disable_object_deletion(
             source_player=-1,
             selected_object_ids=permanent,
@@ -3205,6 +3272,53 @@ def _configure_sparse_wall_breaches(
                 selected_object_ids=permanent,
             )
             detector.effects.append(self_deactivation)
+
+    if len(protected_cells) != 368:
+        raise RuntimeError(f"expected 368 fixed-barrier cells, found {len(protected_cells)}")
+    wipe_areas = _wall_wipe_areas(ctx.mm.map_size, protected_cells)
+    for color in PLAYERS:
+        for world_player in _possible_world_players(color):
+            pair = {}
+            for family, public_name, threshold, enabled in (
+                ("warn", "Warn", 200, 1),
+                ("remove walls", "Wipe", 220, 0),
+            ):
+                trigger = (
+                    cap_triggers[color, family]
+                    if world_player == color
+                    else ctx.tm.add_trigger(
+                        f"Wall Cap {public_name} S{int(color)} W{int(world_player)}",
+                        description_stid=0, short_description_stid=0,
+                    )
+                )
+                trigger.name = f"Wall Cap {public_name} S{int(color)} W{int(world_player)}"
+                trigger.enabled = enabled
+                trigger.looping = 0
+                trigger.new_condition.timer(timer=1)
+                trigger.new_condition.variable_value(
+                    quantity=1, variable=active_variables[color], comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=int(world_player), variable=world_variables[color], comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.own_objects(
+                    quantity=threshold, source_player=world_player, object_group=ObjectClass.WALL,
+                )
+                pair[public_name] = trigger
+            pair["Warn"].new_effect.send_chat(
+                source_player=world_player,
+                message="Wall warning: wipe at 220 walls. Front and University barriers are kept.",
+            )
+            pair["Warn"].new_effect.activate_trigger(trigger_id=pair["Wipe"].trigger_id)
+            for x1, y1, x2, y2 in wipe_areas:
+                pair["Wipe"].new_effect.remove_object(
+                    source_player=world_player, object_group=ObjectClass.WALL,
+                    area_x1=x1, area_y1=y1, area_x2=x2, area_y2=y2,
+                )
+            pair["Wipe"].new_effect.send_chat(
+                source_player=world_player,
+                message="Wall limit reached: walls cleared. Front and University barriers are kept.",
+            )
 
 
 def _configure_sparse_king_islands(

@@ -1,12 +1,36 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.14 source review. Most of it is closed in **v1.0.14**;
+Open work from the v1.0.7–v1.0.15 source review. Current candidate: **v1.0.15**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## Closed in v1.0.15
+
+### [x] I1 — remove side walls while keeping front and University barriers
+
+Implementation removes the short shoulders plus all 30 long side-wall pieces per
+color through 64 exact-reference `Wall Breach` mappings. The resulting counts are
+44 walls for P1/P2/P7/P8 and 48 for P3/P4/P5/P6. The front gates/wall row, rear
+University wall/gate, joins, and teammate access gates stay. Two front-row end posts
+per color prevent an around-the-gate route after the side walls disappear. The
+University gate is still distinct from the deletable switch. Exact targets and
+closed-gate reachability are tested across all eight transforms, including simultaneous
+side-wall removal.
+
+### [x] I2 — restore the 200-wall warning and 220-wall wipe safely
+
+Implementation restores the original one-shot WALL-class thresholds, including owned
+preplaced walls in the count, through 64 owner-resolved warning/wipe pairs. The wipe
+removes that owner's walls across the map outside protected permanent barrier
+footprints. Front and University defenses retain manual-delete protection; the switch
+remains deletable. Some side walls retain legacy Delete protection, but scripted
+removal ignores it. No ownership swapping or barrier recreation is used. Tests cover
+every owner mapping and the exact 49-rectangle wipe complement of
+368 protected cells. Engine acceptance remains separate.
 
 ## Closed in v1.0.14
 
@@ -25,15 +49,13 @@ are `Army range - snow = HOLD` and `Hero range - snow = OFF`. HOLD still produce
 Castle armies and keeps new waves near home; OFF pauses new Heroes. Existing armies
 and Heroes keep their orders.
 
-### [x] H3 — gate-trigger wall deletion damaged permanent defenses
+### [x] H3 — superseded wall interpretation
 
-The 64 `Wall Breach` owner mappings now remove exact static Castle-yard shoulder
-references only: 14 for P1/P2/P7/P8 and 18 for P3/P4/P5/P6. The switch is the
-side/rear yard gate, not the University access gate. Long flanks, front-gate end caps,
-and the University enclosure remain protected from manual deletion. All 16 imported
-220-wall warning/removal triggers are retired so they cannot purge permanent walls.
-Static closed-gate reachability checks cover the front-arena and University bypass
-cases after the switch and permitted walls are removed.
+v1.0.14 narrowed deletion to the short shoulders and retired the 220-wall wipe. This
+misread the required rules: the user wants the long side walls removed and the wipe
+active, while preserving the front and University barriers. I1/I2 above correct that
+interpretation in v1.0.15. The v1.0.14 validation record remains historical evidence
+only, not the current wall-behavior contract.
 
 ## Closed in v1.0.13
 
@@ -228,7 +250,7 @@ baseline it before making the audit a repo-wide release gate.
 
 ## Engine acceptance — nothing static can close these
 
-`docs/ascendants-issue-register.md` marks the implemented ASC-001…ASC-029 fixes "Guarded"
+`docs/ascendants-issue-register.md` tracks ASC-001…ASC-030. It marks verified fixes "Guarded"
 or statically resolved, which that doc correctly defines as *"the serialized scenario
 and tests contain the intended
 correction; it does not mean the engine has been observed running it"*. Engine reports
@@ -248,11 +270,18 @@ engine verification.
       track edge. It must stay on its own track and reach every level. Confirm the
       entire snowy pad means HOLD/OFF, the first road tile means level 1, and all four
       per-color Signs plus both short controller names are readable.
-- [ ] **ASC-029** — delete each side/rear Castle-yard switch gate and verify only its
-      short yard shoulders disappear. Long flanks, front-gate end caps, and University
-      walls/gate must remain, with no closed-gate bypass. Try manual deletion of
-      permanent defenses and exceed 220 walls without a full-map purge. Repeat in
-      sparse and shuffled lobbies.
+- [ ] **ASC-029** — delete each side/rear Castle-yard switch gate and verify its
+      short shoulders and long side walls disappear. The complete front gate/wall
+      row, rear University walls/gate, and teammate access gates remain. Check both
+      front ends and the University boundary for closed-gate bypasses in every color,
+      including sparse and shuffled lobbies.
+- [ ] **ASC-030** — reach 200 owned WALL-class objects to warn and 220 to wipe, using
+      the count including preplaced walls. Verify the owner's walls disappear outside
+      protected permanent barrier footprints, while front and University defenses,
+      teammate access gates, and other players' walls survive. Confirm one-shot
+      behavior and repeat after side-wall deletion in sparse and shuffled lobbies.
+      Permanent barriers reject manual deletion; the switch remains deletable.
+      Legacy side-wall Delete protection must not block scripted removal.
 - [ ] **ASC-020** — shuffled lobby ownership: Red/Green reversed, Yellow before Green,
       then another nonnumeric order. Check ownership and civilization at every Castle.
 - [ ] **ASC-022** — return milestone and 3500/5000 heroes through their spawn pads after
@@ -304,3 +333,11 @@ engine verification.
   artifact readback verifies 484 protected permanent wall/gate references, all 64
   exact-reference wall breaches, and 16 contained controllers. The game-installed
   artifact matches the SHA-256 in `RELEASE_NOTES_v1.0.14.md`.
+- v1.0.15 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,647
+  triggers, 14,561 conditions, 15,183 effects, 956 units, 121 variables. Complementary
+  `.venv/bin/pytest -q tests/test_evolution_alpha.py` and
+  `.venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py` runs pass 59 and 60 tests
+  respectively: 119/119. Repository `ruff` and the 616-line embedded XS build pass.
+  Each wipe covers 20,368 cells in 49 rectangles, excluding 368 protected barrier
+  cells. All 940 old objects and terrain are unchanged; 16 front posts are added.
+  The game-installed artifact matches the SHA-256 in `RELEASE_NOTES_v1.0.15.md`.

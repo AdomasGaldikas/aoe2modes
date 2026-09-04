@@ -1,4 +1,4 @@
-# Ascendants v1.0.14 control and ownership map
+# Ascendants v1.0.15 control and ownership map
 
 This is the authoritative manifest for the two spawn controls in CBA Hero:
 Ascendants. Coordinates are scenario cells unless they include `.5`, which denotes an
@@ -166,45 +166,70 @@ band: 200–399, 400–599, 600–799, 800–999, 1,000–1,999, 2,000–3,499,
 3,500–4,999, or 5,000+. Thus level 0 pauses production, and re-enabling it cannot
 activate stale lower tiers.
 
-## Gate switch and permanent walls
+## Wall roles, gate switch, and wall-limit wipe
 
 The wall-removal switch is the side/rear Castle-yard gate at canonical P3 object
 position `(23.0,43.5)`. It is **not** the University access gate at `(14.5,54.0)`.
-Destroying or deleting the switch may remove only the short Castle-yard wall
-shoulders. It must not open an arena bypass or dismantle the University enclosure.
+Destroying or deleting the switch removes the side walls, including the long flanks.
+The front gate row and the rear University barrier must remain. v1.0.14 incorrectly
+preserved the long side walls and disabled the wall-limit wipe; v1.0.15 corrects both.
 
-The removable-slot mask, transformed as object positions for each color, is:
+All positions below are canonical P3 object positions, transformed for every color:
 
-- `(x+0.5,43.5)` and `(x+0.5,64.5)` for integer x=17–24;
-- `(24.5,y+0.5)` for integer y=44–46 and 61–63.
+| Role | Positions | Gate-switch removal | 220-wall wipe |
+| --- | --- | --- | --- |
+| Deletable switch | `(23.0,43.5)` | Its absence activates the removal | Not a protected permanent barrier |
+| Short side/yard shoulders | `(x+0.5,43.5)` and `(x+0.5,64.5)`, integer x=17–24; `(24.5,y+0.5)`, integer y=44–46 and 61–63 | Remove existing wall pieces only | Removable |
+| Long side walls | `(x+0.5,47.5)` and `(x+0.5,60.5)`, integer x=24–38 | Remove all 30 pieces | Removable |
+| Front gates | `(39.5,50.0)`, `(39.5,54.0)`, `(39.5,58.0)` | Keep | Keep |
+| Existing front wall posts | `(39.5,46.5)`, `(39.5,47.5)`, `(39.5,60.5)`, `(39.5,61.5)` | Keep | Keep |
+| Added front end posts | `(39.5,45.5)`, `(39.5,62.5)` | Keep | Keep |
+| Rear University barrier | Wall row at x=14.5, its joins, and gate `(14.5,54.0)` | Keep | Keep |
+| Teammate access gates and other permanent barriers | Existing references outside the removable side-wall mask | Keep | Keep |
 
-Only existing static Stone/Fortified Wall references at those positions are selected.
-The resolved list has 14 walls for P1/P2/P7/P8, where a teammate gate replaces four
-wall pieces, and 18 walls for P3/P4/P5/P6. All 64 color/owner `Wall Breach` mappings
-remove those exact references using the resolved trigger owner; they do not use a
-rectangle or an all-walls filter.
+The 22-slot shoulder mask contains 14 actual walls for P1/P2/P7/P8, where a
+teammate gate replaces four pieces, and 18 for P3/P4/P5/P6. Adding the 30 long side
+walls gives **44 removable walls for P1/P2/P7/P8 and 48 for P3/P4/P5/P6**. All
+64 color/owner `Wall Breach` mappings remove those exact static references using
+the Castle-row-resolved trigger owner. A gate in a shoulder-mask slot is never
+mistaken for a removable wall.
 
-All 32 long flank-wall pieces per color remain intact: canonical object positions
-`(x+0.5,47.5)` and `(x+0.5,60.5)` for integer x=24–39. Both front-gate end caps at
-`(39.5,46.5)` and `(39.5,61.5)` and the complete University wall/gate enclosure also
-remain intact. The old rectangle incorrectly removed 30 of the long flank pieces;
-30 was the unwanted-deletion count, not the complete flank count.
+The two added front posts per color close the ends of the retained front row after
+side-wall removal. They are not extra side walls and do not alter terrain. With the
+front gates shut, the opening must not provide a path around either end of that row.
+The rear University wall and its gate remain the access boundary to the technology
+area; deleting the switch must not create a route around that rear gate either.
 
-Permanent Stone/Fortified Walls and both ordinary gate orientations, excluding the
-removable shoulder references and
-switch itself, receive manual-delete protection both during wildcard initialization
-and in every owner-resolved setup. This protection does not prevent combat damage or
-the intended full-owner purge on defeat, resignation, or vote-kick.
+Permanent Stone/Fortified Walls and both ordinary gate orientations receive
+manual-delete protection during wildcard initialization and every owner-resolved
+setup. The side switch remains deletable. Some side-wall pieces retain legacy
+manual-delete protection, but that does not block the scripted side-wall removal or
+wall-limit wipe. Manual-delete protection also does not prevent combat damage or the
+intended full-owner cleanup on defeat, resignation, or vote-kick.
 
-The old 220-wall penalty is removed: all eight `warn (p#)` and eight
-`remove walls (p#)` chains, including their activation references, are retired. Their
-full-map wall removal could bypass manual-delete protection.
+The wall-limit rule is active again: warn at **200 owned WALL-class objects** and
+wipe at **220**, with the original one-shot warning-then-wipe behavior. These counts
+include owned preplaced walls, not only player-built walls. The 64
+`Wall Cap Warn S# W#` / `Wall Cap Wipe S# W#` pairs use the active color's resolved
+trigger owner. The 16 imported shells are reset and reused for same-numbered owners;
+112 new triggers complete the other mappings. The old activation chain is removed.
+
+Each wipe removes that owner's WALL-class objects across the map **outside the
+protected permanent wall/gate footprints**. It can therefore remove newly built
+walls as well as remaining side walls, while preserving the front row, University
+barrier, and teammate access gates. Removal rectangles partition the complement of
+the protected footprint cells; no rectangle includes a protected cell. Walls built
+inside one of those protected cells are also spared. No ownership swapping or
+remove-and-recreate protection is used, and other players' walls are never targets.
+
+There are 368 protected map cells. Each owner's wipe uses 49 non-overlapping
+rectangles covering all 20,368 remaining cells of the 144×144 map.
 
 The static closed-gate reachability check starts at canonical base cell `(22,54)`.
-After deleting the switch and permitted shoulder walls, neither front-arena cell
+After deleting the switch and all permitted side walls, neither front-arena cell
 `(42,54)` nor University cell `(10,54)` may become reachable with all other gates
-closed. This is checked under every color transform; DE pathfinding still needs an
-in-game test.
+closed. The same contract applies after the wall-limit wipe. All eight transforms
+must be checked; DE pathfinding still needs an in-game test.
 
 ## Removed legacy controls
 

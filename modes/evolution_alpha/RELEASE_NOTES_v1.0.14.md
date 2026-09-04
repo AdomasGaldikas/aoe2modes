@@ -1,5 +1,11 @@
 # CBA Hero: Ascendants v1.0.14 candidate
 
+Historical release: its wall behavior is superseded by
+[`RELEASE_NOTES_v1.0.15.md`](RELEASE_NOTES_v1.0.15.md). The user clarified that long
+side walls must be removed and the wall-limit wipe must remain active, while front
+and University barriers stay. v1.0.15 corrects that interpretation; the controller
+confinement and names introduced here remain unchanged.
+
 v1.0.14 confines the Sheep and Penguin to their own slider tracks, makes the
 HOLD/OFF endpoints visible, and keeps gate-triggered wall removal away from permanent
 defenses. Castle and Hero spawning rules are unchanged.

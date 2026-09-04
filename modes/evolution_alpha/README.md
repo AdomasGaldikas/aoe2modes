@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.14
+# CBA Hero: Ascendants v1.0.15
 
 Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -7,16 +7,16 @@ authoritative; v1.0.3 is the sole historical comparison baseline.
 
 ## Current build
 
-| Metric | v1.0.14 |
+| Metric | v1.0.15 |
 | --- | ---: |
-| Triggers | 3,519 |
-| Conditions | 14,049 |
-| Effects | 11,855 |
-| Units | 940 |
+| Triggers | 3,647 |
+| Conditions | 14,561 |
+| Effects | 15,183 |
+| Units | 956 |
 | Runtime variables | 121 (ids 0–120) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero Ascendants v1.0.14.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero Ascendants v1.0.15.aoe2scenario`.
 
 ## Two independent spawn controls
 
@@ -96,34 +96,46 @@ mirrored anti-Trebuchet areas. It contains no Transport Ships, submerged corner
 Palisades, corner Saboteurs, decorative selector Relics/Rugs/Torches, or hidden Goth
 Palisade HP bonus.
 
-Deleting the side/rear Castle-yard switch gate opens only the short wall shoulders
-beside that yard. Long flank walls, front-gate end caps, and the University enclosure
-stay in place. Permanent walls and gates cannot be manually deleted, and the hidden
-220-wall whole-map removal penalty is gone. The University access gate is not the
-wall-removal switch. Exact-reference removal and owner resolution keep this behavior
-scoped to the correct color in full, sparse, and shuffled lobbies.
+Deleting the side/rear Castle-yard switch gate removes the short shoulders **and the
+long side walls**. The complete front gate/wall row and rear University walls/gate
+stay in place. Two small front end posts per color prevent a route around the front
+gates after the side walls disappear. The University access gate is not the removal
+switch. Exact-reference removal and owner resolution keep this scoped to the correct
+color in full, sparse, and shuffled lobbies.
+
+The **wall-limit wipe remains active**: a one-shot warning at 200 owned WALL-class
+objects arms the wipe at 220. The count includes preplaced walls. The wipe removes
+that player's walls across the map except inside protected permanent barrier
+footprints; the front row, University boundary, and teammate access gates remain.
+Permanent walls/gates also reject manual deletion. Defeat/resignation cleanup still
+removes all of the eliminated player's objects. See the wall-role table in
+[`../../docs/ascendants-control-map.md`](../../docs/ascendants-control-map.md).
 
 ## Verification
 
 ```bash
 .venv/bin/pytest -q tests/test_evolution_alpha.py
+.venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero Ascendants v1.0.14.aoe2scenario" --strict
+  "dist/CBA Hero Ascendants v1.0.15.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```
 
-v1.0.14 passes all 57 Ascendants-focused tests and all 117 repository tests. The strict
-structural audit reports 0 errors and 0 warnings, and repository Ruff checks pass.
+v1.0.15 passes all 59 Ascendants-focused tests and all 60 remaining repository tests
+in two complementary runs: 119/119 total. The strict structural audit reports
+0 errors and 0 warnings, and repository Ruff checks pass.
 Parser tests pin all eight colors, all 96 slider selectors, all 704 army/Hero movement mappings,
 the complete ownership matrix, controller safety, isolated connected tracks, visible
 HOLD/OFF boundaries, unique spawn pads,
 mutually exclusive Hero bands, and the one-shot movement invariant.
-Wall checks pin all 64 exact-reference breaches, permanent-defense protection, and
-closed-gate reachability after the permitted yard opening. Independent artifact
-readback confirms 484 protected permanent wall/gate references and 16 contained
-controllers.
+Wall checks cover all 64 exact-reference breaches, the owner-resolved warning/wipe
+pairs, protected-footprint exclusion, and closed-gate reachability after removal of
+the side walls. Each owner's wipe uses 49 rectangles covering the 20,368 map cells
+outside 368 protected barrier cells. All 940 existing objects and every terrain cell
+are unchanged; exactly 16 front end posts are added. Controller confinement and names
+are unchanged from v1.0.14.
 
 AoE2ScenarioParser cannot execute DE pathfinding, lobby compaction, or multiplayer
 scheduling. The remaining in-game acceptance cases are tracked in
@@ -133,4 +145,4 @@ scheduling. The remaining in-game acceptance cases are tracked in
 
 Older candidates are retained only as investigation history in `RELEASE_NOTES_v*.md`.
 They are not alternative repair targets. See
-[`RELEASE_NOTES_v1.0.14.md`](RELEASE_NOTES_v1.0.14.md) for the current change set.
+[`RELEASE_NOTES_v1.0.15.md`](RELEASE_NOTES_v1.0.15.md) for the current change set.

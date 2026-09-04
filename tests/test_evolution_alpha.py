@@ -106,8 +106,8 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 3_519
-    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 940
+    assert len(triggers) == 3_647
+    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 956
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
     assert len(names) == len(set(names))
@@ -345,9 +345,9 @@ def test_evolution_alpha_keeps_v2_objects_and_playable_gate_holes(evolution_alph
     assert original_digest == (
         "46db5fdc5165b1ea1ca13082d7d9d2d05081d61ebc44e04e7cd4fb4a46fe631d"
     )
-    assert len(additions) == 124
+    assert len(additions) == 140
     assert additions_digest == (
-        "1b645f64495697020ccdf86370dddad48522647b82312e4517490aaf3f0c27f9"
+        "fdb8e4b15188e86c0d45725aff25842fd5201376525780579f874dfc6b06ae0b"
     )
 
 
@@ -1375,14 +1375,14 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
 
 def test_evolution_alpha_protects_all_added_v2_walls(evolution_alpha):
     expected_counts = {
-        PlayerId.ONE: 14,
-        PlayerId.TWO: 14,
-        PlayerId.THREE: 8,
-        PlayerId.FOUR: 8,
-        PlayerId.FIVE: 8,
-        PlayerId.SIX: 8,
-        PlayerId.SEVEN: 12,
-        PlayerId.EIGHT: 12,
+        PlayerId.ONE: 16,
+        PlayerId.TWO: 16,
+        PlayerId.THREE: 10,
+        PlayerId.FOUR: 10,
+        PlayerId.FIVE: 10,
+        PlayerId.SIX: 10,
+        PlayerId.SEVEN: 14,
+        PlayerId.EIGHT: 14,
     }
     by_name = {
         trigger.name: trigger
@@ -2959,7 +2959,7 @@ def test_evolution_alpha_anti_treb_zones_are_mirrored_and_cover_their_castles(
         )
 
 
-def test_evolution_alpha_wall_breach_removes_only_the_short_castle_yard_shoulders(evolution_alpha):
+def test_evolution_alpha_wall_breach_removes_side_walls_but_keeps_front_and_uni(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
     wall_pattern = re.compile(r"Wall Breach S([1-8]) W([1-8])")
     wall_breaches = {
@@ -2982,6 +2982,7 @@ def test_evolution_alpha_wall_breach_removes_only_the_short_castle_yard_shoulder
             for x, y in (
                 *((x + 0.5, y) for x in range(17, 25) for y in (43.5, 64.5)),
                 *((24.5, y + 0.5) for y in (*range(44, 47), *range(61, 64))),
+                *((x + 0.5, y) for x in range(24, 39) for y in (47.5, 60.5)),
             )
         }
         expected_removals = {
@@ -2990,7 +2991,7 @@ def test_evolution_alpha_wall_breach_removes_only_the_short_castle_yard_shoulder
             if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
             and (unit.x, unit.y) in yard_positions
         }
-        assert len(expected_removals) == (14 if player in {1, 2, 7, 8} else 18)
+        assert len(expected_removals) == (44 if player in {1, 2, 7, 8} else 48)
         switch, = [
             unit for unit in owned_units
             if (unit.x, unit.y) == v2_position_for_player(player, 23.0, 43.5)
@@ -3008,27 +3009,38 @@ def test_evolution_alpha_wall_breach_removes_only_the_short_castle_yard_shoulder
             and unit.unit_const in mapview.GATE_IDS
         ]
         assert uni_gate.reference_id in permanent
-        front_flanks = {
+        side_walls = {
             unit.reference_id
             for unit in owned_units
             if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
             and (unit.x, unit.y) in {
                 v2_position_for_player(player, x + 0.5, y)
-                for x in range(24, 40)
+                for x in range(24, 39)
                 for y in (47.5, 60.5)
             }
         }
-        assert len(front_flanks) == 32
-        assert front_flanks <= permanent
+        assert len(side_walls) == 30
+        assert side_walls <= expected_removals
+        front_row = {
+            unit.reference_id
+            for unit in owned_units
+            if (unit.x, unit.y) in {
+                v2_position_for_player(player, 39.5, y)
+                for y in (45.5, 46.5, 47.5, 50.0, 54.0, 58.0, 60.5, 61.5, 62.5)
+            }
+            and unit.unit_const in structural_types
+        }
+        assert len(front_row) == 9
+        assert front_row <= permanent
         front_endcaps = {
             unit.reference_id
             for unit in owned_units
             if (unit.x, unit.y) in {
                 v2_position_for_player(player, 39.5, y)
-                for y in (46.5, 61.5)
+                for y in (45.5, 46.5, 61.5, 62.5)
             }
         }
-        assert len(front_endcaps) == 2
+        assert len(front_endcaps) == 4
         assert front_endcaps <= permanent
         removal_footprints = {
             cell
@@ -3105,6 +3117,18 @@ def test_evolution_alpha_gate_breach_keeps_front_and_university_enclosures_seale
         for y in range(144)
         for x in range(144)
     ]
+    all_opened_sides = {
+        reference_id
+        for player in range(1, 9)
+        for effect in by_name[f"Wall Breach S{player} W{player}"].effects
+        if effect.effect_type == EffectId.REMOVE_OBJECT
+        for reference_id in effect.selected_object_ids
+    } | {
+        condition.unit_object
+        for player in range(1, 9)
+        for condition in by_name[f"Wall Breach S{player} W{player}"].conditions
+        if condition.condition_type == ConditionId.DESTROY_OBJECT
+    }
 
     def reachable_after_removing(player, deleted):
         placements = [
@@ -3133,12 +3157,21 @@ def test_evolution_alpha_gate_breach_keeps_front_and_university_enclosures_seale
             if effect.effect_type == EffectId.REMOVE_OBJECT
             for reference_id in effect.selected_object_ids
         }
-        assert len(removals) == (14 if player in {1, 2, 7, 8} else 18)
+        assert len(removals) == (44 if player in {1, 2, 7, 8} else 48)
         arena = v2_cell_for_player(player, 42, 54)
         university = v2_cell_for_player(player, 10, 54)
+        opened_side = v2_cell_for_player(player, 30, 47)
+        assert opened_side not in reachable_after_removing(player, set())
         after_breach = reachable_after_removing(player, removals | switches)
+        assert opened_side in after_breach
         assert arena not in after_breach
         assert university not in after_breach
+        # Stress all eight switches at once: neighboring openings must not
+        # create a route around someone else's preserved gate barrier either.
+        after_all_breaches = reachable_after_removing(player, all_opened_sides)
+        assert opened_side in after_all_breaches
+        assert arena not in after_all_breaches
+        assert university not in after_all_breaches
 
         # A surviving, opened University gate still provides the intended access;
         # the fix must not turn the rear enclosure into an inaccessible island.
@@ -3154,22 +3187,162 @@ def test_evolution_alpha_gate_breach_keeps_front_and_university_enclosures_seale
         assert university in opened_uni
         assert arena not in opened_uni
 
-        # Sensitivity check: the retired broad rectangle really does break the
-        # front enclosure. The test cannot pass solely due to an unreachable
-        # arena anchor or an unrelated obstruction in the path model.
-        corner_a = v2_cell_for_player(player, 17, 43)
-        corner_b = v2_cell_for_player(player, 38, 64)
-        x1, x2 = sorted((corner_a[0], corner_b[0]))
-        y1, y2 = sorted((corner_a[1], corner_b[1]))
-        old_blanket_removals = {
+        # Sensitivity check: only opening the surviving front gates permits the
+        # intended front route. An unreachable arena anchor cannot hide bypasses.
+        front_gates = {
             unit.reference_id
             for unit in evolution_alpha.unit_manager.units[player]
-            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
-            and x1 <= int(unit.x) <= x2
-            and y1 <= int(unit.y) <= y2
+            if unit.unit_const in mapview.GATE_IDS
+            and (unit.x, unit.y) in {
+                v2_position_for_player(player, 39.5, y)
+                for y in (50.0, 54.0, 58.0)
+            }
         }
-        assert len(old_blanket_removals) == (44 if player in {1, 2, 7, 8} else 48)
-        assert arena in reachable_after_removing(player, old_blanket_removals | switches)
+        assert len(front_gates) == 3
+        assert front_gates.isdisjoint(removals | switches)
+        opened_front = reachable_after_removing(player, removals | switches | front_gates)
+        assert arena in opened_front
+        assert university not in opened_front
+
+
+def _permanent_wall_and_gate_cells(scenario):
+    """Independent spatial role contract; do not trust the deletion effects themselves."""
+    structural_types = {
+        BuildingInfo.STONE_WALL.ID,
+        BuildingInfo.FORTIFIED_WALL.ID,
+        *mapview.GATE_IDS,
+    }
+    protected = set()
+    for player in range(1, 9):
+        side_positions = {
+            v2_position_for_player(player, x, y)
+            for x, y in (
+                *((x + 0.5, y) for x in range(17, 25) for y in (43.5, 64.5)),
+                *((24.5, y + 0.5) for y in (*range(44, 47), *range(61, 64))),
+                *((x + 0.5, y) for x in range(24, 39) for y in (47.5, 60.5)),
+                (23.0, 43.5),  # The deletable switch, not a permanent barrier.
+            )
+        }
+        for unit in scenario.unit_manager.units[player]:
+            if unit.unit_const in structural_types and (unit.x, unit.y) not in side_positions:
+                footprint = mapview._footprint(unit.unit_const, unit.x, unit.y)
+                assert len(footprint) == (4 if unit.unit_const in mapview.GATE_IDS else 1)
+                protected.update(footprint)
+    assert len(protected) == 368
+    return protected
+
+
+def test_evolution_alpha_wall_cap_warns_then_wipes_for_every_resolved_owner(evolution_alpha):
+    triggers = evolution_alpha.trigger_manager.triggers
+    families = {}
+    for family in ("Warn", "Wipe"):
+        pattern = re.compile(rf"Wall Cap {family} S([1-8]) W([1-8])")
+        families[family] = {
+            tuple(map(int, match.groups())): trigger
+            for trigger in triggers
+            if (match := pattern.fullmatch(trigger.name))
+        }
+        assert set(families[family]) == VALID_COLOR_WORLD_PAIRS
+
+    wipe_ids = {trigger.trigger_id for trigger in families["Wipe"].values()}
+    activation_edges = Counter(
+        (trigger.trigger_id, effect.trigger_id)
+        for trigger in triggers
+        for effect in trigger.effects
+        if effect.effect_type == EffectId.ACTIVATE_TRIGGER and effect.trigger_id in wipe_ids
+    )
+    assert activation_edges == Counter({
+        (families["Warn"][pair].trigger_id, families["Wipe"][pair].trigger_id): 1
+        for pair in VALID_COLOR_WORLD_PAIRS
+    })
+
+    for (color, world_player), warning in families["Warn"].items():
+        wipe = families["Wipe"][color, world_player]
+        assert warning.enabled and not warning.looping
+        assert not wipe.enabled and not wipe.looping
+        for trigger, threshold in ((warning, 200), (wipe, 220)):
+            assert len(trigger.conditions) == 4
+            timer, = [
+                condition for condition in trigger.conditions
+                if condition.condition_type == ConditionId.TIMER
+            ]
+            assert timer.timer == 1 and not timer.inverted
+            count, = [
+                condition for condition in trigger.conditions
+                if condition.condition_type == ConditionId.OWN_OBJECTS
+            ]
+            # Keep the original count basis: all owned WALL-class objects, not
+            # just side walls, one wall unit ID, or fixed scenario-player slots.
+            assert count.quantity == threshold
+            assert count.source_player == world_player
+            assert count.object_group == ObjectClass.WALL
+            assert count.object_list == -1
+            assert not count.inverted
+            assert {
+                (condition.variable, condition.quantity, condition.comparison)
+                for condition in trigger.conditions
+                if condition.condition_type == ConditionId.VARIABLE_VALUE
+            } == {
+                (31 + color, 1, Comparison.EQUAL),
+                (39 + color, world_player, Comparison.EQUAL),
+            }
+        assert len(warning.effects) == 2
+        chat, activation = warning.effects
+        assert chat.effect_type == EffectId.SEND_CHAT
+        assert chat.source_player == world_player and chat.message
+        assert activation.effect_type == EffectId.ACTIVATE_TRIGGER
+        assert activation.trigger_id == wipe.trigger_id
+        assert wipe.effects[-1].effect_type == EffectId.SEND_CHAT
+        assert wipe.effects[-1].source_player == world_player
+
+
+def test_evolution_alpha_wall_cap_clears_every_nonstructural_cell_once(evolution_alpha):
+    protected = _permanent_wall_and_gate_cells(evolution_alpha)
+    permitted = {(x, y) for x in range(144) for y in range(144)} - protected
+    patterns = set()
+    for trigger in evolution_alpha.trigger_manager.triggers:
+        match = re.fullmatch(r"Wall Cap Wipe S([1-8]) W([1-8])", trigger.name)
+        if match is None:
+            continue
+        color, world_player = map(int, match.groups())
+        removals = [effect for effect in trigger.effects if effect.effect_type == EffectId.REMOVE_OBJECT]
+        assert len(removals) == len(trigger.effects) - 1
+        assert removals
+        coverage = Counter()
+        rectangles = []
+        for effect in removals:
+            assert effect.source_player == world_player
+            assert effect.object_group == ObjectClass.WALL
+            assert effect.object_list_unit_id == -1
+            assert not effect.selected_object_ids
+            rectangle = (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2)
+            x1, y1, x2, y2 = rectangle
+            assert 0 <= x1 <= x2 < 144 and 0 <= y1 <= y2 < 144
+            cells = {(x, y) for x in range(x1, x2 + 1) for y in range(y1, y2 + 1)}
+            assert cells.isdisjoint(protected), (trigger.name, rectangle)
+            coverage.update(cells)
+            rectangles.append(rectangle)
+        assert set(coverage) == permitted
+        assert set(coverage.values()) == {1}
+        patterns.add(tuple(rectangles))
+
+        # Every removable side segment is inside the cap's spatial mask, while
+        # the complete front gate row and rear University barrier are outside it.
+        side_cells = {
+            v2_cell_for_player(color, x, y)
+            for x in range(24, 39)
+            for y in (47, 60)
+        }
+        assert side_cells <= permitted
+        assert {
+            v2_cell_for_player(color, 39, y)
+            for y in range(45, 63)
+        } <= protected
+        assert {
+            v2_cell_for_player(color, 14, y)
+            for y in range(44, 64)
+        } <= protected
+    assert len(patterns) == 1
 
 
 def test_evolution_alpha_has_no_unauthorized_wall_or_gate_destruction(evolution_alpha):
@@ -3178,6 +3351,7 @@ def test_evolution_alpha_has_no_unauthorized_wall_or_gate_destruction(evolution_
         BuildingInfo.FORTIFIED_WALL.ID,
         *mapview.GATE_IDS,
     }
+    protected_cells = _permanent_wall_and_gate_cells(evolution_alpha)
     structural_refs = {
         unit.reference_id
         for units in evolution_alpha.unit_manager.units
@@ -3214,13 +3388,28 @@ def test_evolution_alpha_has_no_unauthorized_wall_or_gate_destruction(evolution_
             if effect.object_type >= 0 and effect.object_type != ObjectType.BUILDING:
                 continue
             assert effect.effect_type == EffectId.REMOVE_OBJECT, (trigger.name, effect.effect_type)
+            cap_match = re.fullmatch(r"Wall Cap Wipe S([1-8]) W([1-8])", trigger.name)
+            if cap_match:
+                assert effect.source_player == int(cap_match.group(2))
+                assert effect.object_group == ObjectClass.WALL
+                assert effect.object_list_unit_id == -1
+                x1, y1, x2, y2 = effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2
+                assert 0 <= x1 <= x2 < 144 and 0 <= y1 <= y2 < 144
+                assert protected_cells.isdisjoint(
+                    (x, y) for x in range(x1, x2 + 1) for y in range(y1, y2 + 1)
+                )
+                found["bounded_wall_cap"] += 1
+                continue
             assert re.fullmatch(
                 r"(?:(?:Color Defeat Resolve|Color Runtime Defeated) S[1-8]|Vote Kick Resolve P[1-8]) W[1-8]",
                 trigger.name,
             ), trigger.name
             assert (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2) == (0, 0, 143, 143)
             found["player_elimination"] += 1
-    assert found == {"exact_breach": 64, "player_elimination": 192}
+    assert found["exact_breach"] == 64
+    assert found["player_elimination"] == 192
+    assert found["bounded_wall_cap"] > 64
+    assert set(found) == {"exact_breach", "player_elimination", "bounded_wall_cap"}
 
 
 def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):

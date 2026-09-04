@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.14**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.15**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.14.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.15.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -30,18 +30,23 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 ### What is checked now
 
 ```bash
-.venv/bin/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
+.venv/bin/pytest -q tests/test_evolution_alpha.py
+.venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.14.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.15.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
-`make check-ascendants` runs the same four steps where `make` is available. The build
-itself fails closed on drift: exact trigger-family counts, eight-way symmetry of the
+`make check-ascendants` runs the focused scenario/decompiler tests, build, audit, and
+map steps where `make` is available; the two pytest commands above additionally cover
+the complete repository suite. The build itself fails closed on drift: exact
+trigger-family counts, eight-way symmetry of the
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.14 passes with **0 errors and 0 warnings**.
+unconditional victory/defeat. v1.0.15 passes with **0 errors and 0 warnings**. The
+focused and remaining-test runs pass 59 and 60 tests respectively: 119/119 total.
+Repository Ruff checks and the 616-line embedded XS build also pass.
 
 `aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
 geometry. It is not a pass/fail gate; read the report and confirm the arena still holds
@@ -50,11 +55,12 @@ separated by three rows of Deep Water. Focused tests pin every lane cell,
 Castle pad, Hero pad, destination, wall, gate, shore repair, and eight-way transform.
 A map metric that moves without a matching geometry change is a signal to investigate.
 
-The v1.0.14 map report contains 10,188 land cells and 10,548 water cells, with 103
-walkable regions when gates are closed and 81 when open. The 216-cell land reduction
-from v1.0.13 is entirely the three-row gap across all eight controller areas. Playable
-base areas remain 285 cells per color; territory figures remain 911/879 by orientation,
-and the `mirror_x` comparison retains its existing 72 mismatches.
+The v1.0.15 map report contains 10,188 land cells and 10,548 water cells, with 103
+walkable regions when gates are closed and 81 when open, unchanged from v1.0.14.
+Every terrain cell and all 940 pre-existing objects are unchanged; this release adds
+only two front-row end posts per color. Playable base areas remain 285 cells per color.
+Territory figures are 893/861 by orientation, 18 fewer than before because the front
+seams are now closed. The `mirror_x` comparison retains its existing 72 mismatches.
 
 The decompiler still has a round-trip test — `tests/test_decompile.py` — but it points
 at `chieftains_4v4`, a mode that genuinely still is a decompile of its reference, plus a
@@ -65,6 +71,48 @@ The active issue inventory and manual acceptance cases are in
 The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.15 side-wall removal and protected wall-limit wipe
+
+The user clarified that side walls must disappear, while the front gate/wall row and
+rear University barrier remain. The wall-limit wipe must also remain active.
+v1.0.14 had misinterpreted that requirement by preserving the long side walls and
+retiring the wipe; this release corrects that behavior rather than changing the
+controller work.
+
+The 64 `Wall Breach` mappings select exact existing static wall references from the
+short shoulder mask plus all 30 long side-wall pieces per color. That produces 44
+targets for P1/P2/P7/P8 and 48 for P3/P4/P5/P6; teammate access gates replacing
+shoulder slots are not selected. The three front gates, four existing front posts,
+and University wall/gate boundary remain. Two additional front end posts per color
+close the otherwise exposed ends after the side walls disappear. No terrain or
+spawn-control geometry changes. The exact coordinates and all eight transforms are
+recorded in `ascendants-control-map.md`.
+
+The warning at 200 and wipe at 220 use the original WALL-class count basis, including
+owned preplaced walls, and the original one-shot warning-then-wipe sequence. The
+eight imported pairs are reset and expanded into 64 `Wall Cap Warn S# W#` /
+`Wall Cap Wipe S# W#` pairs, covering every scenario-color/trigger-owner mapping.
+Their old activation chain is removed. The active-color and
+resolved-owner conditions keep sparse and shuffled lobbies attached to the right
+territory.
+
+Wipe rectangles cover the map except protected permanent wall/gate footprint cells.
+Each effect selects only the resolved owner's WALL class. Thus the rule removes
+player-built walls and remaining side walls without deleting the front gates/posts,
+rear University wall/gate, or teammate access gates. Walls built within a protected
+footprint cell are also spared. Protection is geometric, not an ownership swap or a
+remove/recreate cycle. The permanent references retain manual-delete protection and
+the side switch remains deletable. Some side walls retain legacy manual-delete
+protection, which does not prevent their scripted removal by the switch or wipe.
+
+The serialized wipe for each owner has 49 non-overlapping rectangles covering all
+20,368 unprotected map cells, excluding all 368 permanent barrier footprint cells.
+
+Tests must check the exact target lists, the full warning/wipe ownership matrix,
+rectangle coverage and protected-cell exclusion, and closed-gate reachability after
+the permitted deletion in every color orientation. Defeat, resignation, and vote-kick
+still deliberately remove all objects belonging to the eliminated owner.
 
 ## v1.0.14 confined tracks and clear endpoints
 
@@ -82,19 +130,10 @@ production and keeps new waves near home; OFF pauses new Heroes. Both apply to f
 spawns only. Levels, destinations, starting positions, ownership, and Hero tiers are
 unchanged from v1.0.13.
 
-The same release narrows gate-triggered wall removal to exact static Castle-yard
-shoulder references. The old broad rectangles also selected 30 permanent long flank
-pieces and could include mirrored rear joins; the source path audit found an arena
-bypass in all eight colors. The replacement preserves all long flanks, front-gate end caps,
-and the University enclosure. Permanent walls and gates receive manual-delete
-protection through both initial and owner-resolved setup. The side/rear switch gate
-remains deletable; it is distinct from the protected University gate. The exact
-positions and closed-gate path contract are in `ascendants-control-map.md`.
-
-The imported 220-wall penalty was a second deletion path: its eight warning and
-eight removal triggers could remove every wall owned by a player across the map.
-Those 16 triggers and their activation chain are retired. Neither correction changes
-the intended full-owner cleanup on defeat, resignation, or vote-kick.
+The same release narrowed gate-triggered removal to the short shoulder references
+and retired the 220-wall penalty. Those wall decisions were incorrect for the user's
+intended rules and are superseded by v1.0.15 above. The confined tracks, Snow
+boundaries, and controller names remain unchanged.
 
 ## v1.0.13 independent proportional spawn controls
 
@@ -245,9 +284,11 @@ undeletable, untargetable, and unattackable prop, outside player and AI control.
 
 ## v1.0.4 graph migration
 
-The final build removes 810 conditionless/effectless imported shells, the 32 Hay
-marker triggers retired in v1.0.13, and the 16 wall-penalty triggers retired in
-v1.0.14. Before removal it proves that the imported shells'
+The final build removes 810 conditionless/effectless imported shells and the 32 Hay
+marker triggers retired in v1.0.13. v1.0.14 additionally removed the 16 imported
+wall-penalty shells; v1.0.15 resets and reuses them within the new owner-resolved
+warning/wipe family instead of retaining the imported logic. Before removal it proves
+that the empty imported shells'
 only 16 external references are no-op deactivations of the retired `no wall` family,
 then strips those references. It also groups the legacy
 kill-based age-up chains by every serialized field, merges 189 byte-identical copies,
@@ -282,11 +323,15 @@ Age of Empires II engine. Keep these as explicit in-game checks for every candid
   it remains on its own track while all six levels remain reachable;
 - checking each HOLD/OFF sign and the Snow-to-road boundary in all orientations: every
   snowy cell selects level 0, and the first road tile selects level 1;
-- deleting each Castle-yard switch gate and confirming only the short yard shoulders
-  disappear: long flanks, front-gate end caps, University walls/gate, and allied routes
-  remain intact, with no new front-arena or rear-University bypass while gates are shut;
-- trying manual deletion on permanent walls/gates and exceeding 220 walls without a
-  whole-map wall purge, including in sparse and shuffled lobbies;
+- deleting each Castle-yard switch gate and confirming the short shoulders and long
+  side walls disappear, while the front gate/wall row, University walls/gate, and
+  teammate access gates remain, with no front-arena or University bypass while shut;
+- reaching 200 owned WALL-class objects to warn, then 220 to wipe that owner's walls
+  outside the protected barrier footprints; confirm the permanent defenses and other
+  players' walls survive, including in sparse and shuffled lobbies;
+- trying manual deletion on permanent walls/gates, confirming the switch remains
+  deletable, and confirming legacy side-wall Delete protection does not stop the
+  scripted switch/wipe removal;
 - placing buildings across every milestone-shore repair strip;
 - confirming all eight shores have no Transport Ship while milestone heroes still spawn;
 - revealing all four outer corners and confirming no static Palisade Wall or Saboteur
