@@ -1,12 +1,25 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.15 source review. Current candidate: **v1.0.15**;
+Open work from the v1.0.7–v1.0.16 source review. Current candidate: **v1.0.16**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## v1.0.16 audit follow-up
+
+- [x] ASC-031–036: shared training bans, preserve parked reward units, clear pending
+  Hero orders on OFF, guard Goth Imperial transition, protect vote markers from combat.
+- [x] ASC-038: first ON Hero distance shares the Army HOLD line directly in front of
+  Castles. All 64 mappings and all eight footprint/path orientations are checked.
+- [ ] ASC-037: an old unit on a capture pad during a new birth can still be retasked.
+  One-shot pulses protect orders between births, not unit identity during births.
+  This qualifies the stronger historical claims below. Per-unit routing needs engine
+  validation before replacing the current movement system.
+- [x] Preserve the intentional 50-second Scorpion lifetime.
+- [ ] Run the v1.0.16 engine acceptance cases in the release notes and issue register.
 
 ## Closed in v1.0.15
 

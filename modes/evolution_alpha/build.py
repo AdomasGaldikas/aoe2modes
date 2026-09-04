@@ -600,8 +600,9 @@ PUBLIC_INSTRUCTIONS = (
     "Sheep = Castle army range. Penguin = Hero range. Move each along its own road: "
     "farther toward the arena sends new units farther. Snow is the end zone: Sheep on "
     "snow = HOLD (new armies stay by your Castles); Penguin on snow = OFF (no new Heroes). "
-    "The road begins exactly where HOLD/OFF ends. Water keeps each controller on its "
-    "own track. Existing units keep your manual orders.\r\r"
+    "The road begins exactly where HOLD/OFF ends. The Penguin's first ON position "
+    "sends Heroes right in front of your Castles, like Army HOLD. Water keeps each "
+    "controller on its own track. New waves receive one automatic move order.\r\r"
     "WALL WIPE\r"
     "Delete the side switch gate to remove your side walls. Front gates/walls and the "
     "University gate/enclosure stay. At 200 walls you get a warning; at 220 the wall-limit "
@@ -705,10 +706,11 @@ SOURCE_ARMY_RANGE_DESTINATIONS = (
     ((38, 52), (38, 52), (38, 54), (38, 54)),
     ((43, 53), (43, 53), (43, 54), (43, 54)),
 )
-# Hero L0 is production OFF. L1-L5 use the same near-to-battle progression,
+# Hero L0 is production OFF. L1 shares Army HOLD, then L2-L5 progress toward battle,
 # avoiding the shore wall crossed by a naive straight-line interpolation.
 SOURCE_HERO_RANGE_DESTINATIONS = {
-    1: (25, 54),
+    # First ON position shares the Army HOLD line immediately ahead of Castles.
+    1: (21, 54),
     2: (30, 52),
     3: (34, 52),
     4: (38, 53),
@@ -1227,6 +1229,11 @@ def _configure_sparse_goth_barracks_restriction(
                 looping=1,
             )
             restriction.new_condition.timer(timer=1)
+            restriction.new_condition.research_technology(
+                source_player=world_player,
+                technology=TechInfo.IMPERIAL_AGE.ID,
+                inverted=1,
+            )
             restriction.new_condition.objects_in_area(
                 quantity=1,
                 object_list=BuildingInfo.BARRACKS.ID,
@@ -1261,6 +1268,11 @@ def _configure_sparse_goth_barracks_restriction(
             anarchy.new_condition.research_technology(
                 source_player=world_player,
                 technology=TechInfo.ANARCHY.ID,
+            )
+            anarchy.new_condition.research_technology(
+                source_player=world_player,
+                technology=TechInfo.IMPERIAL_AGE.ID,
+                inverted=1,
             )
             anarchy.new_effect.activate_trigger(
                 trigger_id=restriction.trigger_id
@@ -1396,6 +1408,23 @@ def _zero_starting_resources(ctx: BuildContext) -> None:
         settings.wood = 0
         settings.stone = 0
         settings.gold = 0
+
+
+def _normalize_player_restrictions(ctx: BuildContext) -> None:
+    """Apply the same CBA roster to every color, preserving every existing ban.
+
+    The imported per-color lists omitted different units and buildings. A lobby
+    color must not decide whether a civilization can train an otherwise banned
+    unit. Civilization-specific availability still comes from the game's data.
+    """
+    for field in ("disabled_units", "disabled_buildings", "disabled_techs"):
+        shared = sorted({
+            value
+            for player in PLAYERS
+            for value in getattr(ctx.pm.players[player], field)
+        })
+        for player in PLAYERS:
+            setattr(ctx.pm.players[player], field, list(shared))
 
 
 def _disable_castle_trebuchets(ctx: BuildContext) -> None:
@@ -2644,6 +2673,14 @@ def _configure_range_sliders(
                     operation=Operation.SET,
                     variable=variables[player],
                 )
+                if public_name == "Hero" and level == 0:
+                    # OFF can be selected between creation and the movement
+                    # pass. Do not retain a stale order until production resumes.
+                    trigger.new_effect.change_variable(
+                        quantity=0,
+                        operation=Operation.SET,
+                        variable=HERO_MOVE_PENDING_VARIABLE_BASE + int(player) - 1,
+                    )
     if next(reusable_iter, None) is not None:
         raise RuntimeError("not every legacy selector trigger was reused")
 
@@ -2950,13 +2987,17 @@ def _configure_sparse_center_rewards(
                         "(30 minutes)."
                     ),
                 )
-                trigger.new_effect.remove_object(
+                # Wait for a clear reward pad instead of erasing a parked
+                # Trebuchet (or another packed unit) to make room.
+                trigger.new_condition.objects_in_area(
+                    quantity=1,
                     source_player=world_player,
                     object_group=ObjectClass.PACKED_UNIT,
                     area_x1=marker_x,
                     area_y1=marker_y,
                     area_x2=marker_x,
                     area_y2=marker_y,
+                    inverted=1,
                 )
                 trigger.new_effect.create_object(
                     object_list_unit_id=UnitInfo.TREBUCHET_PACKED.ID,
@@ -3495,13 +3536,17 @@ def _configure_sparse_late_hero_boosts(
             comparison=Comparison.LARGER_OR_EQUAL,
         )
         x, y = location
-        trigger.new_effect.remove_object(
-            object_list_unit_id=HeroInfo.GENGHIS_KHAN.ID,
+        # A returning Hero must never be removed or buffed again by a spawn.
+        # Wait until the pad is clear, then create and buff only the new Hero.
+        trigger.new_condition.objects_in_area(
+            quantity=1,
+            object_list=HeroInfo.GENGHIS_KHAN.ID,
             source_player=world_player,
             area_x1=x,
             area_y1=y,
             area_x2=x,
             area_y2=y,
+            inverted=1,
         )
         trigger.new_effect.create_object(
             object_list_unit_id=HeroInfo.GENGHIS_KHAN.ID,
@@ -3770,6 +3815,20 @@ def _configure_sparse_hero_milestones(
                 creates = 0
                 for source_effect in template.effects:
                     if source_effect.effect_type == EffectId.DEACTIVATE_TRIGGER:
+                        continue
+                    if source_effect.effect_type == EffectId.REMOVE_OBJECT:
+                        if source_effect.object_list_unit_id != expected_unit_id:
+                            raise RuntimeError("unexpected Hero spawn cleanup target")
+                        trigger.new_condition.objects_in_area(
+                            quantity=1,
+                            object_list=expected_unit_id,
+                            source_player=world_player,
+                            area_x1=spawn_x,
+                            area_y1=spawn_y,
+                            area_x2=spawn_x,
+                            area_y2=spawn_y,
+                            inverted=1,
+                        )
                         continue
                     effect = _copy_for_world_player(
                         source_effect,
@@ -4869,6 +4928,30 @@ def _configure_sparse_vote_kick(
             f"unexpected vote-marker mapping; missing={sorted(missing)}, extra={sorted(extra)}"
         )
 
+    # An enemy must not cast a vote by destroying somebody else's marker.
+    # Attack protection leaves the owner's explicit Delete action available.
+    safety = _unique_trigger(ctx, "Range Controller Safety")
+    safety.new_effect.disable_unit_attackable(
+        source_player=-1,
+        selected_object_ids=sorted(marker.reference_id for marker in vote_markers.values()),
+    )
+    for voter in PLAYERS:
+        references = sorted(
+            marker.reference_id
+            for (_target, owner), marker in vote_markers.items()
+            if owner == voter
+        )
+        for world_player in _possible_world_players(voter):
+            detector = _unique_trigger(
+                ctx, f"Color Owner Detect S{int(voter)} W{int(world_player)}"
+            )
+            self_deactivation = detector.effects.pop(-1)
+            detector.new_effect.disable_unit_attackable(
+                source_player=world_player,
+                selected_object_ids=references,
+            )
+            detector.effects.append(self_deactivation)
+
     # Each target-colored flag labels the matching Outpost on a teammate's
     # vote island. The old layout scattered flags horizontally regardless of
     # the island's orientation, putting several in water or even on top of a
@@ -5099,6 +5182,7 @@ def build(ctx: BuildContext) -> None:
     _mirror_legacy_anti_treb_zones(ctx)
     _clear_legacy_resource_score_triggers(ctx)
     _zero_starting_resources(ctx)
+    _normalize_player_restrictions(ctx)
     _disable_castle_trebuchets(ctx)
     (
         active_variables,

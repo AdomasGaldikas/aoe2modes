@@ -1,4 +1,4 @@
-# Ascendants v1.0.15 control and ownership map
+# Ascendants v1.0.16 control and ownership map
 
 This is the authoritative manifest for the two spawn controls in CBA Hero:
 Ascendants. Coordinates are scenario cells unless they include `.5`, which denotes an
@@ -152,7 +152,7 @@ middle pad, so one pulse routes whichever current tier has just spawned.
 | Penguin level | Production | Canonical destination |
 | ---: | --- | --- |
 | 0 | OFF | none |
-| 1 | ON | `(25,54)` |
+| 1 | ON | `(21,54)` — immediately in front of the Castles, on the Army HOLD line |
 | 2 | ON | `(30,52)` |
 | 3 | ON | `(34,52)` |
 | 4 | ON | `(38,53)` |
@@ -160,6 +160,11 @@ middle pad, so one pulse routes whichever current tier has just spawned.
 
 There are 320 Hero movement mappings: five active levels × eight colors × eight
 possible runtime owners. Each consumes one Hero pulse after issuing its Move order.
+
+L1 is adjacent to the placed Castle footprints for every color and stays on the
+Army HOLD line. The other four active levels are unchanged. OFF also clears any
+pending Hero order. Creation pulses are not per-unit identity tracking: a returning
+unit sharing a capture pad during a later birth may still be retasked (ASC-037).
 
 Hero spawning itself requires Penguin level 1 or greater and exactly one current kill
 band: 200–399, 400–599, 600–799, 800–999, 1,000–1,999, 2,000–3,499,

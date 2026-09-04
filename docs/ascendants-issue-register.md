@@ -1,20 +1,20 @@
-# Ascendants v1.0.15 candidate issue register
+# Ascendants v1.0.16 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.15** is the active source-verified candidate;
-v1.0.14 remains the immediately preceding candidate for focused comparison only.
+repair targets. **v1.0.16** is the active source-verified candidate;
+v1.0.15 remains the immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.15 candidate is 152,537 bytes with SHA-256
-`320c52ce11ad304645cea706a81362f1ed48198c623ef037dd255fda2c96b209`.
+The v1.0.16 candidate is 153,600 bytes with SHA-256
+`e76e6fd20e4f2ab0e7419234131e01cac45f11b9c3572c831a6b0637351c03ad`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.15 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.16 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -36,7 +36,7 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-018 | A resigned player's units and buildings remained on the map. | Guarded | Each of the 64 color/runtime resignation resolvers has one full-map `REMOVE_OBJECT` effect scoped to its resolved runtime player, alongside the eliminated/active state changes. | Resign one player in full 4v4 and a compacted sparse lobby; all of that player's objects must disappear without touching anyone else. |
 | ASC-019 | None of the five shared Sheep positions worked reliably; 200/400+ kill Heroes always took the default route. | Replaced in v1.0.13; containment revised in v1.0.14 | The five-point mechanism is gone. Per color, 6 Sheep selectors write Castle-army level 0–5 and 6 Penguin selectors write Hero level 0–5. Each family partitions its own water-isolated 9×2 track. Exactly 384 Castle and 320 Hero owner mappings consume separate one-shot pulses. | For every color in full and sparse lobbies, move the Sheep and Penguin through every level. New units must follow the selected controller only; existing units must retain manual orders. Confirm attempted cross-track orders cannot leave the controller's own track. |
 | ASC-020 | Red/Green and Green/Yellow armies spawned from or routed through one another's Castle territories in shuffled lobbies. | Corrected and guarded in v1.0.11 | The v1.0.8–v1.0.10 implementation conflated trigger player selectors with XS world players. XS now uses the engine's `xsGetWorldPlayerId(scenarioPlayer)` conversion, while trigger effects keep the independent Castle-row resolver. Tests pin that boundary and the complete control chain; all 32 pads are dry, unique, empty, transformed as cells from one canonical row, created at their centres, and closest to their own Castles. | Start a full lobby with Red and Green reversed, then Yellow before Green, then another shuffled order. Confirm each territory's army color/civilization, Sheep route, heroes, HUD, rewards, resignation, and victory stay with that Castle row. |
-| ASC-021 | Anti-Trebuchet protection did not cover the Castles of P4, P6, P7, or P8. | Guarded in v1.0.9 | Anti-Trebuchet zones derive from one canonical P3 rectangle through an independent eight-way transform. Every color's zone is one mirror orbit, covers all four of its Castles, and stays clear of its rear route. Effects remain restricted to an enemy player's packed Trebuchets. Separate wall-breach removal uses exact references, not rectangles, as recorded in ASC-029. | Place an enemy packed Trebuchet beside each Castle row, especially P4/P6/P7/P8; it must be removed without affecting friendly rear-route units. |
+| ASC-021 | Anti-Trebuchet protection did not cover the Castles of P4, P6, P7, or P8. | Guarded in v1.0.9 | Anti-Trebuchet zones derive from one canonical P3 rectangle through an independent eight-way transform. Every color's zone is one mirror orbit, covers all four of its Castles, and stays clear of its rear route. Effects remove packed Trebuchets for all owners inside the exclusion zones; the rule is not enemy-only. Separate wall-breach removal uses exact references, not rectangles, as recorded in ASC-029. | Place an enemy packed Trebuchet beside each Castle row, especially P4/P6/P7/P8; it must be removed without affecting friendly rear-route units. |
 | ASC-022 | Milestone Heroes could be turned back by the invisible spawn line after the player ordered them toward the Castles. | Guarded and expanded in v1.0.13 | All 320 level 1–5 Hero movers require and consume one of eight Hero-creation pulses. The six 200–2000 bands and all three 3500/5000 Genghis loops arm that pulse only after creating a Hero. | For every color and active Penguin level, return milestone and late Genghis Heroes through the three Hero spawn cells; later player orders must remain intact. |
 | ASC-023 | Raze-reward builders could have later orders overwritten when they returned across their creation pads. | Guarded in v1.0.10 | All 64 builder movers require and consume one of eight builder-creation pulses. Each reward arms the pulse after creating the pair, and only the resolved runtime owner can consume it once. | Earn a pair for every color orientation, let it auto-park, then move both villagers back across both spawn pads; they must obey the player. |
 | ASC-024 | Obsolete wooden walls and Saboteurs were visible in the outer map corners. | Resolved statically in v1.0.11 | Exactly 56 submerged static Palisade Walls and eight static Saboteurs are removed after assertions pin their types, counts, water terrain, and corner locations. Their 64 object references are absent from all conditions/effects. | Reveal all four corners and confirm no Palisade Wall or Saboteur remains. |
@@ -47,14 +47,31 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-029 | Side-wall deletion must not open a path around the front gates or remove the rear University boundary. | Corrected and guarded in v1.0.15 | v1.0.14 wrongly preserved the long side walls. The 64 `Wall Breach` mappings now remove the exact short shoulders plus 30 long side-wall references per color: 44 walls for P1/P2/P7/P8, 48 for P3/P4/P5/P6. The three front gates and complete front wall row remain, with two new end posts per color closing the bypass. The rear University wall/gate, joins, and teammate access gates remain protected. The switch at canonical `(23.0,43.5)` is separate from the University gate at `(14.5,54.0)`. | Delete the switch for every color: short and long side walls disappear; the front and University barriers remain. With other gates shut, test both front ends and the rear University route for bypasses. Repeat with sparse and shuffled owners; other players' fortifications must remain intact. |
 | ASC-030 | The wall-limit wipe must remain active while sparing the permanent front and University barriers. | Restored and guarded in v1.0.15 | v1.0.14 wrongly removed the rule. There are now 64 owner-resolved warning/wipe pairs: one-shot warning at 200 owned WALL-class objects, then wipe at 220, including preplaced walls in the count. Each wipe selects only that owner's WALL class through 49 rectangles covering all 20,368 cells outside 368 protected barrier cells. Permanent references retain wildcard and owner-resolved manual-delete protection; the switch remains deletable. Some side walls retain legacy Delete protection, which scripted removal ignores. No ownership swap or remove/recreate workaround is used. | Reach 200 then 220 WALL-class objects for each color; confirm the warning, then removal of that owner's walls outside protected barrier cells. Front gates/posts, the University wall/gate, teammate access gates, and other owners' walls must survive. Test after side-wall deletion, in sparse/shuffled lobbies, and confirm the warning/wipe remains one-shot. |
 
+## v1.0.16 audit additions
+
+| ID | Finding | Source status and verification | Required game check |
+| --- | --- | --- | --- |
+| ASC-031 | Training bans differ by color | Shared deduplicated union: 143 units, 14 buildings, one technology; all eight color lists checked. | Same civilization's menus across colors. |
+| ASC-032 | Returning Genghis deleted/rebuffed by production | Replaced spawn-pad removal with an owned-Genghis absence condition at 2000/3500/5000 kills. Existing units survive; buffs share the exclusion area. | Park a Genghis on each pad, then clear it. |
+| ASC-033 | Center Trebuchet reward removes parked units | Waits for absence of owned packed units instead of removing them. | Occupy and clear the reward pad. |
+| ASC-034 | OFF retains a pending Hero move | OFF clears pending movement and production level. ON alone cannot restore the pulse. | OFF just after birth, then ON. |
+| ASC-035 | Goth Imperial/Barracks race | Both Anarchy activation and removal require Imperial Age to be unresearched; all 128 triggers checked. | Research Imperial with Barracks present. |
+| ASC-036 | Combat can delete vote Outposts | All 24 markers protected against attacks, initially and across owner mappings. Owner Delete remains available. | Attack markers, then intentionally delete to vote. |
+| ASC-037 | New birth can retask an older unit on its capture pad | **Open.** One-shot pulses prevent retasking between births, not while another birth occurs. This qualifies ASC-015/019/022/023 and historical claims of complete manual-order safety. Experimental per-unit tracking is not shipped without engine validation. | Return/park old army, Hero, and builder units on pads while new units spawn. |
+| ASC-038 | Closest Heroes must be directly in front of Castles | All 64 L1 mappings target canonical `(21,54)`, on the Army HOLD line. Actual Castle footprints and bounded tile connectivity checked for all eight orientations. OFF and L2–L5 unchanged. | First Penguin ON position at every tier, all eight colors; confirm units gather just in front of their own Castles. |
+
+The 50-second Scorpion reward cleanup is intentional and unchanged. Both ordinary
+Scorpion training types were already disabled. The detailed audit record is in
+[`RELEASE_NOTES_v1.0.16.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.16.md).
+
 ## Additional parser findings
 
-The v1.0.15 serialized candidate passes the strict structural audit with **0 errors and
+The v1.0.16 serialized candidate passes the strict structural audit with **0 errors and
 0 warnings**, with:
 
 - 3,647 uniquely named, non-empty triggers and a complete display order;
 - 3,187 initially enabled triggers and 3,638 conservatively reachable triggers;
-- 14,561 conditions and 15,183 effects;
+- 15,009 conditions and 14,936 effects;
 - 956 unique object references, all on-map, with no dangling garrisons;
 - 121 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
@@ -62,10 +79,9 @@ The v1.0.15 serialized candidate passes the strict structural audit with **0 err
 - no reachable looping trigger without a Timer condition;
 - no reachable unconditional remove, kill, victory, or defeat trigger.
 
-All 59 Ascendants-focused tests and all 60 remaining repository tests pass in
-complementary runs, totaling 119/119. Repository Ruff checks and the full 616-line
-embedded XS build pass. Readback comparison confirms every terrain cell and all 940
-pre-existing objects are unchanged, with only 16 front end posts added. The installed
+All 125 repository tests pass (65 Ascendants, 60 others). Repository Ruff checks and
+the full 616-line embedded XS build pass. Readback comparison confirms every terrain
+cell and all 956 placed objects are unchanged from v1.0.15. The installed
 game scenario matches the SHA-256 above. None of these checks substitutes for the
 engine acceptance matrix below.
 
@@ -83,7 +99,7 @@ Run the same audit after every build:
 ```bash
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.15.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.16.aoe2scenario" --strict
 ```
 
 The normal command fails only on structural errors; `--strict` also
@@ -110,7 +126,7 @@ cases are recorded in-game.
 | Manual hero return | All eight colors, full and sparse | Returning 200–2000 and 3500/5000 heroes cross all three hero pads without being sent back toward the arena. |
 | Manual builder return | All eight colors, full and sparse | After auto-parking, both raze-reward villagers can cross their two creation pads without being retasked. |
 | Sheep Castle slider | All eight colors, full and sparse | L0 parks each new wave Castle-ward; L1–L5 move progressively farther; existing armies keep manual orders. |
-| Penguin Hero slider | All eight colors, full and sparse | L0 produces no Heroes; L1–L5 enable and route only the current kill tier progressively farther; no stale-tier burst occurs after OFF. |
+| Penguin Hero slider | All eight colors, full and sparse | L0 produces no Heroes; L1 gathers immediately in front of the Castles on the Army HOLD line; L2–L5 route progressively farther. Only the current kill tier produces; no stale-tier burst occurs after OFF. |
 | Controller confinement | All eight colors | Orders across the Deep Water gap or beyond every track edge cannot leave the controller's own track; every level remains reachable without getting stuck at a Sign. |
 | HOLD/OFF clarity | All eight colors | Every snowy track cell selects L0; the first road cell selects L1. The four endpoint Signs and two short controller names are readable and distinguish Castle HOLD from Hero production OFF. |
 | Yard gate switch | All eight colors, full/sparse/shuffled | Deleting the side/rear switch removes the short shoulders and long side walls, but not the front gates/posts, University walls/gate, or teammate access gates. With other gates shut, no front-arena or University bypass opens. |

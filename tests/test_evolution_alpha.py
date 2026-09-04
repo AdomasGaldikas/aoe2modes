@@ -93,6 +93,119 @@ VALID_COLOR_WORLD_PAIRS = {
 }
 
 
+def test_evolution_alpha_training_rules_do_not_depend_on_color(evolution_alpha):
+    players = evolution_alpha.player_manager.players[1:9]
+    for field in ("disabled_units", "disabled_buildings", "disabled_techs"):
+        restrictions = [getattr(player, field) for player in players]
+        assert all(len(values) == len(set(values)) for values in restrictions)
+        assert len({frozenset(values) for values in restrictions}) == 1
+    # Specific inherited omissions: Green Genoese/Camel Archers, Yellow
+    # Conquistadors and Outposts, and Orange's unique Trade Cart restriction.
+    for player in players:
+        assert {866, 868, 1009, 773, 128, 279, 542} <= set(player.disabled_units)
+        assert {199, 598, 621} <= set(player.disabled_buildings)
+
+
+def test_evolution_alpha_returned_units_are_not_deleted_or_rebuffed_by_rewards(evolution_alpha):
+    checked = Counter()
+    for trigger in evolution_alpha.trigger_manager.triggers:
+        if not trigger.name.startswith(("Hero Milestone", "Hero Boost", "Center Trebuchet")):
+            continue
+        assert not any(
+            effect.effect_type in {EffectId.REMOVE_OBJECT, EffectId.KILL_OBJECT}
+            for effect in trigger.effects
+        ), trigger.name
+        buffs = [
+            effect for effect in trigger.effects
+            if effect.effect_type in {EffectId.CHANGE_OBJECT_HP, EffectId.CHANGE_OBJECT_ATTACK}
+        ]
+        for buff in buffs:
+            guards = [
+                condition for condition in trigger.conditions
+                if condition.condition_type == ConditionId.OBJECTS_IN_AREA
+                and condition.inverted and condition.quantity == 1
+                and condition.source_player == buff.source_player
+                and (
+                    condition.object_list == buff.object_list_unit_id
+                    or condition.object_group == buff.object_group != -1
+                )
+            ]
+            guard, = guards
+            assert (guard.area_x1, guard.area_y1, guard.area_x2, guard.area_y2) == (
+                buff.area_x1, buff.area_y1, buff.area_x2, buff.area_y2,
+            )
+            # Evaluate the exclusion against parked copies: zero occupants
+            # permits a new reward; one or more blocks both creation and buffs.
+            assert [not (count >= guard.quantity) for count in (0, 1, 4)] == [True, False, False]
+            checked["buffs"] += 1
+        checked["producers"] += 1
+    assert checked == {"buffs": 576, "producers": 640}
+
+
+def test_evolution_alpha_hero_off_discards_a_pending_route(evolution_alpha):
+    by_name = {trigger.name: trigger for trigger in evolution_alpha.trigger_manager.triggers}
+    for player in range(1, 9):
+        state = {96 + player: 1, 112 + player: 3}
+        off = by_name[f"Hero Range Select L0 P{player}"]
+        for effect in off.effects:
+            assert effect.effect_type == EffectId.CHANGE_VARIABLE
+            assert effect.operation == Operation.SET
+            state[effect.variable] = effect.quantity
+        assert state == {96 + player: 0, 112 + player: 0}
+        # Switching back on without another birth cannot resurrect the old pulse.
+        for effect in by_name[f"Hero Range Select L3 P{player}"].effects:
+            state[effect.variable] = effect.quantity
+        assert state == {96 + player: 0, 112 + player: 3}
+
+
+def test_evolution_alpha_imperial_goths_cannot_lose_barracks_to_trigger_order(evolution_alpha):
+    checked = 0
+    for trigger in evolution_alpha.trigger_manager.triggers:
+        if not trigger.name.startswith(("Goth Anarchy S", "Goth Barracks Restriction S")):
+            continue
+        owner = int(trigger.name[-1])
+        guard, = [
+            condition for condition in trigger.conditions
+            if condition.condition_type == ConditionId.RESEARCH_TECHNOLOGY
+            and condition.technology == TechInfo.IMPERIAL_AGE.ID
+        ]
+        assert guard.inverted and guard.source_player == owner
+        checked += 1
+    assert checked == 128
+
+
+def test_evolution_alpha_vote_markers_allow_delete_but_not_combat_votes(evolution_alpha):
+    triggers = evolution_alpha.trigger_manager.triggers
+    by_name = {trigger.name: trigger for trigger in triggers}
+    owners = {unit.reference_id: unit.player for unit in evolution_alpha.unit_manager.get_all_units()}
+    markers = {
+        reference
+        for effect in by_name["Range And Vote Marker Labels"].effects
+        if effect.effect_type == EffectId.CHANGE_OBJECT_NAME
+        and effect.message.startswith("Delete Vote Kick ")
+        for reference in effect.selected_object_ids
+    }
+    assert len(markers) == 24
+    for reference in markers:
+        assert any(
+            effect.effect_type == EffectId.DISABLE_UNIT_ATTACKABLE
+            and effect.source_player == -1 and reference in effect.selected_object_ids
+            for effect in by_name["Range Controller Safety"].effects
+        )
+        for owner in range(1, 9):
+            detector = by_name[f"Color Owner Detect S{int(owners[reference])} W{owner}"]
+            assert any(
+                effect.effect_type == EffectId.DISABLE_UNIT_ATTACKABLE
+                and effect.source_player == owner and reference in effect.selected_object_ids
+                for effect in detector.effects
+            )
+    assert not any(
+        markers.intersection(effect.selected_object_ids)
+        for trigger in triggers for effect in trigger.effects
+        if effect.effect_type == EffectId.DISABLE_OBJECT_DELETION
+    )
+
+
 @pytest.fixture(scope="module")
 def evolution_alpha(tmp_path_factory, repo):
     spec = registry.get("evolution_alpha", repo)
@@ -688,6 +801,18 @@ def test_evolution_alpha_king_cannons_use_symmetric_ground_positions(evolution_a
             assert {by_id[trigger_id].name for trigger_id in cleanup_ids} == {
                 f"King Island Cleanup W{world_player}"
             }
+            for trigger_id in cleanup_ids:
+                cleanup = by_id[trigger_id]
+                assert [
+                    condition.timer for condition in cleanup.conditions
+                    if condition.condition_type == ConditionId.TIMER
+                ] == [50]  # Intentional reward lifetime; do not remove this rule.
+                assert any(
+                    effect.effect_type == EffectId.REMOVE_OBJECT
+                    and effect.source_player == world_player
+                    and effect.object_list_unit_id == UnitInfo.SCORPION.ID
+                    for effect in cleanup.effects
+                )
 
 
 def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
@@ -1158,6 +1283,7 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
                     effect
                     for effect in trigger.effects
                     if effect.effect_type == EffectId.CHANGE_VARIABLE
+                    and effect.variable == variable_id
                 ]
                 assert len(writes) == 1
                 assert (
@@ -2132,10 +2258,11 @@ def test_evolution_alpha_maps_center_rewards_to_runtime_players(evolution_alpha)
             assert evolution_alpha.map_manager.get_tile(
                 x=marker[0], y=marker[1]
             ).terrain_id not in water
-            remove = next(
-                effect
-                for effect in trigger.effects
-                if effect.effect_type == EffectId.REMOVE_OBJECT
+            pad_guard = next(
+                condition
+                for condition in trigger.conditions
+                if condition.condition_type == ConditionId.OBJECTS_IN_AREA
+                and condition.object_group == ObjectClass.PACKED_UNIT
             )
             create = next(
                 effect
@@ -2148,13 +2275,15 @@ def test_evolution_alpha_maps_center_rewards_to_runtime_players(evolution_alpha)
                 if effect.effect_type == EffectId.CHANGE_OBJECT_HP
             )
             assert (
-                remove.source_player,
-                remove.object_group,
-                remove.area_x1,
-                remove.area_y1,
-                remove.area_x2,
-                remove.area_y2,
+                pad_guard.source_player,
+                pad_guard.object_group,
+                pad_guard.area_x1,
+                pad_guard.area_y1,
+                pad_guard.area_x2,
+                pad_guard.area_y2,
             ) == (world_player, ObjectClass.PACKED_UNIT, *marker, *marker)
+            assert pad_guard.inverted and pad_guard.quantity == 1
+            assert not any(effect.effect_type == EffectId.REMOVE_OBJECT for effect in trigger.effects)
             assert (
                 create.source_player,
                 create.object_list_unit_id,
@@ -3960,7 +4089,7 @@ def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_
         ((43, 53), (43, 53), (43, 54), (43, 54)),
     )
     hero_destinations = {
-        1: (25, 54),
+        1: (21, 54),
         2: (30, 52),
         3: (34, 52),
         4: (38, 53),
@@ -4218,7 +4347,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
             (15, 38),
             (16, 38),
             (17, 38),
-            (25, 54),
+            (21, 54),
             (30, 52),
             (34, 52),
             (38, 53),
@@ -4358,6 +4487,66 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     ]
 
 
+def test_evolution_alpha_closest_heroes_share_the_castle_front_line(evolution_alpha):
+    """Read actual orders and footprints, across all 64 color/owner mappings."""
+    by_name = {trigger.name: trigger for trigger in evolution_alpha.trigger_manager.triggers}
+    water = {int(terrain) for terrain in TerrainId.water_terrains()}
+    blocked = {
+        cell
+        for units in evolution_alpha.unit_manager.units
+        for unit in units
+        if unit.unit_const not in mapview.GATE_IDS  # Friendly gates can open.
+        for cell in mapview._footprint(unit.unit_const, unit.x, unit.y)
+    }
+    for color in range(1, 9):
+        castles = [
+            unit for unit in evolution_alpha.unit_manager.units[color]
+            if unit.unit_const == BuildingInfo.CASTLE.ID
+        ]
+        castle_cells = {
+            cell for castle in castles
+            for cell in mapview._footprint(castle.unit_const, castle.x, castle.y)
+        }
+        # Identify the Castle row's normal from placed buildings, not a color table.
+        normal_axis = 0 if len({castle.x for castle in castles}) == 1 else 1
+        for owner in range(1, 9):
+            orders = [
+                effect for effect in by_name[f"Hero Range L1 S{color} W{owner}"].effects
+                if effect.effect_type == EffectId.TASK_OBJECT
+            ]
+            assert len(orders) == 1
+            order = orders[0]
+            target = (order.location_x, order.location_y)
+            assert order.source_player == owner
+            hold = [
+                (effect.location_x, effect.location_y)
+                for effect in by_name[f"Army Range L0 S{color} W{owner}"].effects
+                if effect.effect_type == EffectId.TASK_OBJECT
+            ]
+            assert len(hold) == 4
+            assert {point[normal_axis] for point in hold} == {target[normal_axis]}
+            assert min(abs(x - target[0]) + abs(y - target[1]) for x, y in castle_cells) == 1
+            assert target not in blocked
+
+        # Conservative tile connectivity, not a DE-unit collision simulation.
+        allowed = {v2_cell_for_player(color, x, y) for x in range(15, 45) for y in range(37, 66)}
+        passable = {
+            (x, y) for x, y in allowed - blocked
+            if evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id not in water
+        }
+        start = v2_cell_for_player(color, 16, 38)
+        assert start in passable and target in passable
+        reached = {start}
+        pending = deque([start])
+        while pending:
+            x, y = pending.popleft()
+            for neighbor in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                if neighbor in passable and neighbor not in reached:
+                    reached.add(neighbor)
+                    pending.append(neighbor)
+        assert target in reached
+
+
 def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
     evolution_alpha,
 ):
@@ -4491,7 +4680,7 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                         ) == (*spawn, *spawn)
 
     canonical_orders = {
-        1: (25, 54),
+        1: (21, 54),
         2: (30, 52),
         3: (34, 52),
         4: (38, 53),
@@ -4971,6 +5160,10 @@ def test_evolution_alpha_messages_are_public_facing(evolution_alpha):
     assert "Penguin on snow = OFF (no new Heroes)" in messages.instructions
     assert "The road begins exactly where HOLD/OFF ends." in messages.instructions
     assert "Water keeps each controller on its own track." in messages.instructions
+    assert (
+        "first ON position sends Heroes right in front of your Castles, like Army HOLD"
+        in messages.instructions
+    )
     assert "untouched player nicknames" not in messages.instructions
     assert "sparse-lobby-safe" not in messages.instructions
     public_text = [

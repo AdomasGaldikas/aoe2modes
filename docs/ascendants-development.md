@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.15**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.16**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.15.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.16.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +33,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.15.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.16.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -44,8 +44,8 @@ trigger-family counts, eight-way symmetry of the
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.15 passes with **0 errors and 0 warnings**. The
-focused and remaining-test runs pass 59 and 60 tests respectively: 119/119 total.
+unconditional victory/defeat. v1.0.16 passes with **0 errors and 0 warnings**. The
+full repository suite passes 125 tests (65 Ascendants and 60 other tests).
 Repository Ruff checks and the 616-line embedded XS build also pass.
 
 `aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
@@ -71,6 +71,21 @@ The active issue inventory and manual acceptance cases are in
 The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.16 audit corrections and Castle-front Heroes
+
+The first active Penguin setting now sends Heroes to canonical `(21,54)`, on the
+Army HOLD line one cell outside the Castle footprint, for all 64 owner mappings.
+OFF remains production-off; higher levels and every map object/terrain cell are
+unchanged from v1.0.15. Six additional corrections cover training-list parity,
+returning Genghis/center rewards, stale Hero OFF orders, Goth Imperial transition,
+and combat-proof vote markers. See
+[`RELEASE_NOTES_v1.0.16.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.16.md).
+
+A remaining spatial-order limitation is tracked as ASC-037: an old unit on a capture
+pad during a new birth may still receive that birth's order. A new per-unit XS
+tracking approach was not shipped without engine validation. The 50-second
+Scorpion reward lifetime remains intentional and unchanged.
 
 ## v1.0.15 side-wall removal and protected wall-limit wipe
 
