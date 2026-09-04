@@ -1,4 +1,4 @@
-# Ascendants v1.0.13 control and ownership map
+# Ascendants v1.0.14 control and ownership map
 
 This is the authoritative manifest for the two spawn controls in CBA Hero:
 Ascendants. Coordinates are scenario cells unless they include `.5`, which denotes an
@@ -55,34 +55,43 @@ assert all eight serialized results.
 
 ## Controller islands
 
-The canonical P3 island occupies `(1,60)–(9,66)`:
+The canonical P3 control area occupies `(1,60)–(9,66)`. It contains two separate
+two-tile-wide land tracks, not one crossable island:
 
 | Feature | Canonical geometry |
 | --- | --- |
-| Outer visual borders | x=1 and x=9, Beach |
-| Sheep lane | y=60–62, Road |
-| Separator | y=63, Grass 2 |
-| Penguin lane | y=64–66, Road Gravel |
-| Rear sign | `(2.5,63.5)`: `LEVEL 0: CASTLE HOLD / HERO OFF` |
-| Forward sign | `(9.5,63.5)`: `LEVEL 5: FAR BATTLE ROUTE` |
+| Sheep track | x=1–9, y=60–61; Snow at x=1–3, Road at x=4–9 |
+| Water separation | x=1–9, y=62–64; Deep Water, with no beach bridges |
+| Penguin track | x=1–9, y=65–66; Snow at x=1–3, Road Gravel at x=4–9 |
+| Army HOLD sign | `(2.5,60.5)`: `HOLD - new armies stay home` |
+| Army FAR sign | `(9.5,60.5)`: `FAR - army range` |
+| Hero OFF sign | `(2.5,66.5)`: `OFF - no new heroes` |
+| Hero FAR sign | `(9.5,66.5)`: `FAR - hero range` |
 
-The two controllers share six reference-specific detection bands. Each band spans the
-full island height so accidentally crossing the visual separator cannot strand a
-controller; because Sheep and Penguin references are distinct, this overlap cannot
-mix their variables. The wider end bands also catch the beach caps:
+Each controller's six reference-specific bands cover only its own dry track. The
+surrounding water and three-tile deep-water gap confine ordinary land movement to
+that track. No recurring task, stop, or teleport effect competes with the player's
+slider orders. The entire snowy rear pad is level 0: its visible edge at x=4 is the
+exact boundary where HOLD/OFF ends and the active road begins.
 
 | Level | Sheep rectangle | Penguin rectangle |
 | ---: | --- | --- |
-| 0 | `(1,60)–(3,66)` | `(1,60)–(3,66)` |
-| 1 | `(4,60)–(4,66)` | `(4,60)–(4,66)` |
-| 2 | `(5,60)–(5,66)` | `(5,60)–(5,66)` |
-| 3 | `(6,60)–(6,66)` | `(6,60)–(6,66)` |
-| 4 | `(7,60)–(7,66)` | `(7,60)–(7,66)` |
-| 5 | `(8,60)–(9,66)` | `(8,60)–(9,66)` |
+| 0 | `(1,60)–(3,61)` | `(1,65)–(3,66)` |
+| 1 | `(4,60)–(4,61)` | `(4,65)–(4,66)` |
+| 2 | `(5,60)–(5,61)` | `(5,65)–(5,66)` |
+| 3 | `(6,60)–(6,61)` | `(6,65)–(6,66)` |
+| 4 | `(7,60)–(7,61)` | `(7,65)–(7,66)` |
+| 5 | `(8,60)–(9,61)` | `(8,65)–(9,66)` |
 
 Within each controller family the bands are contiguous, mutually exclusive, dry, and
-cover all 63 island cells. The island has a complete water moat and contains only its
-Sheep, Penguin, and two endpoint Signs. It does not depend on collision with props.
+cover all 18 cells of that track. The complete control area contains only its Sheep,
+Penguin, and four endpoint Signs. Signs occupy the outside row, leaving the other row
+clear for travel; confinement does not depend on collision with props.
+
+The Sheep is named `Army range - snow = HOLD`; the Penguin is named
+`Hero range - snow = OFF`. HOLD continues producing Castle armies and parks each new
+wave near its Castles. OFF pauses new Heroes. Neither setting stops, removes, or
+retasks units already on the battlefield.
 
 ## Controller starts
 
@@ -157,6 +166,46 @@ band: 200–399, 400–599, 600–799, 800–999, 1,000–1,999, 2,000–3,499,
 3,500–4,999, or 5,000+. Thus level 0 pauses production, and re-enabling it cannot
 activate stale lower tiers.
 
+## Gate switch and permanent walls
+
+The wall-removal switch is the side/rear Castle-yard gate at canonical P3 object
+position `(23.0,43.5)`. It is **not** the University access gate at `(14.5,54.0)`.
+Destroying or deleting the switch may remove only the short Castle-yard wall
+shoulders. It must not open an arena bypass or dismantle the University enclosure.
+
+The removable-slot mask, transformed as object positions for each color, is:
+
+- `(x+0.5,43.5)` and `(x+0.5,64.5)` for integer x=17–24;
+- `(24.5,y+0.5)` for integer y=44–46 and 61–63.
+
+Only existing static Stone/Fortified Wall references at those positions are selected.
+The resolved list has 14 walls for P1/P2/P7/P8, where a teammate gate replaces four
+wall pieces, and 18 walls for P3/P4/P5/P6. All 64 color/owner `Wall Breach` mappings
+remove those exact references using the resolved trigger owner; they do not use a
+rectangle or an all-walls filter.
+
+All 32 long flank-wall pieces per color remain intact: canonical object positions
+`(x+0.5,47.5)` and `(x+0.5,60.5)` for integer x=24–39. Both front-gate end caps at
+`(39.5,46.5)` and `(39.5,61.5)` and the complete University wall/gate enclosure also
+remain intact. The old rectangle incorrectly removed 30 of the long flank pieces;
+30 was the unwanted-deletion count, not the complete flank count.
+
+Permanent Stone/Fortified Walls and both ordinary gate orientations, excluding the
+removable shoulder references and
+switch itself, receive manual-delete protection both during wildcard initialization
+and in every owner-resolved setup. This protection does not prevent combat damage or
+the intended full-owner purge on defeat, resignation, or vote-kick.
+
+The old 220-wall penalty is removed: all eight `warn (p#)` and eight
+`remove walls (p#)` chains, including their activation references, are retired. Their
+full-map wall removal could bypass manual-delete protection.
+
+The static closed-gate reachability check starts at canonical base cell `(22,54)`.
+After deleting the switch and permitted shoulder walls, neither front-arena cell
+`(42,54)` nor University cell `(10,54)` may become reachable with all other gates
+closed. This is checked under every color transform; DE pathfinding still needs an
+in-game test.
+
 ## Removed legacy controls
 
 The built artifact contains none of the old five-point control furniture: 40 Relics,
@@ -168,6 +217,8 @@ an Old Stone Head shoreline blocker; it gates Hero production directly.
 
 Regression tests assert every rectangle, controller reference, variable, destination,
 owner mapping, terrain cell, endpoint label, safety effect, Hero band, and pulse reset.
+Track connectivity checks must reach every level from its controller start while
+excluding the other controller's track and any land outside its selector union.
 The strict scenario audit must remain at 0 errors and 0 warnings. Final acceptance must
 still be performed in DE for all eight orientations and shuffled/sparse lobbies because
 the parser cannot execute pathfinding or lobby-player mapping.

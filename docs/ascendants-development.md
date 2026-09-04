@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.13**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.14**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.13.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.14.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -32,7 +32,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 ```bash
 .venv/bin/python -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.13.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.14.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -41,14 +41,20 @@ itself fails closed on drift: exact trigger-family counts, eight-way symmetry of
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.13 passes with **0 errors and 0 warnings**.
+unconditional victory/defeat. v1.0.14 passes with **0 errors and 0 warnings**.
 
 `aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
 geometry. It is not a pass/fail gate; read the report and confirm the arena still holds
-its shape. v1.0.13 intentionally replaces each old selector corner with one transformed
-9×7 island containing two dry, separated lanes. Focused tests pin every lane cell,
+its shape. v1.0.14 splits each transformed 9×7 control area into two 9×2 dry tracks
+separated by three rows of Deep Water. Focused tests pin every lane cell,
 Castle pad, Hero pad, destination, wall, gate, shore repair, and eight-way transform.
 A map metric that moves without a matching geometry change is a signal to investigate.
+
+The v1.0.14 map report contains 10,188 land cells and 10,548 water cells, with 103
+walkable regions when gates are closed and 81 when open. The 216-cell land reduction
+from v1.0.13 is entirely the three-row gap across all eight controller areas. Playable
+base areas remain 285 cells per color; territory figures remain 911/879 by orientation,
+and the `mirror_x` comparison retains its existing 72 mismatches.
 
 The decompiler still has a round-trip test — `tests/test_decompile.py` — but it points
 at `chieftains_4v4`, a mode that genuinely still is a decompile of its reference, plus a
@@ -59,6 +65,36 @@ The active issue inventory and manual acceptance cases are in
 The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.14 confined tracks and clear endpoints
+
+The v1.0.13 sliders were visually separate but shared one walkable island. v1.0.14
+keeps each controller on its own two-tile-wide land track using water boundaries,
+including a three-tile Deep Water gap with no beach bridges. Every dry track cell
+belongs to exactly one of that controller's six selector bands. Confinement does not
+add a recurring movement override or freeze the controls.
+
+The entire level-0 pad is Snow. Its boundary with the road is exactly where Army HOLD
+or Hero OFF ends. Each track has its own HOLD/OFF and FAR Signs, placed on the outside
+row so the other row remains clear. Short controller names match this visual rule:
+`Army range - snow = HOLD` and `Hero range - snow = OFF`. HOLD continues Castle
+production and keeps new waves near home; OFF pauses new Heroes. Both apply to future
+spawns only. Levels, destinations, starting positions, ownership, and Hero tiers are
+unchanged from v1.0.13.
+
+The same release narrows gate-triggered wall removal to exact static Castle-yard
+shoulder references. The old broad rectangles also selected 30 permanent long flank
+pieces and could include mirrored rear joins; the source path audit found an arena
+bypass in all eight colors. The replacement preserves all long flanks, front-gate end caps,
+and the University enclosure. Permanent walls and gates receive manual-delete
+protection through both initial and owner-resolved setup. The side/rear switch gate
+remains deletable; it is distinct from the protected University gate. The exact
+positions and closed-gate path contract are in `ascendants-control-map.md`.
+
+The imported 220-wall penalty was a second deletion path: its eight warning and
+eight removal triggers could remove every wall owned by a player across the map.
+Those 16 triggers and their activation chain are retired. Neither correction changes
+the intended full-owner cleanup on defeat, resignation, or vote-kick.
 
 ## v1.0.13 independent proportional spawn controls
 
@@ -73,9 +109,10 @@ arena. Penguin level 0 disables automatic Hero production; levels 1–5 enable i
 route new Heroes progressively farther. Both start at level 3. Endpoint Signs and the
 controller names explain the controls in-game.
 
-Each controller's six detection bands cover the complete 9×7 island, including both
-beach caps. The visually separate Road and Road Gravel lanes still show where to move,
-but a Sheep or Penguin dragged across the separator cannot fall into a dead strip.
+At that release point, each controller's six detection bands covered the complete
+9×7 island, including both beach caps. Road and Road Gravel marked visual lanes, but
+controllers could cross the separator. v1.0.14 replaces that crossable layout with
+physically separated tracks and track-specific detection bands.
 
 The 96 selector triggers write separate variables. The 384 Castle-army and 320 Hero
 movement mappings retain the one-shot spawn-pulse rule, so slider changes affect only
@@ -208,8 +245,9 @@ undeletable, untargetable, and unattackable prop, outside player and AI control.
 
 ## v1.0.4 graph migration
 
-The final build removes 810 conditionless/effectless imported shells plus the 32 Hay
-marker triggers retired in v1.0.13. Before removal it proves that the imported shells'
+The final build removes 810 conditionless/effectless imported shells, the 32 Hay
+marker triggers retired in v1.0.13, and the 16 wall-penalty triggers retired in
+v1.0.14. Before removal it proves that the imported shells'
 only 16 external references are no-op deactivations of the retired `no wall` family,
 then strips those references. It also groups the legacy
 kill-based age-up chains by every serialized field, merges 189 byte-identical copies,
@@ -240,6 +278,15 @@ Age of Empires II engine. Keep these as explicit in-game checks for every candid
   the selected distance;
 - moving every Penguin through levels 0–5, confirming level 0 pauses Heroes and levels
   1–5 route only the current Hero tier without catch-up spawning;
+- ordering each controller across the water gap and beyond every track edge, confirming
+  it remains on its own track while all six levels remain reachable;
+- checking each HOLD/OFF sign and the Snow-to-road boundary in all orientations: every
+  snowy cell selects level 0, and the first road tile selects level 1;
+- deleting each Castle-yard switch gate and confirming only the short yard shoulders
+  disappear: long flanks, front-gate end caps, University walls/gate, and allied routes
+  remain intact, with no new front-arena or rear-University bypass while gates are shut;
+- trying manual deletion on permanent walls/gates and exceeding 220 walls without a
+  whole-map wall purge, including in sparse and shuffled lobbies;
 - placing buildings across every milestone-shore repair strip;
 - confirming all eight shores have no Transport Ship while milestone heroes still spawn;
 - revealing all four outer corners and confirming no static Palisade Wall or Saboteur

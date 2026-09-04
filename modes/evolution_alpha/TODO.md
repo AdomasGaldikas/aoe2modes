@@ -1,12 +1,39 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.13 source review. Most of it is closed in **v1.0.13**;
+Open work from the v1.0.7–v1.0.14 source review. Most of it is closed in **v1.0.14**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## Closed in v1.0.14
+
+### [x] H1 — controllers could leave their own slider lanes
+
+Each color now has separate 9×2 Sheep and Penguin tracks. Three rows of Deep Water
+divide them without beach bridges. Track-specific selectors cover every dry cell,
+and containment needs no repeated task, stop, freeze, or teleport effect. Connectivity
+checks cover all six reachable levels and separation for all eight orientations.
+
+### [x] H2 — HOLD/OFF endpoints and long controller names were unclear
+
+The whole level-0 pad is Snow, ending exactly where level 1 starts on the road. Each
+track has its own HOLD/OFF and FAR Signs, with one row left clear for movement. Names
+are `Army range - snow = HOLD` and `Hero range - snow = OFF`. HOLD still produces
+Castle armies and keeps new waves near home; OFF pauses new Heroes. Existing armies
+and Heroes keep their orders.
+
+### [x] H3 — gate-trigger wall deletion damaged permanent defenses
+
+The 64 `Wall Breach` owner mappings now remove exact static Castle-yard shoulder
+references only: 14 for P1/P2/P7/P8 and 18 for P3/P4/P5/P6. The switch is the
+side/rear yard gate, not the University access gate. Long flanks, front-gate end caps,
+and the University enclosure remain protected from manual deletion. All 16 imported
+220-wall warning/removal triggers are retired so they cannot purge permanent walls.
+Static closed-gate reachability checks cover the front-arena and University bypass
+cases after the switch and permitted walls are removed.
 
 ## Closed in v1.0.13
 
@@ -15,9 +42,9 @@ Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 The shared five-position Sheep system is removed. Every color now has one Sheep with
 six proportional Castle-army levels and one War Penguin with Hero OFF at level 0 plus
 five progressively farther active levels. Both begin at level 3 on separate dry lanes.
-Their reference-specific detectors cover the complete island, including both beach
-caps, so neither can be stranded between levels. The old selector Relics, Rugs,
-Torches, and Hero shoreline blocker toggle are absent.
+At that release point, their reference-specific detectors covered the complete island,
+including both beach caps; v1.0.14 confines them to separate tracks. The old selector
+Relics, Rugs, Torches, and Hero shoreline blocker toggle are absent.
 
 ### [x] G2 — Hero OFF could not leave stale tiers armed
 
@@ -28,9 +55,10 @@ cannot be reclaimed at a spawn line.
 
 ### [x] G3 — controller clarity and safety
 
-Endpoint Signs identify `CASTLE HOLD / HERO OFF` and `FAR BATTLE ROUTE`; both
-controller names explain their role. Sheep and Penguins are undeletable and
-untargetable. Penguins additionally use No Attack stance and zero scenario attack.
+At that release point, shared endpoint Signs identified `CASTLE HOLD / HERO OFF` and
+`FAR BATTLE ROUTE`; v1.0.14 replaces those labels and shared signs. Sheep and Penguins
+are undeletable and untargetable. Penguins additionally use No Attack stance and zero
+scenario attack.
 Their one real population slot is excluded from custom caps, and a 251 hard cap keeps
 250 normal gameplay slots. Tests pin all 96 selector areas, 704 movement mappings,
 controller references, terrain, destinations, and eight player transforms. All 32
@@ -200,9 +228,9 @@ baseline it before making the audit a repo-wide release gate.
 
 ## Engine acceptance — nothing static can close these
 
-`docs/ascendants-issue-register.md` marks ASC-001…ASC-026 "Guarded" or statically
-resolved, which that doc
-correctly defines as *"the serialized scenario and tests contain the intended
+`docs/ascendants-issue-register.md` marks the implemented ASC-001…ASC-029 fixes "Guarded"
+or statically resolved, which that doc correctly defines as *"the serialized scenario
+and tests contain the intended
 correction; it does not mean the engine has been observed running it"*. Engine reports
 confirmed the old ASC-019/ASC-020 behavior was still broken in v1.0.10. v1.0.13 replaces
 the ASC-019 control mechanism; the new controls and ownership boundary still require
@@ -216,6 +244,15 @@ engine verification.
 - [ ] **ASC-019 / ASC-026** — independent sliders in all eight colors, full and sparse:
       Sheep L0–L5 for Castle waves; Penguin L0 OFF and L1–L5 for the current Hero tier.
       Confirm no lower-tier catch-up burst after re-enabling Heroes.
+- [ ] **ASC-028** — order each Sheep/Penguin across the water gap and beyond every
+      track edge. It must stay on its own track and reach every level. Confirm the
+      entire snowy pad means HOLD/OFF, the first road tile means level 1, and all four
+      per-color Signs plus both short controller names are readable.
+- [ ] **ASC-029** — delete each side/rear Castle-yard switch gate and verify only its
+      short yard shoulders disappear. Long flanks, front-gate end caps, and University
+      walls/gate must remain, with no closed-gate bypass. Try manual deletion of
+      permanent defenses and exceed 220 walls without a full-map purge. Repeat in
+      sparse and shuffled lobbies.
 - [ ] **ASC-020** — shuffled lobby ownership: Red/Green reversed, Yellow before Green,
       then another nonnumeric order. Check ownership and civilization at every Castle.
 - [ ] **ASC-022** — return milestone and 3500/5000 heroes through their spawn pads after
@@ -261,3 +298,9 @@ engine verification.
   triggers, 924 units, 121 variables; 54 focused and 114 repository tests pass;
   `ruff` clean; the full XS build succeeds. The final artifact hash is recorded in
   `RELEASE_NOTES_v1.0.13.md`.
+- v1.0.14 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,519
+  triggers, 940 units, 121 variables; 57 focused and 117 repository tests pass;
+  repository `ruff` clean; the full 616-line embedded XS build succeeds. Independent
+  artifact readback verifies 484 protected permanent wall/gate references, all 64
+  exact-reference wall breaches, and 16 contained controllers. The game-installed
+  artifact matches the SHA-256 in `RELEASE_NOTES_v1.0.14.md`.

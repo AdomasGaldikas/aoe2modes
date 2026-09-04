@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.13
+# CBA Hero: Ascendants v1.0.14
 
 Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -7,35 +7,40 @@ authoritative; v1.0.3 is the sole historical comparison baseline.
 
 ## Current build
 
-| Metric | v1.0.13 |
+| Metric | v1.0.14 |
 | --- | ---: |
-| Triggers | 3,535 |
-| Conditions | 14,065 |
+| Triggers | 3,519 |
+| Conditions | 14,049 |
 | Effects | 11,855 |
-| Units | 924 |
+| Units | 940 |
 | Runtime variables | 121 (ids 0–120) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero Ascendants v1.0.13.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero Ascendants v1.0.14.aoe2scenario`.
 
 ## Two independent spawn controls
 
-Every color has two movable, protected controllers on a small rear island:
+Every color has two movable, protected controllers on separate rear tracks:
 
-- **Sheep — Castle armies.** Move it along the Castle-army lane. Level 0 sends each new
+- **Sheep — Castle armies.** Its snowy HOLD pad (level 0) sends each new
   four-unit Castle wave one tile back toward its own Castle row. Levels 1–5 send each
   new wave progressively farther toward the battle.
-- **War Penguin — Heroes.** Move it along the separate Hero lane. Level 0 switches Hero
+- **War Penguin — Heroes.** Its snowy OFF pad (level 0) switches Hero
   production off. Levels 1–5 switch it on and send each newly spawned Hero
   progressively farther toward the battle.
 
-Both controllers begin at level 3. Signs mark the rear and forward endpoints, and the
-unit names explain their jobs in-game. The old five Relic/Rug targets, central Torches,
-shared Sheep behavior, and shoreline blocker toggle are removed.
+Both controllers begin at level 3. The snowy pad is exactly the HOLD/OFF zone; stepping
+onto the road activates the first forward level. Each track has its own HOLD/OFF and
+FAR Signs. Short names explain the rule: `Army range - snow = HOLD` and
+`Hero range - snow = OFF`. HOLD does not stop Castle production, and neither slider
+changes units already fighting. The old five Relic/Rug targets, central Torches, shared
+Sheep behavior, and shoreline blocker toggle are removed.
 
-Both controller families recognize their level anywhere across the full island depth,
-so an accidental cross-lane drag cannot leave a dead control strip. The protected
-Penguin's one real population slot is excluded from custom gameplay ceilings, and the
+Each two-tile-wide track is surrounded by water, with a three-tile Deep Water gap
+between the tracks. This keeps each controller inside its own selector line without
+repeatedly overriding movement orders. The Signs leave one row clear for travel, and
+every dry track tile belongs to one of its controller's six levels. The protected
+Penguin's one real population slot is excluded from custom gameplay ceilings; the
 scenario cap is 251 to preserve 250 ordinary gameplay slots.
 
 The sliders latch color-local variables; they do not continuously order existing
@@ -91,21 +96,34 @@ mirrored anti-Trebuchet areas. It contains no Transport Ships, submerged corner
 Palisades, corner Saboteurs, decorative selector Relics/Rugs/Torches, or hidden Goth
 Palisade HP bonus.
 
+Deleting the side/rear Castle-yard switch gate opens only the short wall shoulders
+beside that yard. Long flank walls, front-gate end caps, and the University enclosure
+stay in place. Permanent walls and gates cannot be manually deleted, and the hidden
+220-wall whole-map removal penalty is gone. The University access gate is not the
+wall-removal switch. Exact-reference removal and owner resolution keep this behavior
+scoped to the correct color in full, sparse, and shuffled lobbies.
+
 ## Verification
 
 ```bash
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero Ascendants v1.0.13.aoe2scenario" --strict
+  "dist/CBA Hero Ascendants v1.0.14.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```
 
-v1.0.13 passes the strict structural audit with 0 errors and 0 warnings. Parser tests
-pin all eight colors, all 96 slider selectors, all 704 army/Hero movement mappings,
-the complete ownership matrix, controller safety, dry terrain, unique spawn pads,
+v1.0.14 passes all 57 Ascendants-focused tests and all 117 repository tests. The strict
+structural audit reports 0 errors and 0 warnings, and repository Ruff checks pass.
+Parser tests pin all eight colors, all 96 slider selectors, all 704 army/Hero movement mappings,
+the complete ownership matrix, controller safety, isolated connected tracks, visible
+HOLD/OFF boundaries, unique spawn pads,
 mutually exclusive Hero bands, and the one-shot movement invariant.
+Wall checks pin all 64 exact-reference breaches, permanent-defense protection, and
+closed-gate reachability after the permitted yard opening. Independent artifact
+readback confirms 484 protected permanent wall/gate references and 16 contained
+controllers.
 
 AoE2ScenarioParser cannot execute DE pathfinding, lobby compaction, or multiplayer
 scheduling. The remaining in-game acceptance cases are tracked in
@@ -115,4 +133,4 @@ scheduling. The remaining in-game acceptance cases are tracked in
 
 Older candidates are retained only as investigation history in `RELEASE_NOTES_v*.md`.
 They are not alternative repair targets. See
-[`RELEASE_NOTES_v1.0.13.md`](RELEASE_NOTES_v1.0.13.md) for the current change set.
+[`RELEASE_NOTES_v1.0.14.md`](RELEASE_NOTES_v1.0.14.md) for the current change set.

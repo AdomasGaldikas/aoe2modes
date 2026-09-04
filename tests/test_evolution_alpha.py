@@ -106,8 +106,8 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 3_535
-    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 924
+    assert len(triggers) == 3_519
+    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 940
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
     assert len(names) == len(set(names))
@@ -136,7 +136,7 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
         for x in range(144)
     )
     assert hashlib.sha256(terrain).hexdigest() == (
-        "ac8585647b4d582e9053a1a2b225d3a96ee181a78b14b252dbcd149112a3389a"
+        "6cd911471fc98a7694539d9beac7947697ad3b038ab243d9ae59c834daf0b45f"
     )
 
     source_milestone_shore = {
@@ -240,11 +240,24 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
         TerrainId.SNOW_SOFT_STRONG,
         TerrainId.ICE_SOFT,
     }
-    assert not {
-        evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
+    winter_cells = {
+        (x, y)
         for y in range(144)
         for x in range(144)
-    } & winter_terrains
+        if evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id in winter_terrains
+    }
+    expected_snow_cells = {
+        v2_cell_for_player(player, source_x, source_y)
+        for player in PlayerId.all(exclude_gaia=True)
+        for source_x in range(1, 4)
+        for source_y in (60, 61, 65, 66)
+    }
+    assert winter_cells == expected_snow_cells
+    assert len(winter_cells) == 96
+    assert {
+        evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
+        for x, y in winter_cells
+    } == {TerrainId.SNOW}
 
     entrance_terrains = {
         PlayerId.ONE: TerrainId.ROAD_GRAVEL,
@@ -332,9 +345,9 @@ def test_evolution_alpha_keeps_v2_objects_and_playable_gate_holes(evolution_alph
     assert original_digest == (
         "46db5fdc5165b1ea1ca13082d7d9d2d05081d61ebc44e04e7cd4fb4a46fe631d"
     )
-    assert len(additions) == 108
+    assert len(additions) == 124
     assert additions_digest == (
-        "8167bc131c920ff28305c44cfa42de042c2dccceaaf028737a917e364710f4e8"
+        "1b645f64495697020ccdf86370dddad48522647b82312e4517490aaf3f0c27f9"
     )
 
 
@@ -689,7 +702,7 @@ def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
     expected_signs = {
         v2_position_for_player(player, x, y)
         for player in PlayerId.all(exclude_gaia=True)
-        for x, y in ((2.5, 63.5), (9.5, 63.5))
+        for x, y in ((2.5, 60.5), (9.5, 60.5), (2.5, 66.5), (9.5, 66.5))
     }
     actual_signs = {
         (unit.x, unit.y)
@@ -708,12 +721,12 @@ def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
             for source_x in range(1, 10):
                 x, y = v2_cell_for_player(player, source_x, source_y)
                 expected_terrain = (
-                    TerrainId.BEACH
-                    if source_x in {1, 9}
+                    TerrainId.WATER_DEEP
+                    if source_y in {62, 63, 64}
+                    else TerrainId.SNOW
+                    if source_x <= 3
                     else TerrainId.ROAD
-                    if source_y <= 62
-                    else TerrainId.GRASS_2
-                    if source_y == 63
+                    if source_y <= 61
                     else TerrainId.ROAD_GRAVEL
                 )
                 tile = evolution_alpha.map_manager.get_tile(x=x, y=y)
@@ -743,7 +756,7 @@ def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
                     island_objects.append((owner, unit.unit_const))
         assert Counter(island_objects) == Counter(
             {
-                (PlayerId.GAIA, OtherInfo.SIGN.ID): 2,
+                (PlayerId.GAIA, OtherInfo.SIGN.ID): 4,
                 (player, UnitInfo.SHEEP.ID): 1,
                 (player, UnitInfo.WAR_PENGUIN.ID): 1,
             }
@@ -753,7 +766,14 @@ def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
             for trigger in evolution_alpha.trigger_manager.triggers
             for effect in trigger.effects
             if effect.effect_type == EffectId.CREATE_OBJECT
-            and (effect.location_x, effect.location_y) in island_cells
+            and island_cells.intersection(
+                mapview._footprint(
+                    effect.object_list_unit_id,
+                    effect.location_x,
+                    effect.location_y,
+                )
+                or [(effect.location_x, effect.location_y)]
+            )
         ]
         moat = {
             (next_x, next_y)
@@ -832,6 +852,115 @@ def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
         if unit.unit_const == OtherInfo.NINE_BANDS.ID
     }
     assert actual_ornaments == expected_ornaments
+
+
+def test_evolution_alpha_controllers_cannot_leave_their_trigger_tracks(evolution_alpha):
+    """Conservative terrain and footprint checks, not a DE-engine path simulation."""
+    by_name = {
+        trigger.name: trigger
+        for trigger in evolution_alpha.trigger_manager.triggers
+    }
+    all_units = [
+        unit
+        for units in evolution_alpha.unit_manager.units
+        for unit in units
+    ]
+    controller_refs = {
+        condition.unit_object
+        for trigger in evolution_alpha.trigger_manager.triggers
+        if re.fullmatch(r"(?:Army|Hero) Range Select L[0-5] P[1-8]", trigger.name)
+        for condition in trigger.conditions
+        if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
+    }
+    unit_by_reference = {unit.reference_id: unit for unit in all_units}
+    # Installed DE data: both controller types use land restriction 7. These
+    # water types block it; SHALLOWS, ICE and WATER_2D_BRIDGE do not. Deliberately
+    # treat every other terrain as passable so unknown/passable "water" cannot
+    # accidentally prove that an escape route is sealed.
+    blocked_terrain = {
+        TerrainId.WATER_DEEP,
+        TerrainId.WATER_MEDIUM,
+        TerrainId.WATER_SHALLOW,
+    }
+    potentially_passable = {
+        (x, y)
+        for x in range(144)
+        for y in range(144)
+        if evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id not in blocked_terrain
+    }
+    prop_footprints = {
+        cell
+        for unit in all_units
+        if unit.reference_id not in controller_refs
+        for cell in mapview._footprint(unit.unit_const, unit.x, unit.y)
+    }
+
+    def reachable_from(start, passable, diagonal=False):
+        assert start in passable
+        reachable = {start}
+        pending = deque([start])
+        steps = ((1, 0), (-1, 0), (0, 1), (0, -1))
+        if diagonal:
+            # Unrestricted diagonal movement is intentionally stricter than
+            # real corner collision: even this cannot escape the water moat.
+            steps += ((1, 1), (1, -1), (-1, 1), (-1, -1))
+        while pending:
+            x, y = pending.popleft()
+            for dx, dy in steps:
+                neighbor = x + dx, y + dy
+                if neighbor in passable and neighbor not in reachable:
+                    reachable.add(neighbor)
+                    pending.append(neighbor)
+        return reachable
+
+    all_tracks = []
+    for player in PlayerId.all(exclude_gaia=True):
+        for family, source_y1, source_y2 in (("Army", 60, 61), ("Hero", 65, 66)):
+            bands = []
+            reference_ids = set()
+            for level in range(6):
+                trigger = by_name[f"{family} Range Select L{level} P{int(player)}"]
+                condition, = [
+                    condition
+                    for condition in trigger.conditions
+                    if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
+                ]
+                reference_ids.add(condition.unit_object)
+                bands.append({
+                    (x, y)
+                    for x in range(condition.area_x1, condition.area_x2 + 1)
+                    for y in range(condition.area_y1, condition.area_y2 + 1)
+                })
+            reference_id, = reference_ids
+            controller = unit_by_reference[reference_id]
+            start = int(controller.x), int(controller.y)
+            track = {
+                v2_cell_for_player(player, source_x, source_y)
+                for source_x in range(1, 10)
+                for source_y in range(source_y1, source_y2 + 1)
+            }
+            assert len(track) == 18
+            assert set().union(*bands) == track
+            assert sum(map(len, bands)) == len(track)
+            assert start in bands[3]
+            assert reachable_from(start, potentially_passable, diagonal=True) == track
+
+            # Two half-tile-centred endpoint Signs may occupy the outside row,
+            # but must never block both cells at any slider position.
+            unblocked_track = track - prop_footprints
+            assert len(unblocked_track) == 16
+            assert reachable_from(start, unblocked_track) == unblocked_track
+            assert all(band.intersection(unblocked_track) for band in bands)
+            for source_x in range(1, 10):
+                cross_section = {
+                    v2_cell_for_player(player, source_x, source_y)
+                    for source_y in range(source_y1, source_y2 + 1)
+                }
+                assert cross_section.intersection(unblocked_track)
+            all_tracks.append(track)
+
+    assert len(all_tracks) == 16
+    assert sum(map(len, all_tracks)) == len(set().union(*all_tracks))
 
 
 def test_evolution_alpha_places_vote_flags_beside_their_markers(evolution_alpha):
@@ -986,13 +1115,15 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
     for player in PlayerId.all(exclude_gaia=True):
         controllers = {}
         all_lane_cells = []
-        for family, unit_const, variable_id, start in (
-            ("Army", UnitInfo.SHEEP.ID, 88 + int(player), (6.5, 61.5)),
+        for family, unit_const, variable_id, start, lane_y1, lane_y2 in (
+            ("Army", UnitInfo.SHEEP.ID, 88 + int(player), (6.5, 61.5), 60, 61),
             (
                 "Hero",
                 UnitInfo.WAR_PENGUIN.ID,
                 112 + int(player),
                 (6.5, 65.5),
+                65,
+                66,
             ),
         ):
             conditions = []
@@ -1010,11 +1141,11 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
                 condition = selectors[0]
                 conditions.append(condition)
                 source_area = (
-                    (1, 60, 3, 66)
+                    (1, lane_y1, 3, lane_y2)
                     if level == 0
-                    else (8, 60, 9, 66)
+                    else (8, lane_y1, 9, lane_y2)
                     if level == 5
-                    else (3 + level, 60, 3 + level, 66)
+                    else (3 + level, lane_y1, 3 + level, lane_y2)
                 )
                 expected = transformed_area(player, source_area)
                 assert (
@@ -1058,8 +1189,19 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
                 }
                 for condition in conditions
             ]
-            assert [len(cells) for cells in lane_cells] == [21, 7, 7, 7, 7, 14]
+            assert [len(cells) for cells in lane_cells] == [6, 2, 2, 2, 2, 4]
             assert len(set().union(*lane_cells)) == sum(map(len, lane_cells))
+            expected_lane = {
+                v2_cell_for_player(player, source_x, source_y)
+                for source_x in range(1, 10)
+                for source_y in range(lane_y1, lane_y2 + 1)
+            }
+            assert set().union(*lane_cells) == expected_lane
+            assert {
+                (x, y)
+                for x, y in expected_lane
+                if evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id == TerrainId.SNOW
+            } == lane_cells[0]
             assert all(
                 evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
                 not in water
@@ -1069,7 +1211,9 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
             all_lane_cells.extend(lane_cells)
 
         assert controllers["Army"].reference_id != controllers["Hero"].reference_id
-        assert all_lane_cells[:6] == all_lane_cells[6:]
+        assert set().union(*all_lane_cells[:6]).isdisjoint(
+            set().union(*all_lane_cells[6:])
+        )
         selected = {
             controllers["Army"].reference_id,
             controllers["Hero"].reference_id,
@@ -1103,10 +1247,10 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
         )
         expected_controller_names = {
             controllers["Army"].reference_id: (
-                "CASTLE ARMIES: move rear to hold; move forward for farther travel"
+                "Army range - snow = HOLD"
             ),
             controllers["Hero"].reference_id: (
-                "HEROES: rear is OFF; move forward to enable and travel farther"
+                "Hero range - snow = OFF"
             ),
         }
         for reference_id, message in expected_controller_names.items():
@@ -1163,8 +1307,10 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
             assert detector.effects[-1].trigger_id == detector.trigger_id
 
         for source_position, message in (
-            ((2.5, 63.5), "LEVEL 0: CASTLE HOLD / HERO OFF"),
-            ((9.5, 63.5), "LEVEL 5: FAR BATTLE ROUTE"),
+            ((2.5, 60.5), "HOLD - new armies stay home"),
+            ((9.5, 60.5), "FAR - army range"),
+            ((2.5, 66.5), "OFF - no new heroes"),
+            ((9.5, 66.5), "FAR - hero range"),
         ):
             position = v2_position_for_player(player, *source_position)
             signs = [
@@ -1308,7 +1454,7 @@ def test_evolution_alpha_has_no_retired_cleanup_references(evolution_alpha):
     retired_names = {
         f"{family} (p{player})"
         for player in range(1, 9)
-        for family in ("remove", "units", "walls", "units2", "units3")
+        for family in ("remove", "units", "walls", "units2", "units3", "warn", "remove walls")
     }
     assert retired_names.isdisjoint(trigger.name for trigger in triggers)
 
@@ -2813,7 +2959,7 @@ def test_evolution_alpha_anti_treb_zones_are_mirrored_and_cover_their_castles(
         )
 
 
-def test_evolution_alpha_wall_cleanup_stays_off_rear_routes(evolution_alpha):
+def test_evolution_alpha_wall_breach_removes_only_the_short_castle_yard_shoulders(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
     wall_pattern = re.compile(r"Wall Breach S([1-8]) W([1-8])")
     wall_breaches = {
@@ -2823,68 +2969,111 @@ def test_evolution_alpha_wall_cleanup_stays_off_rear_routes(evolution_alpha):
     }
     assert set(wall_breaches) == VALID_COLOR_WORLD_PAIRS
 
-    cleanup_bounds = {}
+    by_name = {trigger.name: trigger for trigger in triggers}
+    structural_types = {
+        BuildingInfo.STONE_WALL.ID,
+        BuildingInfo.FORTIFIED_WALL.ID,
+        *mapview.GATE_IDS,
+    }
     for player in range(1, 9):
-        areas = {
-            (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2)
-            for world_player in range(1, 9)
-            for effect in wall_breaches[player, world_player].effects
-            if effect.effect_type == EffectId.REMOVE_OBJECT
+        owned_units = evolution_alpha.unit_manager.units[player]
+        yard_positions = {
+            v2_position_for_player(player, x, y)
+            for x, y in (
+                *((x + 0.5, y) for x in range(17, 25) for y in (43.5, 64.5)),
+                *((24.5, y + 0.5) for y in (*range(44, 47), *range(61, 64))),
+            )
         }
-        assert len(areas) == 1
-        cleanup_bounds[player] = areas.pop()
-
-    # Every cleanup area is one independent mirror orbit of P3's serialized area.
-    source = cleanup_bounds[3]
-    for player, bounds in cleanup_bounds.items():
-        corner_a = v2_cell_for_player(player, source[0], source[1])
-        corner_b = v2_cell_for_player(player, source[2], source[3])
-        assert bounds == (
-            min(corner_a[0], corner_b[0]),
-            min(corner_a[1], corner_b[1]),
-            max(corner_a[0], corner_b[0]),
-            max(corner_a[1], corner_b[1]),
-        )
-
-        x1, y1, x2, y2 = bounds
-        cleanup_cells = {
-            (x, y)
-            for x in range(x1, x2 + 1)
-            for y in range(y1, y2 + 1)
+        expected_removals = {
+            unit.reference_id
+            for unit in owned_units
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
+            and (unit.x, unit.y) in yard_positions
+        }
+        assert len(expected_removals) == (14 if player in {1, 2, 7, 8} else 18)
+        switch, = [
+            unit for unit in owned_units
+            if (unit.x, unit.y) == v2_position_for_player(player, 23.0, 43.5)
+            and unit.unit_const in mapview.GATE_IDS
+        ]
+        permanent = {
+            unit.reference_id
+            for unit in owned_units
+            if unit.unit_const in structural_types
+        } - expected_removals - {switch.reference_id}
+        assert permanent
+        uni_gate, = [
+            unit for unit in owned_units
+            if (unit.x, unit.y) == v2_position_for_player(player, 14.5, 54.0)
+            and unit.unit_const in mapview.GATE_IDS
+        ]
+        assert uni_gate.reference_id in permanent
+        front_flanks = {
+            unit.reference_id
+            for unit in owned_units
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
+            and (unit.x, unit.y) in {
+                v2_position_for_player(player, x + 0.5, y)
+                for x in range(24, 40)
+                for y in (47.5, 60.5)
+            }
+        }
+        assert len(front_flanks) == 32
+        assert front_flanks <= permanent
+        front_endcaps = {
+            unit.reference_id
+            for unit in owned_units
+            if (unit.x, unit.y) in {
+                v2_position_for_player(player, 39.5, y)
+                for y in (46.5, 61.5)
+            }
+        }
+        assert len(front_endcaps) == 2
+        assert front_endcaps <= permanent
+        removal_footprints = {
+            cell
+            for unit in owned_units
+            if unit.reference_id in expected_removals
+            for cell in mapview._footprint(unit.unit_const, unit.x, unit.y)
         }
         rear_route = {
             v2_cell_for_player(player, source_x, source_y)
             for source_x in range(7, 17)
             for source_y in (53, 54, 55)
         }
-        assert cleanup_cells.isdisjoint(rear_route)
+        assert removal_footprints.isdisjoint(rear_route)
+        assert any(
+            effect.effect_type == EffectId.DISABLE_OBJECT_DELETION
+            and effect.source_player == -1
+            and permanent.issubset(effect.selected_object_ids or ())
+            for effect in by_name[f"Antidelete P{player}"].effects
+        )
+        assert all(
+            switch.reference_id not in (effect.selected_object_ids or ())
+            for effect in by_name[f"Antidelete P{player}"].effects
+            if effect.effect_type == EffectId.DISABLE_OBJECT_DELETION
+        )
 
         for world_player in range(1, 9):
             trigger = wall_breaches[player, world_player]
+            assert trigger.enabled and not trigger.looping
             effects = [
                 effect
                 for effect in trigger.effects
                 if effect.effect_type == EffectId.REMOVE_OBJECT
             ]
-            assert len(effects) == 2
-            assert {
-                (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2)
-                for effect in effects
-            } == {bounds}
-            assert {effect.source_player for effect in effects} == {world_player}
-            gate_condition = next(
+            assert len(effects) == len(trigger.effects) == 1
+            effect = effects[0]
+            assert effect.source_player == world_player
+            assert set(effect.selected_object_ids) == expected_removals
+            assert effect.object_list_unit_id == -1
+            assert (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2) == (-1,) * 4
+            gate_condition, = [
                 condition
                 for condition in trigger.conditions
                 if condition.condition_type == ConditionId.DESTROY_OBJECT
-            )
-            gate = next(
-                unit
-                for units in evolution_alpha.unit_manager.units
-                for unit in units
-                if unit.reference_id == gate_condition.unit_object
-            )
-            assert x1 <= int(gate.x) <= x2
-            assert y1 <= int(gate.y) <= y2
+            ]
+            assert gate_condition.unit_object == switch.reference_id
             assert {
                 (condition.variable, condition.quantity, condition.comparison)
                 for condition in trigger.conditions
@@ -2893,6 +3082,145 @@ def test_evolution_alpha_wall_cleanup_stays_off_rear_routes(evolution_alpha):
                 (31 + player, 1, Comparison.EQUAL),
                 (39 + player, world_player, Comparison.EQUAL),
             }
+            detector = by_name[f"Color Owner Detect S{player} W{world_player}"]
+            assert any(
+                effect.effect_type == EffectId.DISABLE_OBJECT_DELETION
+                and effect.source_player == world_player
+                and set(effect.selected_object_ids or ()) == permanent
+                for effect in detector.effects
+            )
+            assert detector.effects[-1].effect_type == EffectId.DEACTIVATE_TRIGGER
+            assert detector.effects[-1].trigger_id == detector.trigger_id
+
+
+def test_evolution_alpha_gate_breach_keeps_front_and_university_enclosures_sealed(evolution_alpha):
+    """Simulate serialized deletions with closed gates, including diagonal squeeze paths."""
+    by_name = {
+        trigger.name: trigger
+        for trigger in evolution_alpha.trigger_manager.triggers
+    }
+    all_units = [unit for units in evolution_alpha.unit_manager.units for unit in units]
+    terrain = [
+        evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
+        for y in range(144)
+        for x in range(144)
+    ]
+
+    def reachable_after_removing(player, deleted):
+        placements = [
+            mapview.Placement(unit.unit_const, unit.x, unit.y, int(unit.player))
+            for unit in all_units
+            if unit.reference_id not in deleted
+        ]
+        walkable = mapview._walkable(
+            144, terrain, mapview._blocked(144, placements, gates_block=True)
+        )
+        start = v2_cell_for_player(player, 22, 54)
+        assert walkable[start[1]][start[0]]  # Do not allow _bfs's fallback to hide a bad anchor.
+        return mapview._bfs(144, walkable, start)
+
+    for player in range(1, 9):
+        trigger = by_name[f"Wall Breach S{player} W{player}"]
+        switches = {
+            condition.unit_object
+            for condition in trigger.conditions
+            if condition.condition_type == ConditionId.DESTROY_OBJECT
+        }
+        assert len(switches) == 1
+        removals = {
+            reference_id
+            for effect in trigger.effects
+            if effect.effect_type == EffectId.REMOVE_OBJECT
+            for reference_id in effect.selected_object_ids
+        }
+        assert len(removals) == (14 if player in {1, 2, 7, 8} else 18)
+        arena = v2_cell_for_player(player, 42, 54)
+        university = v2_cell_for_player(player, 10, 54)
+        after_breach = reachable_after_removing(player, removals | switches)
+        assert arena not in after_breach
+        assert university not in after_breach
+
+        # A surviving, opened University gate still provides the intended access;
+        # the fix must not turn the rear enclosure into an inaccessible island.
+        uni_gate, = [
+            unit for unit in evolution_alpha.unit_manager.units[player]
+            if unit.unit_const in mapview.GATE_IDS
+            and (unit.x, unit.y) == v2_position_for_player(player, 14.5, 54.0)
+        ]
+        assert uni_gate.reference_id not in removals | switches
+        opened_uni = reachable_after_removing(
+            player, removals | switches | {uni_gate.reference_id}
+        )
+        assert university in opened_uni
+        assert arena not in opened_uni
+
+        # Sensitivity check: the retired broad rectangle really does break the
+        # front enclosure. The test cannot pass solely due to an unreachable
+        # arena anchor or an unrelated obstruction in the path model.
+        corner_a = v2_cell_for_player(player, 17, 43)
+        corner_b = v2_cell_for_player(player, 38, 64)
+        x1, x2 = sorted((corner_a[0], corner_b[0]))
+        y1, y2 = sorted((corner_a[1], corner_b[1]))
+        old_blanket_removals = {
+            unit.reference_id
+            for unit in evolution_alpha.unit_manager.units[player]
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
+            and x1 <= int(unit.x) <= x2
+            and y1 <= int(unit.y) <= y2
+        }
+        assert len(old_blanket_removals) == (44 if player in {1, 2, 7, 8} else 48)
+        assert arena in reachable_after_removing(player, old_blanket_removals | switches)
+
+
+def test_evolution_alpha_has_no_unauthorized_wall_or_gate_destruction(evolution_alpha):
+    structural_types = {
+        BuildingInfo.STONE_WALL.ID,
+        BuildingInfo.FORTIFIED_WALL.ID,
+        *mapview.GATE_IDS,
+    }
+    structural_refs = {
+        unit.reference_id
+        for units in evolution_alpha.unit_manager.units
+        for unit in units
+        if unit.unit_const in structural_types
+    }
+    destructive_types = {
+        EffectId.REMOVE_OBJECT,
+        EffectId.KILL_OBJECT,
+        EffectId.DAMAGE_OBJECT,
+        EffectId.CHANGE_OBJECT_HP,
+        EffectId.REPLACE_OBJECT,
+        EffectId.CHANGE_OWNERSHIP,
+    }
+    found = Counter()
+    for trigger in evolution_alpha.trigger_manager.triggers:
+        for effect in trigger.effects:
+            if effect.effect_type not in destructive_types:
+                continue
+            selected = set(effect.selected_object_ids or ())
+            if selected:
+                if not selected.intersection(structural_refs):
+                    continue
+                assert effect.effect_type == EffectId.REMOVE_OBJECT, (trigger.name, effect.effect_type)
+                assert re.fullmatch(r"Wall Breach S[1-8] W[1-8]", trigger.name), trigger.name
+                assert selected <= structural_refs
+                assert (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2) == (-1,) * 4
+                found["exact_breach"] += 1
+                continue
+            if effect.object_list_unit_id >= 0 and effect.object_list_unit_id not in structural_types:
+                continue
+            if effect.object_group >= 0 and effect.object_group not in {ObjectClass.WALL, ObjectClass.GATE}:
+                continue
+            if effect.object_type >= 0 and effect.object_type != ObjectType.BUILDING:
+                continue
+            assert effect.effect_type == EffectId.REMOVE_OBJECT, (trigger.name, effect.effect_type)
+            assert re.fullmatch(
+                r"(?:(?:Color Defeat Resolve|Color Runtime Defeated) S[1-8]|Vote Kick Resolve P[1-8]) W[1-8]",
+                trigger.name,
+            ), trigger.name
+            assert (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2) == (0, 0, 143, 143)
+            found["player_elimination"] += 1
+    assert found == {"exact_breach": 64, "player_elimination": 192}
 
 
 def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
@@ -4449,9 +4777,11 @@ def test_evolution_alpha_messages_are_public_facing(evolution_alpha):
     assert "right-side Kills / Deaths / Razings list" in messages.instructions
     assert "Resources stay at zero" in messages.instructions
     assert "units, buildings, upgrades, and repairs are free" in messages.instructions
-    assert "Sheep along its Castle-army lane" in messages.instructions
-    assert "Penguin along its separate Hero lane" in messages.instructions
-    assert "rear position switches Hero production OFF" in messages.instructions
+    assert "Sheep = Castle army range. Penguin = Hero range." in messages.instructions
+    assert "snow = HOLD (new armies stay by your Castles)" in messages.instructions
+    assert "Penguin on snow = OFF (no new Heroes)" in messages.instructions
+    assert "The road begins exactly where HOLD/OFF ends." in messages.instructions
+    assert "Water keeps each controller on its own track." in messages.instructions
     assert "untouched player nicknames" not in messages.instructions
     assert "sparse-lobby-safe" not in messages.instructions
     public_text = [

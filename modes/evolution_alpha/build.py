@@ -184,18 +184,27 @@ PLAYER_COLOR_NAMES = {
 EDGE_KILL_ZONE_NAME = re.compile(r"uk[1-4] \(p[1-8]\)")
 ANTI_TREB_NAME = re.compile(r"No trebs in p([1-8]) base(?: \(p[1-8]\))?")
 
-#: Legacy base-cleanup areas, stated once in the P3 source frame and mirrored to the
+#: Anti-Trebuchet areas, stated once in the P3 source frame and mirrored to the
 #: other seven sectors by ``_mirrored_area_bounds``.
 #:
 #: These used to be eight hand-written rectangles. The anti-treb set had drifted: only
 #: one of the eight matched any mirror of another, and P4/P6/P7/P8's zones stopped at
 #: 123 while their Castle rows sit at 125, so a Trebuchet parked beside those four
 #: players' Castles was never removed while the same position in P1/P2/P3/P5's base
-#: was. Deriving both tables from one rect makes that class of asymmetry unstateable,
+#: was. Deriving the zones from one rect makes that class of asymmetry unstateable,
 #: and keeps each zone clear of its own rear route by construction (the source rect
 #: starts at x=18; the rear route land is x=14..16).
 ANTI_TREB_SOURCE_AREA = (18, 38, 25, 64)
-WALL_CLEANUP_SOURCE_AREA = (17, 43, 38, 64)
+# Deleting the side/rear switch gate opens only the short Castle-yard shoulders.
+# The long flanks and front-gate end caps must remain, as must the complete rear
+# University enclosure. Resolve these exact object positions after the V2 pass;
+# inclusive mirrored rectangles can consume an extra wall at the opposite edge.
+SOURCE_BREACH_REMOVABLE_WALL_POSITIONS = frozenset(
+    {
+        *((x + 0.5, y) for x in range(17, 25) for y in (43.5, 64.5)),
+        *((24.5, y + 0.5) for y in (*range(44, 47), *range(61, 64))),
+    }
+)
 LOBBY_SETTLE_SECONDS = 3
 VICTORY_RESOLVE_SECONDS = 5
 SOURCE_ARMY_SPAWN_POINTS = ((22, 48), (22, 52), (22, 55), (22, 59))
@@ -587,11 +596,11 @@ PUBLIC_INSTRUCTIONS = (
     "The arena uses eight equal mirrored fortified territories. Guarded rear team routes and "
     "each player's protected gate let allies reinforce one another.\r\r"
     "SPAWN CONTROLS\r"
-    "Move your Sheep along its Castle-army lane: rear holds new Castle armies beside their "
-    "Castles; every step forward sends them proportionally farther into battle. Move your "
-    "Penguin along its separate Hero lane: the rear position switches Hero production OFF; levels "
-    "1 to 5 switch it ON and send new Heroes progressively farther. Existing units keep "
-    "your manual orders.\r\r"
+    "Sheep = Castle army range. Penguin = Hero range. Move each along its own road: "
+    "farther toward the arena sends new units farther. Snow is the end zone: Sheep on "
+    "snow = HOLD (new armies stay by your Castles); Penguin on snow = OFF (no new Heroes). "
+    "The road begins exactly where HOLD/OFF ends. Water keeps each controller on its "
+    "own track. Existing units keep your manual orders.\r\r"
     "VOTE KICK\r"
     "Delete the matching Vote Kick marker to vote against a teammate. Two occupied "
     "teammates must vote. Voting is disabled when fewer than three colors remain on that "
@@ -654,30 +663,31 @@ HERO_ORDER_FAMILIES = {
 # island.  The transforms below keep L0 at the map edge and L5 toward the arena
 # for all eight colors.
 SOURCE_RANGE_ISLAND = (1, 60, 9, 66)
-# Detection spans the full island height for both controller families.  The two
-# differently-textured strips remain the visual lanes, while this wider capture
-# makes an accidentally cross-lane controller keep working.  L0/L5 also include
-# the beach end caps so a controller cannot be stranded just past a marker.
-SOURCE_ARMY_RANGE_AREAS = (
-    (1, 60, 3, 66),
-    (4, 60, 4, 66),
-    (5, 60, 5, 66),
-    (6, 60, 6, 66),
-    (7, 60, 7, 66),
-    (8, 60, 9, 66),
+# Two-tile-wide tracks leave a clear row beside the Signs. Three full water
+# rows separate them, including both end caps: no land bridge joins the lanes.
+# Each selector partitions only its own track. The snow/road boundary is also
+# exactly the L0/L1 trigger boundary, never a decorative approximation.
+SOURCE_ARMY_RANGE_LANE = (1, 60, 9, 61)
+SOURCE_HERO_RANGE_LANE = (1, 65, 9, 66)
+SOURCE_RANGE_LEVEL_SPANS = ((1, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 9))
+SOURCE_ARMY_RANGE_AREAS = tuple(
+    (x1, SOURCE_ARMY_RANGE_LANE[1], x2, SOURCE_ARMY_RANGE_LANE[3])
+    for x1, x2 in SOURCE_RANGE_LEVEL_SPANS
 )
-SOURCE_HERO_RANGE_AREAS = SOURCE_ARMY_RANGE_AREAS
+SOURCE_HERO_RANGE_AREAS = tuple(
+    (x1, SOURCE_HERO_RANGE_LANE[1], x2, SOURCE_HERO_RANGE_LANE[3])
+    for x1, x2 in SOURCE_RANGE_LEVEL_SPANS
+)
 SOURCE_ARMY_CONTROLLER_POSITION = (6.5, 61.5)
 SOURCE_HERO_CONTROLLER_POSITION = (6.5, 65.5)
-SOURCE_RANGE_SIGN_POSITIONS = ((2.5, 63.5), (9.5, 63.5))
-ARMY_CONTROLLER_LABEL = (
-    "CASTLE ARMIES: move rear to hold; move forward for farther travel"
+SOURCE_RANGE_SIGNS = (
+    ((2.5, 60.5), "HOLD - new armies stay home"),
+    ((9.5, 60.5), "FAR - army range"),
+    ((2.5, 66.5), "OFF - no new heroes"),
+    ((9.5, 66.5), "FAR - hero range"),
 )
-HERO_CONTROLLER_LABEL = (
-    "HEROES: rear is OFF; move forward to enable and travel farther"
-)
-RANGE_REAR_LABEL = "LEVEL 0: CASTLE HOLD / HERO OFF"
-RANGE_FORWARD_LABEL = "LEVEL 5: FAR BATTLE ROUTE"
+ARMY_CONTROLLER_LABEL = "Army range - snow = HOLD"
+HERO_CONTROLLER_LABEL = "Hero range - snow = OFF"
 
 # L0 deliberately parks each newly-created Castle wave one tile back toward its
 # own Castle. L1 and L5 retain the proven Short and Long endpoints; the three
@@ -962,9 +972,10 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
         for trigger in ctx.tm.triggers
         if not trigger.conditions and not trigger.effects
     ]
-    if len(empty_triggers) != 842:
+    if len(empty_triggers) != 858:
         raise RuntimeError(
-            "expected 810 empty imported shells plus 32 retired Hay markers, "
+            "expected 810 empty imported shells, 32 retired Hay markers, "
+            "and 16 retired wall-cap triggers, "
             f"found {len(empty_triggers)}"
         )
     empty_ids = {trigger.trigger_id for trigger in empty_triggers}
@@ -1010,9 +1021,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_534:
+    if len(ctx.tm.triggers) != 3_518:
         raise RuntimeError(
-            f"expected 3,534 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,518 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1341,8 +1352,8 @@ def _optimize_legacy_polling(ctx: BuildContext) -> None:
         )
 
 
-def _protect_rear_routes_from_legacy_base_cleanup(ctx: BuildContext) -> None:
-    """Keep legacy anti-treb/front-wall cleanup away from the new rear routes."""
+def _mirror_legacy_anti_treb_zones(ctx: BuildContext) -> None:
+    """Keep legacy anti-Trebuchet effects away from the new rear routes."""
     anti_treb_bounds = _mirrored_area_bounds(ANTI_TREB_SOURCE_AREA)
     anti_treb_count = 0
     for trigger in ctx.tm.triggers:
@@ -1366,17 +1377,6 @@ def _protect_rear_routes_from_legacy_base_cleanup(ctx: BuildContext) -> None:
         anti_treb_count += 1
     if anti_treb_count != 64:
         raise RuntimeError(f"expected 64 anti-treb triggers, adjusted {anti_treb_count}")
-
-    wall_cleanup_bounds = _mirrored_area_bounds(WALL_CLEANUP_SOURCE_AREA)
-    for player, bounds in wall_cleanup_bounds.items():
-        trigger = _unique_trigger(ctx, f"Elimina Walls P{player}")
-        remove_effects = [
-            effect for effect in trigger.effects if effect.effect_type == EffectId.REMOVE_OBJECT
-        ]
-        if len(remove_effects) != 2:
-            raise RuntimeError(f"expected two wall-cleanup effects for P{player}")
-        for effect in remove_effects:
-            effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2 = bounds
 
 
 def _clear_legacy_resource_score_triggers(ctx: BuildContext) -> None:
@@ -2429,12 +2429,12 @@ def _configure_range_sliders(
             for source_x in range(source_x1, source_x2 + 1):
                 x, y = v2_cell_for_player(player, source_x, source_y)
                 tile = ctx.mm.get_tile(x=x, y=y)
-                if source_x in {source_x1, source_x2}:
-                    tile.terrain_id = TerrainId.BEACH
-                elif source_y <= 62:
+                if SOURCE_ARMY_RANGE_LANE[3] < source_y < SOURCE_HERO_RANGE_LANE[1]:
+                    tile.terrain_id = TerrainId.WATER_DEEP
+                elif source_x <= SOURCE_RANGE_LEVEL_SPANS[0][1]:
+                    tile.terrain_id = TerrainId.SNOW
+                elif source_y <= SOURCE_ARMY_RANGE_LANE[3]:
                     tile.terrain_id = TerrainId.ROAD
-                elif source_y == 63:
-                    tile.terrain_id = TerrainId.GRASS_2
                 else:
                     tile.terrain_id = TerrainId.ROAD_GRAVEL
                 tile.elevation = 1
@@ -2463,7 +2463,7 @@ def _configure_range_sliders(
             )
             for sign_x, sign_y in (
                 v2_position_for_player(player, *source_position)
-                for source_position in SOURCE_RANGE_SIGN_POSITIONS
+                for source_position, _label in SOURCE_RANGE_SIGNS
             )
         )
         _unique_trigger(ctx, f"Antidelete P{int(player)}").new_effect.disable_object_deletion(
@@ -2681,17 +2681,14 @@ def _configure_range_sliders(
         )
     ]
     for player in PLAYERS:
-        rear_sign, front_sign = signs_by_player[player]
-        endpoint_labels.new_effect.change_object_name(
-            source_player=PlayerId.GAIA,
-            message=RANGE_REAR_LABEL,
-            selected_object_ids=[rear_sign.reference_id],
-        )
-        endpoint_labels.new_effect.change_object_name(
-            source_player=PlayerId.GAIA,
-            message=RANGE_FORWARD_LABEL,
-            selected_object_ids=[front_sign.reference_id],
-        )
+        for sign, (_position, label) in zip(
+            signs_by_player[player], SOURCE_RANGE_SIGNS, strict=True
+        ):
+            endpoint_labels.new_effect.change_object_name(
+                source_player=PlayerId.GAIA,
+                message=label,
+                selected_object_ids=[sign.reference_id],
+            )
 
     controller_safety = _unique_trigger(ctx, "herospawnrelic")
     _reset_trigger(controller_safety)
@@ -2740,21 +2737,53 @@ def _configure_range_sliders(
     if conflicts:
         raise RuntimeError(f"range controllers have conflicting effects: {conflicts}")
 
+    # Do not use water_terrains() for confinement: it also includes the walkable
+    # WATER_2D_BRIDGE. These water terrains are blocked for both controller types
+    # (TerrainRestriction 7 in the installed DE data).
+    confinement_water = {
+        TerrainId.WATER_SHALLOW, TerrainId.WATER_MEDIUM, TerrainId.WATER_DEEP
+    }
     for player in PLAYERS:
-        for source_area in (
-            *SOURCE_ARMY_RANGE_AREAS,
-            *SOURCE_HERO_RANGE_AREAS,
-        ):
-            area_x1, area_y1, area_x2, area_y2 = transformed_area(
-                player,
-                source_area,
-            )
-            for y in range(area_y1, area_y2 + 1):
-                for x in range(area_x1, area_x2 + 1):
-                    if ctx.mm.get_tile(x=x, y=y).terrain_id in water:
+        player_lanes = []
+        for family, source_areas, controllers, _variables in selector_specs:
+            covered = set()
+            for level, source_area in enumerate(source_areas):
+                area_x1, area_y1, area_x2, area_y2 = transformed_area(
+                    player, source_area
+                )
+                cells = {
+                    (x, y)
+                    for y in range(area_y1, area_y2 + 1)
+                    for x in range(area_x1, area_x2 + 1)
+                }
+                if cells & covered:
+                    raise RuntimeError(f"P{int(player)} {family} range bands overlap")
+                covered.update(cells)
+                for x, y in cells:
+                    terrain = ctx.mm.get_tile(x=x, y=y).terrain_id
+                    if terrain in water or (terrain == TerrainId.SNOW) != (level == 0):
                         raise RuntimeError(
-                            f"P{int(player)} range lane cell ({x}, {y}) is water"
+                            f"P{int(player)} {family} L{level} has invalid terrain at ({x}, {y})"
                         )
+            controller = controllers[player]
+            if (int(controller.x), int(controller.y)) not in covered:
+                raise RuntimeError(f"P{int(player)} {family} starts outside its range track")
+            perimeter = {
+                (x + dx, y + dy)
+                for x, y in covered
+                for dx in (-1, 0, 1)
+                for dy in (-1, 0, 1)
+                if (dx or dy) and (x + dx, y + dy) not in covered
+            }
+            for x, y in perimeter:
+                tile = ctx.mm.get_tile_safe(x=x, y=y)
+                if tile is not None and tile.terrain_id not in confinement_water:
+                    raise RuntimeError(
+                        f"P{int(player)} {family} can leave its range track at ({x}, {y})"
+                    )
+            player_lanes.append(covered)
+        if player_lanes[0] & player_lanes[1]:
+            raise RuntimeError(f"P{int(player)} controller tracks overlap")
 
 
 def _validate_army_spawn_geometry(ctx: BuildContext) -> None:
@@ -3053,7 +3082,18 @@ def _configure_sparse_wall_breaches(
     active_variables,
     world_variables,
 ) -> None:
-    """Remove a color's front wall with its compacted runtime owner."""
+    """Open only the rear yard; never delete the front flanks or Uni enclosure."""
+    # The old 220-wall penalty removed ALL walls across the map, including fixed
+    # defenses, irrespective of Antidelete. Retire its warning/activation chain.
+    cap_triggers = [
+        _unique_trigger(ctx, f"{family} (p{int(color)})")
+        for color in PLAYERS
+        for family in ("warn", "remove walls")
+    ]
+    _strip_trigger_references(ctx, {trigger.trigger_id for trigger in cap_triggers})
+    for trigger in cap_triggers:
+        _reset_trigger(trigger)
+
     templates = {
         color: deepcopy(_unique_trigger(ctx, f"Elimina Walls P{int(color)}"))
         for color in PLAYERS
@@ -3080,6 +3120,45 @@ def _configure_sparse_wall_breaches(
             raise RuntimeError(
                 f"invalid wall-breach template for P{int(color)}"
             )
+        player_units = ctx.um.units[color]
+        switch_reference = destroy_conditions[0].unit_object
+        switches = [unit for unit in player_units if unit.reference_id == switch_reference]
+        if len(switches) != 1 or (switches[0].x, switches[0].y) != v2_position_for_player(
+            color, 23.0, 43.5
+        ):
+            raise RuntimeError(f"P{int(color)} wall-breach switch moved or changed owner")
+        removable_positions = {
+            v2_position_for_player(color, *position)
+            for position in SOURCE_BREACH_REMOVABLE_WALL_POSITIONS
+        }
+        removable = {
+            unit.reference_id
+            for unit in player_units
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
+            and (unit.x, unit.y) in removable_positions
+        }
+        expected_count = 14 if color in {
+            PlayerId.ONE, PlayerId.TWO, PlayerId.SEVEN, PlayerId.EIGHT
+        } else 18
+        if len(removable) != expected_count:
+            raise RuntimeError(
+                f"P{int(color)} expected {expected_count} removable yard walls, "
+                f"found {len(removable)}"
+            )
+        permanent = sorted(
+            unit.reference_id
+            for unit in player_units
+            if unit.unit_const in {
+                BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID,
+                BuildingInfo.GATE_NORTHWEST_TO_SOUTHEAST.ID,
+                BuildingInfo.GATE_SOUTHWEST_TO_NORTHEAST.ID,
+            }
+            and unit.reference_id not in removable | {switch_reference}
+        )
+        _unique_trigger(ctx, f"Antidelete P{int(color)}").new_effect.disable_object_deletion(
+            source_player=-1,
+            selected_object_ids=permanent,
+        )
         for world_player in _possible_world_players(color):
             if world_player == color:
                 trigger = originals[color]
@@ -3105,10 +3184,27 @@ def _configure_sparse_wall_breaches(
                 variable=world_variables[color],
                 comparison=Comparison.EQUAL,
             )
-            trigger.effects.extend(
-                _copy_for_world_player(effect, color, world_player)
-                for effect in removal_effects
+            trigger.new_effect.remove_object(
+                source_player=world_player,
+                selected_object_ids=sorted(removable),
             )
+            # Repeat exact-reference protection with the resolved owner. The
+            # wildcard handles a full lobby immediately; this path also works
+            # when DE compacts or shuffles the runtime player slots.
+            detector = _unique_trigger(
+                ctx, f"Color Owner Detect S{int(color)} W{int(world_player)}"
+            )
+            self_deactivation = detector.effects.pop(-1)
+            if (
+                self_deactivation.effect_type != EffectId.DEACTIVATE_TRIGGER
+                or self_deactivation.trigger_id != detector.trigger_id
+            ):
+                raise RuntimeError(f"unexpected resolver effect order in {detector.name}")
+            detector.new_effect.disable_object_deletion(
+                source_player=world_player,
+                selected_object_ids=permanent,
+            )
+            detector.effects.append(self_deactivation)
 
 
 def _configure_sparse_king_islands(
@@ -4886,7 +4982,7 @@ def build(ctx: BuildContext) -> None:
     _remove_legacy_edge_deletion_strips(ctx)
     _disable_legacy_no_wall_cleanup(ctx)
     _optimize_legacy_polling(ctx)
-    _protect_rear_routes_from_legacy_base_cleanup(ctx)
+    _mirror_legacy_anti_treb_zones(ctx)
     _clear_legacy_resource_score_triggers(ctx)
     _zero_starting_resources(ctx)
     _disable_castle_trebuchets(ctx)
@@ -4980,7 +5076,9 @@ def build(ctx: BuildContext) -> None:
         ]
         if not protections:
             raise RuntimeError(f"missing Antidelete protection for P{int(player)}")
-        protections[-1].selected_object_ids.extend(reference_ids)
+        protections[-1].selected_object_ids = sorted(
+            set(protections[-1].selected_object_ids) | set(reference_ids)
+        )
 
     _compact_legacy_trigger_graph(ctx)
     _assert_variable_ids_are_contiguous(ctx)
