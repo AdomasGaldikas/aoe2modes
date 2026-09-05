@@ -103,14 +103,15 @@ def _mirrored_position_bounds(
     return bounds
 
 
-def _possible_world_players(color: PlayerId):
-    """Trigger-side player selectors that may resolve a scenario color.
+def _possible_world_players():
+    """Trigger-side player selectors that may resolve any scenario color.
 
     The serialized trigger graph retains all eight candidates for compatibility with
-    full and sparse lobbies. These ids belong only in trigger condition/effect fields;
-    XS player APIs require ``xsGetWorldPlayerId(color)`` instead.
+    full and sparse lobbies. The set is deliberately colour-independent: DE may seat
+    any lobby slot in any Castle row, so every colour has to be prepared to resolve to
+    every candidate. These ids belong only in trigger condition/effect fields; XS
+    player APIs require ``xsGetWorldPlayerId(color)`` instead.
     """
-    del color
     return PLAYERS
 
 
@@ -660,11 +661,12 @@ HERO_MILESTONE_SPAWN_TILES = {
     player: v2_cell_for_player(player, 16, 38)
     for player in PLAYERS
 }
-HERO_ORDER_FAMILIES = {
-    "Curto": "Short",
-    "Médio": "Medium",
-    "Longo": "Long",
-}
+#: Name prefixes of the three legacy hero-order template triggers, whose task effects
+#: are copied into every per-colour hero route. These were the imported scenario's
+#: Portuguese names ("Curto"/"Médio"/"Longo") until the ``scenario/`` layer became
+#: hand-maintained source; the triggers themselves are now named in English, so the
+#: build no longer depends on the source scenario's display language.
+HERO_ORDER_FAMILIES = ("Short", "Medium", "Long")
 # Each controller moves along one clean six-level lane on P3's canonical edge
 # island.  The transforms below keep L0 at the map edge and L5 toward the arena
 # for all eight colors.
@@ -1027,9 +1029,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_646:
+    if len(ctx.tm.triggers) != 3_654:
         raise RuntimeError(
-            f"expected 3,646 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,654 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1220,7 +1222,7 @@ def _configure_sparse_goth_barracks_restriction(
 
     whole_map = {"area_x1": 0, "area_y1": 0, "area_x2": 143, "area_y2": 143}
     for color in PLAYERS:
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             restriction = ctx.tm.add_trigger(
                 f"Goth Barracks Restriction S{int(color)} W{int(world_player)}",
                 description_stid=0,
@@ -1437,6 +1439,90 @@ def _disable_castle_trebuchets(ctx: BuildContext) -> None:
                 disabled_units.append(unit_id)
 
 
+def _unit_family(unit_id: int) -> set[int]:
+    """Every trainable form of one unit: Elite/non-Elite and ranged/melee siblings.
+
+    Banning a single id is not enough. A Ratha or Immortal has separate ranged and
+    melee ids, and every unique unit has an Elite and a non-Elite form; a civilization
+    only needs one of them left open to train the unit the mode hands it for free.
+    """
+    by_id = {}
+    by_name = {}
+    for member in UnitInfo:
+        by_id.setdefault(member.ID, member.name)
+        by_name.setdefault(member.name, member.ID)
+
+    family = {unit_id}
+    name = by_id.get(unit_id)
+    if name is None:
+        return family
+
+    variants = {name}
+    variants.add(
+        name[len("ELITE_"):] if name.startswith("ELITE_") else f"ELITE_{name}"
+    )
+    for variant in tuple(variants):
+        for suffix, sibling in (("_RANGED", "_MELEE"), ("_MELEE", "_RANGED")):
+            if variant.endswith(suffix):
+                variants.add(variant[: -len(suffix)] + sibling)
+    for variant in variants:
+        if variant in by_name:
+            family.add(by_name[variant])
+    return family
+
+
+def _ban_auto_spawned_unique_units(ctx: BuildContext) -> None:
+    """Nobody may hand-train the unit their Castles already produce for free.
+
+    The imported per-colour lists covered the unique units of the civilizations that
+    existed when the source scenario was made, and ``_normalize_player_restrictions``
+    only takes their union — so every civilization added by a later DLC could queue its
+    own unique unit on top of the automatic army, for free, from four Castles. Deriving
+    the ban from ``CIV_SPAWN_RULES`` instead makes it self-maintaining: adding a
+    civilization to that table now also bans its unit.
+    """
+    banned = set()
+    for unit_id, _cap, _interval in CIV_SPAWN_RULES.values():
+        banned |= _unit_family(unit_id)
+
+    for player in PLAYERS:
+        disabled_units = ctx.pm.players[player].disabled_units
+        for unit_id in sorted(banned - set(disabled_units)):
+            disabled_units.append(unit_id)
+
+    for player in PLAYERS:
+        missing = banned - set(ctx.pm.players[player].disabled_units)
+        if missing:
+            raise RuntimeError(
+                f"P{int(player)} can still train auto-spawned units {sorted(missing)}"
+            )
+
+
+def _ban_castle_class_buildings(ctx: BuildContext) -> None:
+    """Ban the Krepost and Donjon alongside the Castle.
+
+    The imported building ban removed the Castle so nobody can add a fifth one, but it
+    predates both civilization-specific castle-class fortifications. With free stone,
+    Bulgarians and Sicilians could otherwise raise unlimited extra fortresses — and the
+    Donjon trains Serjeants — while the other 57 civilizations cannot build anything of
+    the kind.
+
+    The inherited list also carries id 621, which resolves to no building in the pinned
+    dataset. It is left in place deliberately: removing an entry from a ban list is a
+    live gameplay change, and a ban on an id the game does not have is inert anyway.
+    """
+    castle_class = (
+        BuildingInfo.CASTLE.ID,
+        BuildingInfo.KREPOST.ID,
+        BuildingInfo.DONJON.ID,
+    )
+    for player in PLAYERS:
+        disabled_buildings = ctx.pm.players[player].disabled_buildings
+        for building_id in castle_class:
+            if building_id not in disabled_buildings:
+                disabled_buildings.append(building_id)
+
+
 def _add_color_runtime_variables(ctx: BuildContext):
     """Create the color-to-runtime state shared by sparse-safe systems."""
     active_variables = {
@@ -1472,18 +1558,24 @@ def _add_color_runtime_variables(ctx: BuildContext):
     )
 
 
-def _add_color_owner_detection(ctx: BuildContext, active_variables, world_variables) -> None:
+def _add_color_owner_detection(ctx: BuildContext, world_variables) -> None:
     """Latch the trigger-side player selector that owns each Castle row.
 
     Trigger player fields and XS player arguments are separate identity domains in
     custom-scenario lobbies. These variables are intentionally consumed only by
     trigger conditions/effects. XS must translate the scenario color with
     ``xsGetWorldPlayerId`` instead of reading this trigger-derived value.
+
+    This detector deliberately does **not** write ``p#coloractive``. That variable has
+    exactly one writer, ``cbaUpdateColorRuntime`` in XS, which recomputes it every
+    second from the lobby-slot domain. A second trigger-side writer used to be silently
+    reverted within one second unless it also wrote ``p#coloreliminated``, which made
+    every future defeat path depend on remembering a second, unrelated write.
     """
     configured = 0
     for color in PLAYERS:
         area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[color]
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             detector = ctx.tm.add_trigger(
                 f"Color Owner Detect S{int(color)} W{int(world_player)}",
                 description_stid=0,
@@ -1510,11 +1602,6 @@ def _add_color_owner_detection(ctx: BuildContext, active_variables, world_variab
                 operation=Operation.SET,
                 variable=world_variables[color],
             )
-            detector.new_effect.change_variable(
-                quantity=1,
-                operation=Operation.SET,
-                variable=active_variables[color],
-            )
             detector.new_effect.deactivate_trigger(trigger_id=detector.trigger_id)
             configured += 1
     expected = len(PLAYERS) ** 2
@@ -1537,6 +1624,23 @@ def _configure_custom_team_victory(
     ``P5`` defeat effect therefore targets runtime P5, not the person occupying
     teal when teal has been compacted to runtime P2.  Runtime variables written
     by XS keep every declaration attached to the selected color instead.
+
+    Victory is gated on ``p#coloractive``, and XS clears that bit only from
+    ``p#coloreliminated``. Three properties keep that from deadlocking a match:
+
+    1. **Defeat is a map state, not an event.** Each resolver ships enabled and fires
+       from its own "no Castle of this owner in this colour's row" condition. It used to
+       ship disabled and depend on the one-shot ``castle (p#)`` chain, whose four
+       ``Destroy Object`` conditions can never become true if the Castles leave the map
+       any other way — a ``Remove Object``, a purge, an engine-cleaned closed slot.
+    2. **A row-empty fallback is independent of both identity domains.** Elimination
+       otherwise needs ``p#worldplayer``, latched in the *trigger* domain, while
+       aliveness comes from ``xsGetWorldPlayerId`` in the *lobby-slot* domain. If those
+       disagree, all eight resolvers for a colour are unsatisfiable while the colour
+       still reads alive. ``Color Castle Row Empty S#`` asks only whether any candidate
+       owner still holds a Castle there, so it needs neither latch.
+    3. **Victory ships disabled** and is armed by the matching owner detector, so seven
+       of every eight candidates are never evaluated after start-up.
     """
 
     def purge_runtime_player(trigger, world_player) -> None:
@@ -1588,12 +1692,14 @@ def _configure_custom_team_victory(
                 and effect.trigger_id in legacy_cleanup_ids
             )
         ]
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
+            # Enabled from the start: the Castle-row condition below is the whole
+            # defeat rule, so any way those Castles leave the map resolves the colour.
+            # ``castle (p#)`` remains wired as a redundant fast path.
             defeat = ctx.tm.add_trigger(
                 f"Color Defeat Resolve S{int(color)} W{int(world_player)}",
                 description_stid=0,
                 short_description_stid=0,
-                enabled=0,
             )
             defeat.new_condition.variable_value(
                 quantity=int(world_player),
@@ -1628,11 +1734,6 @@ def _configure_custom_team_victory(
                 operation=Operation.SET,
                 variable=eliminated_variables[color],
             )
-            defeat.new_effect.change_variable(
-                quantity=0,
-                operation=Operation.SET,
-                variable=active_variables[color],
-            )
             purge_runtime_player(defeat, world_player)
             defeat.new_effect.declare_victory(
                 source_player=world_player,
@@ -1661,12 +1762,40 @@ def _configure_custom_team_victory(
                 operation=Operation.SET,
                 variable=eliminated_variables[color],
             )
-            resigned.new_effect.change_variable(
-                quantity=0,
-                operation=Operation.SET,
-                variable=active_variables[color],
-            )
             purge_runtime_player(resigned, world_player)
+
+    # Fallback elimination. Everything above needs ``p#worldplayer``, which is latched
+    # in the trigger-player domain, while ``p#coloractive`` is written by XS from the
+    # lobby-slot domain. If the two ever disagree for a colour, none of its eight
+    # resolvers can match while it still reads alive, and the opposing side can never
+    # win. This asks a question neither domain can answer wrongly: does *any* candidate
+    # owner still hold a Castle in that colour's row? It only clears the victory gate —
+    # declaring defeat and purging objects stay with the owner-resolved resolvers,
+    # which need a specific player.
+    for color in PLAYERS:
+        area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[color]
+        row_empty = ctx.tm.add_trigger(
+            f"Color Castle Row Empty S{int(color)}",
+            description_stid=0,
+            short_description_stid=0,
+        )
+        row_empty.new_condition.timer(timer=LOBBY_SETTLE_SECONDS)
+        for world_player in _possible_world_players():
+            row_empty.new_condition.objects_in_area(
+                quantity=1,
+                object_list=BuildingInfo.CASTLE.ID,
+                source_player=world_player,
+                area_x1=area_x1,
+                area_y1=area_y1,
+                area_x2=area_x2,
+                area_y2=area_y2,
+                inverted=1,
+            )
+        row_empty.new_effect.change_variable(
+            quantity=1,
+            operation=Operation.SET,
+            variable=eliminated_variables[color],
+        )
 
     # Latch only after at least one occupied color has been detected on each
     # side. This prevents the three-second victory pass from ending a solo map
@@ -1702,14 +1831,39 @@ def _configure_custom_team_victory(
             )
             ready.new_effect.deactivate_trigger(trigger_id=ready.trigger_id)
 
+    # Only one of the eight candidates per colour can ever match, so the other seven
+    # are dead weight in the tick loop. Ship them disabled and let the matching owner
+    # detector arm exactly the right one; the redundant ``p#worldplayer`` condition
+    # stays so a stale activation still cannot declare the wrong winner.
+    armed = 0
     for side, opponents in ((sides[0], sides[1]), (sides[1], sides[0])):
         for color in side:
-            for world_player in _possible_world_players(color):
+            for world_player in _possible_world_players():
                 victory = ctx.tm.add_trigger(
                     f"Color Team Victory S{int(color)} W{int(world_player)}",
                     description_stid=0,
                     short_description_stid=0,
+                    enabled=0,
                 )
+                detector = _unique_trigger(
+                    ctx,
+                    f"Color Owner Detect S{int(color)} W{int(world_player)}",
+                )
+                deactivations = [
+                    effect
+                    for effect in detector.effects
+                    if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
+                ]
+                if len(deactivations) != 1 or detector.effects[-1] is not deactivations[0]:
+                    raise RuntimeError(
+                        f"owner detector S{int(color)} W{int(world_player)} must end "
+                        "with exactly one self-deactivation"
+                    )
+                detector.new_effect.activate_trigger(trigger_id=victory.trigger_id)
+                # Keep the self-deactivation last so the detector cannot re-latch
+                # between the arming effect and its own shutdown.
+                detector.effects.append(detector.effects.pop(-2))
+                armed += 1
                 victory.new_condition.timer(timer=VICTORY_RESOLVE_SECONDS)
                 victory.new_condition.variable_value(
                     quantity=1,
@@ -1736,6 +1890,12 @@ def _configure_custom_team_victory(
                     source_player=world_player,
                     enabled=1,
                 )
+
+    expected_armed = len(PLAYERS) ** 2
+    if armed != expected_armed:
+        raise RuntimeError(
+            f"expected {expected_armed} detector-armed victory triggers, armed {armed}"
+        )
 
 
 def _render_color_spawn_xs() -> str:
@@ -1802,6 +1962,7 @@ int gCbaIntervalByCiv = -1;
 int gCbaNameByCiv = -1;
 int gCbaBuilderThresholdByCiv = -1;
 int gCbaEarnedBuilderPairsByColor = -1;
+int gCbaSeenInGameByColor = -1;
 
 int cbaWorldPlayerForColor(int scenarioPlayer = 0) {{
     return(xsGetWorldPlayerId(scenarioPlayer));
@@ -1874,7 +2035,7 @@ void cbaQueueColorBuilders(int scenarioPlayer = 0) {{
     if (earnedPairs > previousEarnedPairs) {{
         int pendingPairs = xsTriggerVariable({PENDING_BUILDER_VARIABLE_BASE} + scenarioPlayer - 1);
         xsSetTriggerVariable(
-            scenarioPlayer - 1,
+            {PENDING_BUILDER_VARIABLE_BASE} + scenarioPlayer - 1,
             pendingPairs + earnedPairs - previousEarnedPairs
         );
         xsArraySetInt(gCbaEarnedBuilderPairsByColor, scenarioPlayer, earnedPairs);
@@ -1937,6 +2098,14 @@ void cbaUpdateCombatRow(int scenarioPlayer = 0) {{
     cbaRefreshCombatValues(worldPlayer);
 }}
 
+// Sole writer of the color-active bit. Trigger systems read it; none of them write
+// it, because a second writer is reverted here within a second.
+//
+// Elimination is latched, not merely observed. A color that was seen in the game and
+// then left it can no longer be resolved by the owner-resolved defeat triggers, since
+// those need a live player selector. Without the latch its active bit would flap back
+// on if the engine ever reported the slot in game again, and the opposing side's
+// victory would never resolve.
 void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
     int activeFlag = 0;
@@ -1944,8 +2113,19 @@ void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
         {COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1
     );
     if (worldPlayer >= 1) {{
-        if (eliminatedFlag == 0 && xsGetPlayerInGame(worldPlayer)) {{
-            activeFlag = 1;
+        if (xsGetPlayerInGame(worldPlayer)) {{
+            if (eliminatedFlag == 0) {{
+                activeFlag = 1;
+            }}
+            xsArraySetInt(gCbaSeenInGameByColor, scenarioPlayer, 1);
+        }} else {{
+            if (eliminatedFlag == 0
+                && xsArrayGetInt(gCbaSeenInGameByColor, scenarioPlayer) == 1) {{
+                xsSetTriggerVariable(
+                    {COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1,
+                    1
+                );
+            }}
         }}
     }}
     xsSetTriggerVariable(
@@ -1964,6 +2144,7 @@ void main() {{
     gCbaEarnedBuilderPairsByColor = xsArrayCreateInt(
         9, 0, "cbaEarnedBuilderPairsByColor"
     );
+    gCbaSeenInGameByColor = xsArrayCreateInt(9, 0, "cbaSeenInGameByColor");
 {chr(10).join(assignments)}
     for (worldPlayer = 1; <= xsGetNumPlayers()) {{
         int technologyCount = xsGetPlayerNumberOfTechs(worldPlayer);
@@ -2055,7 +2236,7 @@ def _replace_legacy_army_spawns(
     # The color-owner resolver runs before the first XS wave. Set both controls
     # to their physical L3 starts there, avoiding a one-pass default-L0 race.
     for scenario_player in PLAYERS:
-        for world_player in _possible_world_players(scenario_player):
+        for world_player in _possible_world_players():
             detector = _unique_trigger(
                 ctx,
                 f"Color Owner Detect S{int(scenario_player)} W{int(world_player)}",
@@ -2165,7 +2346,7 @@ def _replace_legacy_army_spawns(
 
     for scenario_player in PLAYERS:
         area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[scenario_player]
-        for world_player in _possible_world_players(scenario_player):
+        for world_player in _possible_world_players():
             for level, source_destinations in enumerate(
                 SOURCE_ARMY_RANGE_DESTINATIONS
             ):
@@ -2562,7 +2743,7 @@ def _configure_range_sliders(
             penguin_by_player[player].reference_id,
         ]
         penguin_selected = [penguin_by_player[player].reference_id]
-        for world_player in _possible_world_players(player):
+        for world_player in _possible_world_players():
             detector = _unique_trigger(
                 ctx,
                 f"Color Owner Detect S{int(player)} W{int(world_player)}",
@@ -2933,7 +3114,7 @@ def _configure_sparse_center_rewards(
         if marker is None or marker.unit_const != OtherInfo.FLAG_A.ID:
             raise RuntimeError(f"missing center reward marker for P{int(color)}")
         marker_x, marker_y = int(marker.x), int(marker.y)
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             for family in ("Kills", "Trebuchet"):
                 if world_player == color:
                     trigger = originals[color, family]
@@ -3090,7 +3271,7 @@ def _configure_sparse_center_views(
             raise RuntimeError(
                 f"expected one center-view effect for P{int(color)}"
             )
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             if world_player == color:
                 trigger = originals[color]
                 _reset_trigger(trigger)
@@ -3267,7 +3448,7 @@ def _configure_sparse_wall_breaches(
             source_player=-1,
             selected_object_ids=permanent,
         )
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             if world_player == color:
                 trigger = originals[color]
                 _reset_trigger(trigger)
@@ -3318,7 +3499,7 @@ def _configure_sparse_wall_breaches(
         raise RuntimeError(f"expected 368 fixed-barrier cells, found {len(protected_cells)}")
     wipe_areas = _wall_wipe_areas(ctx.mm.map_size, protected_cells)
     for color in PLAYERS:
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             pair = {}
             for family, public_name, threshold, enabled in (
                 ("warn", "Warn", 200, 1),
@@ -3416,7 +3597,7 @@ def _configure_sparse_king_islands(
             raise RuntimeError(
                 f"invalid King-island template for P{int(color)}"
             )
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             if world_player == color:
                 trigger = originals[color]
                 _reset_trigger(trigger)
@@ -3593,7 +3774,7 @@ def _configure_sparse_late_hero_boosts(
                 raise RuntimeError(
                     f"P{int(color)} {label} hero spawn ({x}, {y}) is water"
                 )
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             add_loop(
                 color,
                 world_player,
@@ -3713,7 +3894,7 @@ def _configure_sparse_hero_milestones(
     }
     canonical_order_tasks = [
         effect
-        for effect in order_templates["Curto"].effects
+        for effect in order_templates["Short"].effects
         if effect.effect_type == EffectId.TASK_OBJECT
     ]
     if len(canonical_order_tasks) != 1:
@@ -3749,7 +3930,7 @@ def _configure_sparse_hero_milestones(
                 f"({spawn_x}, {spawn_y}) is occupied by refs {references}"
             )
 
-        for world_player in _possible_world_players(scenario_player):
+        for world_player in _possible_world_players():
             for threshold, expected_unit_id in HERO_MILESTONES:
                 template = milestone_templates[threshold]
                 if world_player == scenario_player:
@@ -3969,7 +4150,7 @@ def _add_sparse_feudal_upgrades(
             variable=world_variables[scenario_player],
             comparison=Comparison.EQUAL,
         )
-        for world_player in _possible_world_players(scenario_player):
+        for world_player in _possible_world_players():
             if world_player == scenario_player:
                 continue
             remapped = ctx.tm.add_trigger(
@@ -4098,7 +4279,7 @@ def _remap_raze_villagers(
                     )
 
         area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[scenario_player]
-        for world_player in _possible_world_players(scenario_player):
+        for world_player in _possible_world_players():
             reward = ctx.tm.add_trigger(
                 f"Builder Reward S{int(scenario_player)} W{int(world_player)}",
                 description_stid=0,
@@ -4307,7 +4488,7 @@ def _force_bombard_tower_unlock(ctx: BuildContext) -> None:
 
     configured = 0
     for color in PLAYERS:
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             occupied = _unique_trigger(
                 ctx,
                 f"Occupied Slot S{int(color)} W{int(world_player)}",
@@ -4334,7 +4515,7 @@ def _finalize_occupied_slot_gates(ctx: BuildContext) -> None:
     """Retry occupied-color setup until its owner is known, then stop it."""
     configured = 0
     for color in PLAYERS:
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             gate = _unique_trigger(
                 ctx,
                 f"Occupied Slot S{int(color)} W{int(world_player)}",
@@ -4766,7 +4947,7 @@ def _add_sparse_lobby_scoreboard(
         free_costs[player] = trigger
 
     for color in PLAYERS:
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             gate = tm.add_trigger(
                 f"Occupied Slot S{int(color)} W{int(world_player)}",
                 description_stid=0,
@@ -4826,7 +5007,7 @@ def _add_live_white_king_kill_counters(ctx: BuildContext) -> None:
     for color, reference_id in WHITE_KING_KILL_COUNTERS.items():
         color_number = int(color)
         kills_variable = 8 + ((color_number - 1) * 3)
-        for world_player in _possible_world_players(color):
+        for world_player in _possible_world_players():
             live_counter = ctx.tm.add_trigger(
                 f"White King Kills S{color_number} W{int(world_player)}",
                 description_stid=0,
@@ -4941,7 +5122,7 @@ def _configure_sparse_vote_kick(
             for (_target, owner), marker in vote_markers.items()
             if owner == voter
         )
-        for world_player in _possible_world_players(voter):
+        for world_player in _possible_world_players():
             detector = _unique_trigger(
                 ctx, f"Color Owner Detect S{int(voter)} W{int(world_player)}"
             )
@@ -5022,7 +5203,7 @@ def _configure_sparse_vote_kick(
         marker = vote_markers[target, voter]
         marker_x = math.floor(marker.x)
         marker_y = math.floor(marker.y)
-        for world_player in _possible_world_players(voter):
+        for world_player in _possible_world_players():
             deleted = ctx.tm.add_trigger(
                 f"Vote Marker Deleted P{int(target)} V{int(voter)} W{world_player}",
                 description_stid=0,
@@ -5064,7 +5245,7 @@ def _configure_sparse_vote_kick(
     for target in PLAYERS:
         area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[target]
         target_resolvers = []
-        for world_player in _possible_world_players(target):
+        for world_player in _possible_world_players():
             if world_player == target:
                 resolver = _unique_trigger(ctx, f"Kick P{int(target)}")
             else:
@@ -5106,11 +5287,8 @@ def _configure_sparse_vote_kick(
                 source_player=-1,
                 message=f"{PLAYER_COLOR_NAMES[target]} has been vote-kicked.",
             )
-            resolver.new_effect.change_variable(
-                quantity=0,
-                operation=Operation.SET,
-                variable=active_variables[target],
-            )
+            # Only the elimination bit is written here. XS owns ``p#coloractive`` and
+            # recomputes it from this variable within a second.
             resolver.new_effect.change_variable(
                 quantity=1,
                 operation=Operation.SET,
@@ -5184,13 +5362,15 @@ def build(ctx: BuildContext) -> None:
     _zero_starting_resources(ctx)
     _normalize_player_restrictions(ctx)
     _disable_castle_trebuchets(ctx)
+    _ban_auto_spawned_unique_units(ctx)
+    _ban_castle_class_buildings(ctx)
     (
         active_variables,
         world_variables,
         eliminated_variables,
         match_ready_variable,
     ) = _add_color_runtime_variables(ctx)
-    _add_color_owner_detection(ctx, active_variables, world_variables)
+    _add_color_owner_detection(ctx, world_variables)
     _remove_legacy_goth_palisade_bonus(ctx)
     _configure_sparse_goth_barracks_restriction(
         ctx,

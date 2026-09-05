@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.16**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.17**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.16.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.17.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +33,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.16.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.17.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -44,9 +44,15 @@ trigger-family counts, eight-way symmetry of the
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.16 passes with **0 errors and 0 warnings**. The
-full repository suite passes 125 tests (65 Ascendants and 60 other tests).
-Repository Ruff checks and the 616-line embedded XS build also pass.
+unconditional victory/defeat. v1.0.17 passes with **0 errors and 0 warnings**. The
+full repository suite passes 133 tests (73 Ascendants and 60 other tests).
+Repository Ruff checks and the 637-line embedded XS build also pass.
+
+The structural audit cannot see whether a match can be *won*: a permanent deadlock is
+made of individually well-formed triggers. Two liveness tests cover that separately —
+they select the victory subsystem from the serialized data and run it as a state
+machine across lobby shapes and a split player identity. See
+[`RELEASE_NOTES_v1.0.17.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.17.md).
 
 `aoe2modes map` covers the half of the scenario the trigger checks cannot see — the
 geometry. It is not a pass/fail gate; read the report and confirm the arena still holds
@@ -71,6 +77,29 @@ The active issue inventory and manual acceptance cases are in
 The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.17 match resolution and roster derivation
+
+A live 1 v 4 ended with every enemy Castle destroyed and no victory. Victory is gated
+on `p#coloractive`, which XS clears only from `p#coloreliminated`, and elimination had a
+single reachable path: the one-shot `castle (p#)` chain of four `Destroy Object`
+conditions. A Castle that leaves the map by `Remove Object`, a purge, or engine slot
+cleanup satisfies none of them, so the colour stayed alive with nothing left to kill.
+
+Three changes close it. `Color Defeat Resolve` ships enabled and fires from the
+Castle-row condition it already carried, so defeat is map state rather than a one-shot
+event. Eight new `Color Castle Row Empty S#` triggers clear the gate using only "does
+anybody still hold a Castle in this row", which needs neither the trigger-side
+`p#worldplayer` latch nor the XS lobby-slot mapping — the two identity domains can now
+disagree without hanging a match. XS became the sole writer of `p#coloractive` and
+latches elimination when a colour that was seen in game leaves it.
+
+The same release derives the shared training ban from `CIV_SPAWN_RULES` instead of the
+imported per-colour lists (143 → 159 units, closing seven DLC civilizations that could
+hand-train their own auto-spawned unit), bans Krepost and Donjon alongside the Castle,
+and fixes a bare literal variable base in XS. Two balance findings are deliberately left
+open. Every terrain cell and placed object is unchanged. See
+[`RELEASE_NOTES_v1.0.17.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.17.md).
 
 ## v1.0.16 audit corrections and Castle-front Heroes
 

@@ -1,12 +1,37 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.16 source review. Current candidate: **v1.0.16**;
+Open work from the v1.0.7–v1.0.17 source review. Current candidate: **v1.0.17**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## v1.0.17 — the reported 1 v 4 deadlock
+
+A live 1 v 4 ended with one player having destroyed every enemy Castle and every
+reachable building, and no victory. The review found the victory gate had three
+independent ways to become permanently unreachable. All are closed; see ASC-039…046 in
+[`../../docs/ascendants-issue-register.md`](../../docs/ascendants-issue-register.md).
+
+- [x] ASC-039–041: elimination is map state, not a one-shot `Destroy Object` event;
+  `Color Castle Row Empty S#` clears the gate without either identity latch; XS is the
+  sole writer of `p#coloractive` and latches elimination when a seen colour leaves.
+- [x] ASC-042–043: the training ban is derived from `CIV_SPAWN_RULES`; Krepost and
+  Donjon join the Castle ban.
+- [x] ASC-044–046: XS addresses every trigger-variable block through a named base; the
+  victory fan-out is armed by its owner detector; hero-order templates are named in
+  English; the README tracks `mode.toml`.
+- [ ] **Engine acceptance.** Replay the reported 1 v 4 and confirm the match ends
+  within about five seconds of the last enemy Castle falling. Repeat with a
+  resignation, with a closed slot on the losing side, and in a shuffled lobby.
+- [~] Not changed, deliberately: the four civilizations that spawn the **non-Elite**
+  unit (Persians, Turks, Spanish, Portuguese) and the fact that the army cap is a
+  **military population** cap, so a 0.5-population Karambit Warrior buys the Malay
+  roughly twice the units. Both are balance calls for the maintainer, not defects.
+  Inherited `disabled_buildings` id 621 resolves to nothing in the pinned dataset and
+  is kept: removing a ban is a live gameplay change, and a ban on an absent id is inert.
 
 ## v1.0.16 audit follow-up
 
@@ -354,3 +379,14 @@ engine verification.
   Each wipe covers 20,368 cells in 49 rectangles, excluding 368 protected barrier
   cells. All 940 old objects and terrain are unchanged; 16 front posts are added.
   The game-installed artifact matches the SHA-256 in `RELEASE_NOTES_v1.0.15.md`.
+- v1.0.17 build: `aoe2modes audit --strict` PASS, 0 errors / 0 warnings; 3,655
+  triggers, 15,081 conditions, 14,752 effects, 956 units, 121 variables; 3,195
+  initially enabled and 3,646 conservatively reachable. Complementary
+  `pytest -q tests/test_evolution_alpha.py` and
+  `pytest -q --ignore=tests/test_evolution_alpha.py` runs pass 73 and 60 tests
+  respectively: 133/133. Repository `ruff`, all 6 mode builds, and the 637-line
+  embedded XS build pass. Two liveness tests walk the serialized victory subsystem as
+  a state machine and fail on the pre-fix build. Every terrain cell and all 956 placed
+  objects are unchanged from v1.0.16; the diff touches trigger logic, the shared roster
+  lists, three `scenario/` trigger names, tests, and documentation only. The artifact
+  matches the SHA-256 in `RELEASE_NOTES_v1.0.17.md`. No live DE match was run.

@@ -1,22 +1,39 @@
-# CBA Hero: Ascendants v1.0.15
+# CBA Hero: Ascendants v1.0.17
 
 Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
 center rewards, vote-kicks, and a compact K/D/R display. The maintained Python source is
 authoritative; v1.0.3 is the sole historical comparison baseline.
 
+## Start here
+
+This file is the release summary. The reference documentation lives in `docs/`:
+
+| Document | Read it when you want |
+| --- | --- |
+| [Gameplay](../../docs/ascendants-gameplay.md) | The rules, as a player or lobby host |
+| [Architecture](../../docs/ascendants-architecture.md) | To change `build.py` |
+| [XS runtime](../../docs/ascendants-xs-runtime.md) | To change spawning, the HUD, or anything touching player identity |
+| [Data tables and runbooks](../../docs/ascendants-data-tables.md) | To add a civilization, a variable, or a hero tier |
+| [Arena geometry](../../docs/ascendants-map.md) | To move anything on the map |
+| [Testing](../../docs/ascendants-testing.md) | To know what is proven and what still needs a game check |
+| [Control map](../../docs/ascendants-control-map.md) | Exact cells, pads, lanes and wall roles |
+| [Development](../../docs/ascendants-development.md) · [Issue register](../../docs/ascendants-issue-register.md) | The release loop and the open acceptance matrix |
+
 ## Current build
 
-| Metric | v1.0.15 |
+| Metric | v1.0.17 |
 | --- | ---: |
-| Triggers | 3,647 |
-| Conditions | 14,561 |
-| Effects | 15,183 |
+| Triggers | 3,655 (3,195 initially enabled) |
+| Conditions | 15,081 |
+| Effects | 14,752 |
 | Units | 956 |
 | Runtime variables | 121 (ids 0–120) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero Ascendants v1.0.15.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero Ascendants v1.0.17.aoe2scenario`.
+`tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
+keeps this file's version in step with `mode.toml`.
 
 ## Two independent spawn controls
 
@@ -87,6 +104,31 @@ Blue, Red, Green, and Yellow form one side; Teal, Purple, Gray, and Orange form 
 other. At least one occupied color is required on each side. A resigned or defeated
 runtime player's remaining units and buildings are removed from the entire map.
 
+## Match resolution
+
+A color is alive while its lobby slot is in the game and it has not been eliminated.
+`p#coloractive` has exactly **one** writer, `cbaUpdateColorRuntime` in XS; triggers only
+ever write `p#coloreliminated`, and XS derives the active bit from it within a second.
+A second trigger-side writer used to be silently reverted unless every defeat path also
+remembered to set the elimination bit.
+
+Elimination is a **map state, not an event**. Each `Color Defeat Resolve S# W#` is live
+from the start and fires from its own "no Castle of this owner in this color's Castle
+row" condition, so any way those Castles leave the map resolves the color. The legacy
+`castle (p#)` chain — four `Destroy Object` conditions on four exact references — is
+kept only as a redundant fast path; it cannot become true for a Castle that was
+*removed* rather than destroyed, so nothing depends on it.
+
+`Color Castle Row Empty S#` is the last line: eight triggers, one per color, asking
+only whether *any* candidate owner still holds a Castle in that row. The owner-resolved
+resolvers need `p#worldplayer`, latched in the trigger-player domain, while the active
+bit comes from `xsGetWorldPlayerId` in the lobby-slot domain; if those two disagree,
+none of a color's eight resolvers can match while it still reads alive. The row-empty
+fallback needs neither latch, so that disagreement can no longer hang a match.
+
+`Color Team Victory S# W#` ships disabled and is armed by the one owner detector whose
+latch it can match, so seven of every eight candidates leave the tick loop at start-up.
+
 ## Arena and cleanup
 
 All eight territories derive from one canonical sector and an eight-way transform.
@@ -95,6 +137,13 @@ dry technology routes, Castle-relative spawn pads, protected allied routes, and
 mirrored anti-Trebuchet areas. It contains no Transport Ships, submerged corner
 Palisades, corner Saboteurs, decorative selector Relics/Rugs/Torches, or hidden Goth
 Palisade HP bonus.
+
+Every color shares one roster: 159 banned units, 16 banned buildings, one banned
+technology. The unit ban is derived from `CIV_SPAWN_RULES` rather than the imported
+per-color lists, so no civilization can hand-train the unique unit its own Castles
+already produce for free — adding a civilization to that table also bans its unit, and
+both the Elite and non-Elite forms. Castle, Krepost and Donjon are all banned together:
+nobody adds a fifth castle-class fortification.
 
 Deleting the side/rear Castle-yard switch gate removes the short shoulders **and the
 long side walls**. The complete front gate/wall row and rear University walls/gate
@@ -118,13 +167,13 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero Ascendants v1.0.15.aoe2scenario" --strict
+  "dist/CBA Hero Ascendants v1.0.17.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```
 
-v1.0.15 passes all 59 Ascendants-focused tests and all 60 remaining repository tests
-in two complementary runs: 119/119 total. The strict structural audit reports
+v1.0.17 passes all 73 Ascendants-focused tests and all 60 remaining repository tests
+in two complementary runs: 133/133 total. The strict structural audit reports
 0 errors and 0 warnings, and repository Ruff checks pass.
 Parser tests pin all eight colors, all 96 slider selectors, all 704 army/Hero movement mappings,
 the complete ownership matrix, controller safety, isolated connected tracks, visible
@@ -135,7 +184,10 @@ pairs, protected-footprint exclusion, and closed-gate reachability after removal
 the side walls. Each owner's wipe uses 49 rectangles covering the 20,368 map cells
 outside 368 protected barrier cells. All 940 existing objects and every terrain cell
 are unchanged; exactly 16 front end posts are added. Controller confinement and names
-are unchanged from v1.0.14.
+are unchanged from v1.0.14. Two liveness tests walk the serialized victory subsystem as
+a state machine across six lobby shapes, closed slots both cleaned and left in place,
+and a split player identity, and prove a side that has lost its Castles always ends
+the match.
 
 AoE2ScenarioParser cannot execute DE pathfinding, lobby compaction, or multiplayer
 scheduling. The remaining in-game acceptance cases are tracked in
@@ -145,4 +197,4 @@ scheduling. The remaining in-game acceptance cases are tracked in
 
 Older candidates are retained only as investigation history in `RELEASE_NOTES_v*.md`.
 They are not alternative repair targets. See
-[`RELEASE_NOTES_v1.0.15.md`](RELEASE_NOTES_v1.0.15.md) for the current change set.
+[`RELEASE_NOTES_v1.0.17.md`](RELEASE_NOTES_v1.0.17.md) for the current change set.

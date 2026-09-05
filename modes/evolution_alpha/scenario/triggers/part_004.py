@@ -22,8 +22,8 @@ from AoE2ScenarioParser.datasets.units import UnitInfo  # noqa: F401
 
 def emit(tm) -> None:
     """Triggers 1000..1249. Mostly: 24x '5000 ----------------- By: Sy…', 16x '3500 ----------------- By: Sy…', 8x '2000 ---------------- By: Sys…'."""
-    # --- #1000  Longo -----------------   [display 1193]
-    t = tm.add_trigger('Longo -----------------', description_stid=0, looping=1)
+    # --- #1000  Long -----------------   [display 1193]
+    t = tm.add_trigger('Long -----------------', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88894, area_x1=140, area_y1=64, area_x2=142, area_y2=65, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.FOUR,
@@ -187,8 +187,8 @@ def emit(tm) -> None:
     # --- #1008  -- Posição -- ---------    [display 1201]
     t = tm.add_trigger('-- Posição -- --------- ', description_stid=0)
 
-    # --- #1009  Curto ----------------    [display 1202]
-    t = tm.add_trigger('Curto ---------------- ', description_stid=0, looping=1)
+    # --- #1009  Short ----------------    [display 1202]
+    t = tm.add_trigger('Short ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88895, area_x1=1, area_y1=75, area_x2=3, area_y2=76, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.FIVE,
@@ -204,8 +204,8 @@ def emit(tm) -> None:
         queue_action=-1,
     )
 
-    # --- #1010  Médio ----------------    [display 1203]
-    t = tm.add_trigger('Médio ---------------- ', description_stid=0, looping=1)
+    # --- #1010  Medium ----------------    [display 1203]
+    t = tm.add_trigger('Medium ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88895, area_x1=1, area_y1=77, area_x2=5, area_y2=79, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.FIVE,
@@ -221,8 +221,8 @@ def emit(tm) -> None:
         queue_action=-1,
     )
 
-    # --- #1011  Longo ----------------    [display 1204]
-    t = tm.add_trigger('Longo ---------------- ', description_stid=0, looping=1)
+    # --- #1011  Long ----------------    [display 1204]
+    t = tm.add_trigger('Long ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88895, area_x1=1, area_y1=80, area_x2=3, area_y2=81, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.FIVE,
@@ -386,8 +386,8 @@ def emit(tm) -> None:
     # --- #1019  -- Posição -- ---------    [display 1212]
     t = tm.add_trigger('-- Posição -- --------- ', description_stid=0)
 
-    # --- #1020  Curto ----------------    [display 1213]
-    t = tm.add_trigger('Curto ---------------- ', description_stid=0, looping=1)
+    # --- #1020  Short ----------------    [display 1213]
+    t = tm.add_trigger('Short ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88896, area_x1=140, area_y1=74, area_x2=142, area_y2=75, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.SIX,
@@ -403,8 +403,8 @@ def emit(tm) -> None:
         queue_action=-1,
     )
 
-    # --- #1021  Médio ----------------    [display 1214]
-    t = tm.add_trigger('Médio ---------------- ', description_stid=0, looping=1)
+    # --- #1021  Medium ----------------    [display 1214]
+    t = tm.add_trigger('Medium ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88896, area_x1=138, area_y1=76, area_x2=142, area_y2=78, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.SIX,
@@ -420,8 +420,8 @@ def emit(tm) -> None:
         queue_action=-1,
     )
 
-    # --- #1022  Longo ----------------    [display 1215]
-    t = tm.add_trigger('Longo ---------------- ', description_stid=0, looping=1)
+    # --- #1022  Long ----------------    [display 1215]
+    t = tm.add_trigger('Long ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88896, area_x1=140, area_y1=79, area_x2=142, area_y2=80, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.SIX,
@@ -585,8 +585,8 @@ def emit(tm) -> None:
     # --- #1030  -- Posição -- ---------    [display 1223]
     t = tm.add_trigger('-- Posição -- --------- ', description_stid=0)
 
-    # --- #1031  Curto ----------------    [display 1224]
-    t = tm.add_trigger('Curto ---------------- ', description_stid=0, looping=1)
+    # --- #1031  Short ----------------    [display 1224]
+    t = tm.add_trigger('Short ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88897, area_x1=57, area_y1=140, area_x2=58, area_y2=142, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.SEVEN,
@@ -602,8 +602,8 @@ def emit(tm) -> None:
         queue_action=-1,
     )
 
-    # --- #1032  Médio ----------------    [display 1225]
-    t = tm.add_trigger('Médio ---------------- ', description_stid=0, looping=1)
+    # --- #1032  Medium ----------------    [display 1225]
+    t = tm.add_trigger('Medium ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88897, area_x1=59, area_y1=138, area_x2=61, area_y2=142, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.SEVEN,
@@ -619,8 +619,8 @@ def emit(tm) -> None:
         queue_action=-1,
     )
 
-    # --- #1033  Longo ----------------    [display 1226]
-    t = tm.add_trigger('Longo ---------------- ', description_stid=0, looping=1)
+    # --- #1033  Long ----------------    [display 1226]
+    t = tm.add_trigger('Long ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88897, area_x1=62, area_y1=140, area_x2=63, area_y2=142, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.SEVEN,
@@ -784,8 +784,8 @@ def emit(tm) -> None:
     # --- #1041  -- Posição -- ---------    [display 1234]
     t = tm.add_trigger('-- Posição -- --------- ', description_stid=0)
 
-    # --- #1042  Curto ----------------    [display 1235]
-    t = tm.add_trigger('Curto ---------------- ', description_stid=0, looping=1)
+    # --- #1042  Short ----------------    [display 1235]
+    t = tm.add_trigger('Short ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88898, area_x1=72, area_y1=140, area_x2=73, area_y2=142, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.EIGHT,
@@ -801,8 +801,8 @@ def emit(tm) -> None:
         queue_action=-1,
     )
 
-    # --- #1043  Médio ----------------    [display 1236]
-    t = tm.add_trigger('Médio ---------------- ', description_stid=0, looping=1)
+    # --- #1043  Medium ----------------    [display 1236]
+    t = tm.add_trigger('Medium ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88898, area_x1=74, area_y1=138, area_x2=76, area_y2=142, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.EIGHT,
@@ -818,8 +818,8 @@ def emit(tm) -> None:
         queue_action=-1,
     )
 
-    # --- #1044  Longo ----------------    [display 1237]
-    t = tm.add_trigger('Longo ---------------- ', description_stid=0, looping=1)
+    # --- #1044  Long ----------------    [display 1237]
+    t = tm.add_trigger('Long ---------------- ', description_stid=0, looping=1)
     t.new_condition.bring_object_to_area(unit_object=88898, area_x1=77, area_y1=140, area_x2=78, area_y2=142, inverted=-1)
     t.new_effect.task_object(
         source_player=PlayerId.EIGHT,

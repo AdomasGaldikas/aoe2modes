@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from collections import Counter, defaultdict, deque
 
 import pytest
@@ -219,7 +220,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 3_647
+    assert len(triggers) == 3_655
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 956
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -2938,14 +2939,14 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
             purges[0].area_x2,
             purges[0].area_y2,
         ) == (0, 0, 143, 143)
-        assert len(clears) == 2
+        # Only the elimination bit: XS owns p#coloractive and derives it from this.
+        assert len(clears) == 1
         assert chats[0].source_player == -1
         assert "vote-kicked" in chats[0].message
         assert {
             (effect.variable, effect.quantity, effect.operation)
             for effect in clears
         } == {
-            (31 + target, 0, Operation.SET),
             (47 + target, 1, Operation.SET),
         }
         assert defeats[0].source_player == world_player
@@ -2994,15 +2995,29 @@ def test_evolution_alpha_detects_every_color_owner_from_its_castles(
             for effect in detector.effects
             if effect.effect_type == EffectId.CHANGE_VARIABLE
         ]
+        # p#coloractive is deliberately absent: XS is its only writer.
         assert {
             (effect.variable, effect.quantity, effect.operation)
             for effect in variables
         } == {
             (39 + color, world_player, Operation.SET),
-            (31 + color, 1, Operation.SET),
             (88 + color, 3, Operation.SET),
             (112 + color, 3, Operation.SET),
         }
+        # The detector arms exactly the one victory trigger that can match its latch.
+        activations = [
+            effect
+            for effect in detector.effects
+            if effect.effect_type == EffectId.ACTIVATE_TRIGGER
+        ]
+        assert len(activations) == 1
+        armed = next(
+            trigger
+            for trigger in evolution_alpha.trigger_manager.triggers
+            if trigger.trigger_id == activations[0].trigger_id
+        )
+        assert armed.name == f"Color Team Victory S{color} W{world_player}"
+        assert not armed.enabled
         deactivations = [
             effect
             for effect in detector.effects
@@ -3606,7 +3621,9 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
 
     for trigger in defeat_triggers:
         color, world_player = map(int, defeat_pattern.fullmatch(trigger.name).groups())
-        assert not trigger.enabled
+        # Defeat is a map state, not a one-shot Destroy Object event: the resolver has
+        # to be live from the start so any way the Castles leave the row resolves it.
+        assert trigger.enabled
         assert len(trigger.conditions) == 4
         variable_conditions = [
             condition
@@ -3655,7 +3672,6 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             (effect.variable, effect.quantity, effect.operation)
             for effect in variable_changes
         } == {
-            (31 + color, 0, Operation.SET),
             (47 + color, 1, Operation.SET),
         }
         removals = [
@@ -3709,7 +3725,6 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             (effect.variable, effect.quantity, effect.operation)
             for effect in changes
         } == {
-            (31 + color, 0, Operation.SET),
             (47 + color, 1, Operation.SET),
         }
         removals = [
@@ -3766,10 +3781,51 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
         } == {trigger.trigger_id}
 
+    # Fallback elimination: independent of both the trigger-side p#worldplayer latch
+    # and the XS lobby-slot domain, so a disagreement between them cannot deadlock.
+    castle_areas = castle_row_areas(evolution_alpha)
+    row_empty = {
+        int(match.group(1)): trigger
+        for trigger in triggers
+        if (match := re.fullmatch(r"Color Castle Row Empty S([1-8])", trigger.name))
+    }
+    assert set(row_empty) == set(range(1, 9))
+    for color, trigger in row_empty.items():
+        assert trigger.enabled and not trigger.looping
+        timers = [
+            condition
+            for condition in trigger.conditions
+            if condition.condition_type == ConditionId.TIMER
+        ]
+        guards = [
+            condition
+            for condition in trigger.conditions
+            if condition.condition_type == ConditionId.OBJECTS_IN_AREA
+        ]
+        assert len(trigger.conditions) == len(timers) + len(guards)
+        assert len(timers) == 1 and timers[0].timer == 3
+        # One inverted guard per candidate owner: the row is empty for everyone.
+        assert {condition.source_player for condition in guards} == set(range(1, 9))
+        for condition in guards:
+            assert condition.object_list == BuildingInfo.CASTLE.ID
+            assert condition.inverted == 1
+            assert (
+                condition.area_x1,
+                condition.area_y1,
+                condition.area_x2,
+                condition.area_y2,
+            ) == castle_areas[color]
+        assert [
+            (effect.effect_type, effect.variable, effect.quantity, effect.operation)
+            for effect in trigger.effects
+        ] == [(EffectId.CHANGE_VARIABLE, 47 + color, 1, Operation.SET)]
+
     victory_effects = []
     for trigger in victory_triggers:
         color, world_player = map(int, victory_pattern.fullmatch(trigger.name).groups())
         opponents = set(range(5, 9) if color <= 4 else range(1, 5))
+        # Armed by the matching owner detector, never live on its own.
+        assert not trigger.enabled
         timers = [
             condition
             for condition in trigger.conditions
@@ -5307,3 +5363,447 @@ def test_free_costs_are_activated_only_for_occupied_slots(evolution_alpha):
             f"Occupied Slot S{color} W{player}"
             for color in range(1, 9)
         }
+
+
+def ascendants_build_module():
+    """The mode's own build.py, as the builder imported it for the fixture."""
+    return sys.modules["aoe2modes._modes.evolution_alpha"]
+
+
+COLOR_ACTIVE_VARIABLES = {color: 31 + color for color in range(1, 9)}
+COLOR_WORLD_VARIABLES = {color: 39 + color for color in range(1, 9)}
+COLOR_ELIMINATED_VARIABLES = {color: 47 + color for color in range(1, 9)}
+MATCH_READY_VARIABLE = 56
+VICTORY_STATE_VARIABLES = (
+    set(COLOR_ACTIVE_VARIABLES.values())
+    | set(COLOR_WORLD_VARIABLES.values())
+    | set(COLOR_ELIMINATED_VARIABLES.values())
+    | {MATCH_READY_VARIABLE}
+)
+
+
+def _victory_subsystem(scenario):
+    """Every trigger that can move victory state, plus whatever activates it.
+
+    Selected from the serialized data, never by name: a trigger belongs if it writes a
+    variable in the victory block or declares a victory/defeat, and the set is then
+    closed over incoming Activate Trigger edges so nothing that gates the subsystem is
+    left outside the model.
+    """
+    triggers = scenario.trigger_manager.triggers
+    by_id = {trigger.trigger_id: trigger for trigger in triggers}
+    selected = {
+        trigger.trigger_id
+        for trigger in triggers
+        if any(
+            (
+                effect.effect_type == EffectId.CHANGE_VARIABLE
+                and effect.variable in VICTORY_STATE_VARIABLES
+            )
+            or effect.effect_type == EffectId.DECLARE_VICTORY
+            for effect in trigger.effects
+        )
+    }
+    frontier = set(selected)
+    while frontier:
+        pending = set()
+        for trigger in triggers:
+            if trigger.trigger_id in selected:
+                continue
+            if any(
+                effect.effect_type == EffectId.ACTIVATE_TRIGGER
+                and effect.trigger_id in frontier
+                for effect in trigger.effects
+            ):
+                pending.add(trigger.trigger_id)
+        selected |= pending
+        frontier = pending
+    return [by_id[trigger_id] for trigger_id in sorted(selected)]
+
+
+def _run_victory_subsystem(subsystem, castle_areas, seats, phases):
+    """Run the subsystem to a fixpoint per phase and return every declared winner.
+
+    ``seats`` maps a colour to the lobby slot XS resolves for it; a colour absent from
+    it is a closed slot. Each phase is a ``(trigger_owner, castles)`` pair describing
+    the map at that point: ``trigger_owner`` is the trigger-side player number holding
+    a row's Castles — a separate identity domain from ``seats``, which may disagree —
+    and ``castles`` says whether each row still has Castles at all.
+
+    Phases exist because start-up ordering is part of the contract: owner detection and
+    the two-sided readiness latch run while every base is still standing, and only then
+    do Castles start falling. Collapsing that into one state would test a map that no
+    match ever passes through.
+
+    Timers are treated as elapsed, because the question is eventual reachability.
+    ``Destroy Object`` conditions evaluate to false on purpose: an object can leave the
+    map by being removed rather than destroyed, so nothing that resolves a match may
+    depend on that condition ever becoming true.
+    """
+    row_color = {area: color for color, area in castle_areas.items()}
+    variables = defaultdict(int)
+    enabled = {trigger.trigger_id: bool(trigger.enabled) for trigger in subsystem}
+    winners = set()
+    seated_slots = set(seats.values())
+    trigger_owner, castles = {}, {}
+
+    def refresh_active():
+        # cbaUpdateColorRuntime: XS is the only writer of p#coloractive.
+        for color in range(1, 9):
+            eliminated = variables[COLOR_ELIMINATED_VARIABLES[color]] == 1
+            variables[COLOR_ACTIVE_VARIABLES[color]] = int(
+                color in seats and not eliminated
+            )
+
+    def castle_present(condition):
+        area = (
+            condition.area_x1,
+            condition.area_y1,
+            condition.area_x2,
+            condition.area_y2,
+        )
+        color = row_color[area]
+        return castles[color] and trigger_owner.get(color) == condition.source_player
+
+    def holds(condition):
+        kind = condition.condition_type
+        if kind == ConditionId.TIMER:
+            return True
+        if kind == ConditionId.DESTROY_OBJECT:
+            return False
+        if kind == ConditionId.VARIABLE_VALUE:
+            value = variables[condition.variable]
+            if condition.comparison == Comparison.EQUAL:
+                return value == condition.quantity
+            assert condition.comparison == Comparison.LARGER_OR_EQUAL, (
+                condition.comparison
+            )
+            return value >= condition.quantity
+        if kind == ConditionId.OBJECTS_IN_AREA:
+            assert condition.object_list == BuildingInfo.CASTLE.ID
+            present = castle_present(condition)
+            return not present if condition.inverted == 1 else present
+        assert kind == ConditionId.PLAYER_DEFEATED, ConditionId(kind).name
+        return condition.source_player not in seated_slots
+
+    for phase_owner, phase_castles in phases:
+        trigger_owner, castles = phase_owner, phase_castles
+        for _pass in range(64):
+            changed = False
+            refresh_active()
+            for trigger in subsystem:
+                if not enabled[trigger.trigger_id]:
+                    continue
+                if not all(holds(condition) for condition in trigger.conditions):
+                    continue
+                if not trigger.looping:
+                    enabled[trigger.trigger_id] = False
+                    changed = True
+                for effect in trigger.effects:
+                    if effect.effect_type == EffectId.CHANGE_VARIABLE:
+                        if effect.variable not in VICTORY_STATE_VARIABLES:
+                            continue
+                        assert effect.operation == Operation.SET
+                        if variables[effect.variable] != effect.quantity:
+                            variables[effect.variable] = effect.quantity
+                            changed = True
+                    elif effect.effect_type == EffectId.ACTIVATE_TRIGGER:
+                        if (
+                            effect.trigger_id in enabled
+                            and not enabled[effect.trigger_id]
+                        ):
+                            enabled[effect.trigger_id] = True
+                            changed = True
+                    elif effect.effect_type == EffectId.DEACTIVATE_TRIGGER:
+                        if enabled.get(effect.trigger_id):
+                            enabled[effect.trigger_id] = False
+                            changed = True
+                    elif (
+                        effect.effect_type == EffectId.DECLARE_VICTORY and effect.enabled
+                    ):
+                        if effect.source_player not in winners:
+                            winners.add(effect.source_player)
+                            changed = True
+                refresh_active()
+            if not changed:
+                break
+        else:  # pragma: no cover - a fixpoint always exists here
+            raise AssertionError("victory subsystem did not settle")
+    return winners
+
+
+#: Colour -> lobby slot XS resolves for it. Unlisted colours are closed slots.
+LOBBY_SHAPES = {
+    "full 4v4": {color: color for color in range(1, 9)},
+    "solo vs four": {1: 1, 5: 2, 6: 3, 7: 4, 8: 5},
+    "four vs solo": {1: 1, 2: 2, 3: 3, 4: 4, 5: 5},
+    "minimum 1v1": {1: 1, 5: 2},
+    "non-adjacent 2v2": {2: 1, 4: 2, 5: 3, 8: 4},
+    "shuffled full": {1: 3, 2: 1, 3: 2, 4: 4, 5: 6, 6: 5, 7: 8, 8: 7},
+}
+
+
+def _starting_rows(seats, closed_slots_cleaned):
+    """Trigger-side owner and Castle presence for every row at match start."""
+    owners = {}
+    castles = {}
+    for color in range(1, 9):
+        if color in seats:
+            owners[color] = seats[color]
+            castles[color] = True
+        elif closed_slots_cleaned:
+            owners[color] = None
+            castles[color] = False
+        else:
+            owners[color] = color
+            castles[color] = True
+    return owners, castles
+
+
+def test_evolution_alpha_victory_resolves_for_every_lobby_shape(evolution_alpha):
+    """A side that has actually lost its Castles must always end the match.
+
+    This is the liveness counterpart to the structural victory test. It walks the
+    serialized victory subsystem as a state machine rather than checking trigger
+    shapes, so a match that can never resolve fails here even though every trigger is
+    individually well formed and the strict structural audit is clean.
+    """
+    subsystem = _victory_subsystem(evolution_alpha)
+    castle_areas = castle_row_areas(evolution_alpha)
+
+    for shape, seats in LOBBY_SHAPES.items():
+        for closed_slots_cleaned in (False, True):
+            for side in (range(1, 5), range(5, 9)):
+                losers = [color for color in side if color in seats]
+                survivors = [color for color in seats if color not in set(side)]
+                if not losers or not survivors:
+                    continue
+                start = _starting_rows(seats, closed_slots_cleaned)
+                owners, castles = _starting_rows(seats, closed_slots_cleaned)
+                # The winning side razes exactly the occupied enemy bases. It must
+                # never have to raze a colour nobody is playing.
+                for color in losers:
+                    castles[color] = False
+                    owners[color] = None
+                winners = _run_victory_subsystem(
+                    subsystem, castle_areas, seats, [start, (owners, castles)]
+                )
+                assert winners == {seats[color] for color in survivors}, (
+                    f"{shape}, closed slots cleaned={closed_slots_cleaned}, "
+                    f"side {tuple(side)} eliminated"
+                )
+
+    for shape, seats in LOBBY_SHAPES.items():
+        for closed_slots_cleaned in (False, True):
+            start = _starting_rows(seats, closed_slots_cleaned)
+            assert (
+                _run_victory_subsystem(subsystem, castle_areas, seats, [start])
+                == set()
+            ), f"{shape} declared a winner while both sides still hold Castles"
+
+
+def test_evolution_alpha_victory_survives_split_player_identity(evolution_alpha):
+    """The two player-identity domains may disagree without deadlocking the match.
+
+    ``p#worldplayer`` is latched from the trigger-side Castle owner; ``p#coloractive``
+    comes from ``xsGetWorldPlayerId``. A sparse lobby can make the two differ. When they
+    do, every owner-resolved defeat trigger for that colour is unsatisfiable, so the
+    match can only end because elimination also has a path needing neither latch.
+    """
+    subsystem = _victory_subsystem(evolution_alpha)
+    castle_areas = castle_row_areas(evolution_alpha)
+    seats = {1: 1, 5: 2, 6: 3, 7: 4, 8: 5}
+
+    # Start-up: every occupied row resolves to a live lobby slot on the trigger side,
+    # but a different one from the seat XS resolves for that colour.
+    skewed = {1: 5, 5: 1, 6: 2, 7: 3, 8: 4}
+    assert set(skewed.values()) == set(seats.values())
+    assert all(skewed[color] != seats[color] for color in (1, 5, 6, 7))
+    start_owners, start_castles = _starting_rows(seats, False)
+    start_owners.update(skewed)
+    start = (start_owners, start_castles)
+
+    for losing_side in ((5, 6, 7, 8), (1,)):
+        surviving = [color for color in seats if color not in losing_side]
+        owners = dict(start_owners)
+        castles = dict(start_castles)
+        for color in losing_side:
+            # Worst case: the rows do not merely empty, the trigger layer also stops
+            # resolving an owner for them, so no Color Defeat Resolve can ever match
+            # and only the row-empty fallback can clear the victory gate.
+            owners[color] = None
+            castles[color] = False
+        # The match resolves through the trigger-side owner of each surviving colour.
+        # Which lobby slot that names is the pre-existing property of trigger player
+        # fields; that it resolves at all is what this test pins.
+        assert (
+            _run_victory_subsystem(
+                subsystem, castle_areas, seats, [start, (owners, castles)]
+            )
+            == {start_owners[color] for color in surviving}
+        ), losing_side
+
+
+def test_evolution_alpha_color_active_has_exactly_one_writer(evolution_alpha):
+    """Only XS writes p#coloractive; triggers read it and write elimination instead.
+
+    Two writers with different semantics used to agree only by convention: every
+    trigger path that cleared the active bit also had to set the elimination bit, or
+    XS put the active bit straight back within a second.
+    """
+    trigger_writes = [
+        (trigger.name, effect.variable)
+        for trigger in evolution_alpha.trigger_manager.triggers
+        for effect in trigger.effects
+        if effect.effect_type == EffectId.CHANGE_VARIABLE
+        and effect.variable in set(COLOR_ACTIVE_VARIABLES.values())
+    ]
+    assert trigger_writes == []
+
+    readers = {
+        trigger.name
+        for trigger in evolution_alpha.trigger_manager.triggers
+        for condition in trigger.conditions
+        if condition.condition_type == ConditionId.VARIABLE_VALUE
+        and condition.variable in set(COLOR_ACTIVE_VARIABLES.values())
+    }
+    assert len(readers) > 100
+
+    xs_source = next(
+        effect.message
+        for trigger in evolution_alpha.trigger_manager.triggers
+        for effect in trigger.effects
+        if effect.effect_type == EffectId.SCRIPT_CALL and effect.message
+    )
+    assert "void cbaUpdateColorRuntime(int scenarioPlayer = 0)" in xs_source
+    assert "gCbaSeenInGameByColor" in xs_source
+
+
+def test_evolution_alpha_xs_addresses_trigger_variables_through_named_bases(
+    evolution_alpha,
+):
+    """No XS variable access may hard-code a block base as a bare literal.
+
+    The read and the write of the pending-builder variable sat next to each other, one
+    using the interpolated base and one using ``scenarioPlayer - 1``. They agreed only
+    because that base happens to be zero.
+    """
+    xs_source = next(
+        effect.message
+        for trigger in evolution_alpha.trigger_manager.triggers
+        for effect in trigger.effects
+        if effect.effect_type == EffectId.SCRIPT_CALL and effect.message
+    )
+    accesses = re.findall(
+        r"xs(?:Set)?TriggerVariable\(\s*([^,)]+)",
+        xs_source,
+    )
+    assert accesses
+    for expression in accesses:
+        expression = " ".join(expression.split())
+        if expression.startswith("variableBase"):
+            continue
+        assert re.fullmatch(r"\d+ \+ scenarioPlayer - 1", expression), expression
+
+
+def test_evolution_alpha_bans_every_auto_spawned_unique_unit(evolution_alpha):
+    """Nobody may hand-train the unit their own Castles already produce for free.
+
+    The ban is derived from CIV_SPAWN_RULES rather than the imported per-colour lists,
+    so a civilization added to that table cannot be left trainable by omission.
+    """
+    build_module = ascendants_build_module()
+    banned = set()
+    CIV_SPAWN_RULES = build_module.CIV_SPAWN_RULES
+    _unit_family = build_module._unit_family
+    for unit_id, _cap, _interval in CIV_SPAWN_RULES.values():
+        banned |= _unit_family(unit_id)
+    assert len(banned) >= len(CIV_SPAWN_RULES)
+
+    for player in range(1, 9):
+        disabled = set(evolution_alpha.player_manager.players[player].disabled_units)
+        assert banned <= disabled, sorted(banned - disabled)
+
+    # Every Elite unit the mode spawns also has its non-Elite form covered.
+    assert UnitInfo.ELITE_HUSKARL_BARRACKS.ID in banned
+    assert UnitInfo.HUSKARL_BARRACKS.ID in banned
+
+
+def test_evolution_alpha_bans_every_castle_class_building(evolution_alpha):
+    """Krepost and Donjon are Castles by another name and follow the same rule."""
+    castle_class = {
+        BuildingInfo.CASTLE.ID,
+        BuildingInfo.KREPOST.ID,
+        BuildingInfo.DONJON.ID,
+    }
+    for player in range(1, 9):
+        disabled = set(evolution_alpha.player_manager.players[player].disabled_buildings)
+        assert castle_class <= disabled, sorted(castle_class - disabled)
+
+
+def test_evolution_alpha_has_no_imported_language_dependencies(evolution_alpha):
+    """The hand-maintained scenario layer no longer carries its source's language."""
+    assert ascendants_build_module().HERO_ORDER_FAMILIES == ("Short", "Medium", "Long")
+    leftovers = [
+        trigger.name
+        for trigger in evolution_alpha.trigger_manager.triggers
+        if any(word in trigger.name for word in ("Curto", "Médio", "Longo"))
+    ]
+    assert leftovers == []
+
+
+def test_evolution_alpha_readme_tracks_the_built_version(repo):
+    """The mode README states the version mode.toml actually builds."""
+    spec = registry.get("evolution_alpha", repo)
+    readme = (repo.modes / "evolution_alpha" / "README.md").read_text(encoding="utf-8")
+    assert readme.splitlines()[0] == f"# CBA Hero: Ascendants v{spec.version}"
+    assert f"v{spec.version}.aoe2scenario" in readme
+
+
+def test_ascendants_docs_civilization_table_matches_the_source(repo, evolution_alpha):
+    """docs/ascendants-data-tables.md reproduces CIV_SPAWN_RULES row for row.
+
+    The table is the runbook's reference for adding a civilization. A silently stale
+    row there is worse than no table: it reads as authoritative.
+    """
+    build_module = ascendants_build_module()
+    doc = (repo.root / "docs" / "ascendants-data-tables.md").read_text(encoding="utf-8")
+    documented = {
+        int(civilization): (int(unit), int(cap), int(interval), int(threshold))
+        for civilization, unit, cap, interval, threshold in re.findall(
+            r"^\| (\d+) \| [^|]+ \| [^|]*\((\d+)\) \| (\d+) \| (\d+) \| (\d+) \|$",
+            doc,
+            re.M,
+        )
+    }
+    expected = {
+        civilization: (unit, cap, interval, build_module.CIV_BUILDER_RULES[civilization][1])
+        for civilization, (unit, cap, interval) in build_module.CIV_SPAWN_RULES.items()
+    }
+    assert documented == expected
+
+
+def test_ascendants_docs_variable_registry_matches_the_source(repo, evolution_alpha):
+    """Every variable block in the docs has the base id build.py actually uses."""
+    build_module = ascendants_build_module()
+    doc = (repo.root / "docs" / "ascendants-data-tables.md").read_text(encoding="utf-8")
+    rows = re.findall(r"^\| (\d+)(?:–(\d+))? \| `([A-Z_]+)`", doc, re.M)
+    documented_bases = {constant: int(first) for first, _last, constant in rows}
+    expected_bases = {
+        name: getattr(build_module, name)
+        for name in dir(build_module)
+        if name.endswith(("_VARIABLE_BASE", "_VARIABLE_ID"))
+    }
+    assert documented_bases == expected_bases
+
+    # The documented ranges must also account for every serialized variable, so a new
+    # block cannot be added to build.py and left out of the registry.
+    documented_ids = {
+        variable_id
+        for first, last, _constant in rows
+        for variable_id in range(int(first), int(last or first) + 1)
+    }
+    assert documented_ids == {
+        variable.variable_id
+        for variable in evolution_alpha.trigger_manager.variables
+    }

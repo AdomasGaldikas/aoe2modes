@@ -1,20 +1,20 @@
-# Ascendants v1.0.16 candidate issue register
+# Ascendants v1.0.17 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.16** is the active source-verified candidate;
-v1.0.15 remains the immediately preceding candidate for focused comparison only.
+repair targets. **v1.0.17** is the active source-verified candidate;
+v1.0.16 remains the immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.16 candidate is 153,600 bytes with SHA-256
-`e76e6fd20e4f2ab0e7419234131e01cac45f11b9c3572c831a6b0637351c03ad`.
+The v1.0.17 candidate is 145,667 bytes with SHA-256
+`fe6e287ea09ce9abeaae221d72bf9e0aec6a8fdcca85fe6b6804b95c756d44e4`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.16 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.17 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -33,7 +33,7 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-015 | Armies ordered back toward their Castles turned around at an invisible line. | Guarded and expanded in v1.0.13 | All 384 level 0–5 Castle-army route triggers require a color-specific new-wave variable set by XS only after unit creation. Each task captures only its exact cell-centred creation pad, and the selected owner route consumes the pulse once; no pulse means no task effect. | For all eight colors and every Sheep level, let a wave leave, order it back across all four spawn pads, and confirm the manual order remains. |
 | ASC-016 | The marked milestone shoreline rejected building placement. | Guarded | The exact 20-cell Beach ribbon is transformed eight ways into 160 unique Grass 2 cells. Tests pin its terrain, elevation, layer, symmetry, and whole-map terrain hash. | Place representative buildings throughout every repaired shore strip, including the former corners. |
 | ASC-017 | Marker ships added no value and could not be made reliable. | Resolved by removal | The serialized scenario contains zero Transport Ships. Their creation pass and all 56 marker protection effects are deleted; milestone hero creation and orders remain independently tested. | Confirm all eight shores are clear and milestone heroes still spawn normally. |
-| ASC-018 | A resigned player's units and buildings remained on the map. | Guarded | Each of the 64 color/runtime resignation resolvers has one full-map `REMOVE_OBJECT` effect scoped to its resolved runtime player, alongside the eliminated/active state changes. | Resign one player in full 4v4 and a compacted sparse lobby; all of that player's objects must disappear without touching anyone else. |
+| ASC-018 | A resigned player's units and buildings remained on the map. | Guarded | Each of the 64 color/runtime resignation resolvers has one full-map `REMOVE_OBJECT` effect scoped to its resolved runtime player, alongside the elimination latch that XS reads. | Resign one player in full 4v4 and a compacted sparse lobby; all of that player's objects must disappear without touching anyone else. |
 | ASC-019 | None of the five shared Sheep positions worked reliably; 200/400+ kill Heroes always took the default route. | Replaced in v1.0.13; containment revised in v1.0.14 | The five-point mechanism is gone. Per color, 6 Sheep selectors write Castle-army level 0–5 and 6 Penguin selectors write Hero level 0–5. Each family partitions its own water-isolated 9×2 track. Exactly 384 Castle and 320 Hero owner mappings consume separate one-shot pulses. | For every color in full and sparse lobbies, move the Sheep and Penguin through every level. New units must follow the selected controller only; existing units must retain manual orders. Confirm attempted cross-track orders cannot leave the controller's own track. |
 | ASC-020 | Red/Green and Green/Yellow armies spawned from or routed through one another's Castle territories in shuffled lobbies. | Corrected and guarded in v1.0.11 | The v1.0.8–v1.0.10 implementation conflated trigger player selectors with XS world players. XS now uses the engine's `xsGetWorldPlayerId(scenarioPlayer)` conversion, while trigger effects keep the independent Castle-row resolver. Tests pin that boundary and the complete control chain; all 32 pads are dry, unique, empty, transformed as cells from one canonical row, created at their centres, and closest to their own Castles. | Start a full lobby with Red and Green reversed, then Yellow before Green, then another shuffled order. Confirm each territory's army color/civilization, Sheep route, heroes, HUD, rewards, resignation, and victory stay with that Castle row. |
 | ASC-021 | Anti-Trebuchet protection did not cover the Castles of P4, P6, P7, or P8. | Guarded in v1.0.9 | Anti-Trebuchet zones derive from one canonical P3 rectangle through an independent eight-way transform. Every color's zone is one mirror orbit, covers all four of its Castles, and stays clear of its rear route. Effects remove packed Trebuchets for all owners inside the exclusion zones; the rule is not enemy-only. Separate wall-breach removal uses exact references, not rectangles, as recorded in ASC-029. | Place an enemy packed Trebuchet beside each Castle row, especially P4/P6/P7/P8; it must be removed without affecting friendly rear-route units. |
@@ -64,14 +64,33 @@ The 50-second Scorpion reward cleanup is intentional and unchanged. Both ordinar
 Scorpion training types were already disabled. The detailed audit record is in
 [`RELEASE_NOTES_v1.0.16.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.16.md).
 
+## v1.0.17 source review additions
+
+Reported from a live 1 v 4 game: one player destroyed every enemy Castle and every
+reachable building, and the match never ended. The review that followed found the
+victory path had three independent ways to become unreachable, plus roster and
+maintenance defects around it. All are fixed in v1.0.17; the detailed record is in
+[`RELEASE_NOTES_v1.0.17.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.17.md).
+
+| ID | Finding | Source status and verification | Required game check |
+| --- | --- | --- | --- |
+| ASC-039 | A match can deadlock with one side visibly wiped out | Fixed. Victory is gated on `p#coloractive`, which XS clears only from `p#coloreliminated`, and elimination had a single reachable path: the one-shot `castle (p#)` chain of four `Destroy Object` conditions. A Castle that leaves the map by `Remove Object`, a purge, or engine slot cleanup can never satisfy that condition, so the colour stayed alive and un-eliminable forever. `Color Defeat Resolve` now ships enabled and fires from its own Castle-row condition, and eight `Color Castle Row Empty S#` triggers clear the gate from map state alone. Two liveness tests walk the serialized subsystem as a state machine over six lobby shapes × closed slots cleaned/left × both sides, plus a split player identity; both fail on the pre-fix build. | Replay the reported 1 v 4. After the last enemy Castle falls the match must end within about five seconds. Repeat with a resignation and with a closed slot on the losing side. |
+| ASC-040 | Elimination and aliveness came from two different identity domains | Fixed. `p#worldplayer` is latched in the trigger-player domain; `p#coloractive` is written by `xsGetWorldPlayerId` in the lobby-slot domain. When those disagree, none of a colour's eight owner-resolved resolvers can match while it reads alive. The row-empty fallback needs neither latch. XS additionally latches elimination once a colour that was seen in game leaves it. | Shuffled and sparse lobbies: eliminate a colour whose lobby slot number differs from its scenario colour and confirm the match still resolves. |
+| ASC-041 | `p#coloractive` had two writers with different semantics | Fixed. XS is now the sole writer; every trigger path writes only `p#coloreliminated`. It previously worked by convention — a trigger clearing the active bit without also setting elimination was reverted within one second — and a regression now rejects any trigger effect targeting that block. | None; structural. |
+| ASC-042 | Seven civilizations could hand-train their own auto-spawned unique unit | Fixed. The Immortal, Companion Cavalry, Rhomphaia Warrior, Pattiyodha Longbowman, Temple Guard, Bolas Rider and Ibirapema Warrior were absent from the imported per-colour bans, so those civilizations could queue their unique unit for free on top of the automatic army. The ban is now derived from `CIV_SPAWN_RULES` and covers Elite/non-Elite and ranged/melee siblings; the roster grew from 143 to 159 units. | As each of the seven, open every military building and confirm the unique unit cannot be trained. |
+| ASC-043 | Krepost and Donjon escaped the Castle ban | Fixed. `CASTLE` was banned, but the two civilization-specific castle-class fortifications were not, so Bulgarians and Sicilians could raise unlimited free fortresses — and the Donjon trains Serjeants. All three are banned together; the building roster grew from 14 to 16. Inherited id 621, which resolves to no building in the pinned dataset, is deliberately left in place: removing a ban is a live gameplay change and a ban on an absent id is inert. | As Bulgarians and Sicilians, confirm neither Krepost nor Donjon is buildable and no other fortification changed. |
+| ASC-044 | XS wrote a trigger-variable block through a bare literal base | Fixed. `cbaQueueColorBuilders` read the pending-builder variable through the interpolated base and wrote it through `scenarioPlayer - 1`; the two agreed only because that base is zero. A regression now requires every XS trigger-variable access to address a named base. | None; structural. |
+| ASC-045 | 64-way victory fan-out stayed live for the whole match | Improved. `Color Team Victory` ships disabled and is armed by the single owner detector whose latch it can match, so 56 of the 64 leave the tick loop at start-up. Initially enabled triggers are unchanged at 3,195 because the 64 defeat resolvers became enabled in the same change. | None; structural. |
+| ASC-046 | Imported Portuguese trigger names and a stale README | Fixed. The three hero-order template triggers are named in English in the `scenario/` source, so the build no longer keys on the imported scenario's display language. The mode README tracked v1.0.15 while `mode.toml` and the docs were on v1.0.16; a regression now asserts the README title matches `mode.toml`. | None; structural. |
+
 ## Additional parser findings
 
-The v1.0.16 serialized candidate passes the strict structural audit with **0 errors and
+The v1.0.17 serialized candidate passes the strict structural audit with **0 errors and
 0 warnings**, with:
 
-- 3,647 uniquely named, non-empty triggers and a complete display order;
-- 3,187 initially enabled triggers and 3,638 conservatively reachable triggers;
-- 15,009 conditions and 14,936 effects;
+- 3,655 uniquely named, non-empty triggers and a complete display order;
+- 3,195 initially enabled triggers and 3,646 conservatively reachable triggers;
+- 15,081 conditions and 14,752 effects;
 - 956 unique object references, all on-map, with no dangling garrisons;
 - 121 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
@@ -79,7 +98,7 @@ The v1.0.16 serialized candidate passes the strict structural audit with **0 err
 - no reachable looping trigger without a Timer condition;
 - no reachable unconditional remove, kill, victory, or defeat trigger.
 
-All 125 repository tests pass (65 Ascendants, 60 others). Repository Ruff checks and
+All 133 repository tests pass (73 Ascendants, 60 others). Repository Ruff checks and
 the full 616-line embedded XS build pass. Readback comparison confirms every terrain
 cell and all 956 placed objects are unchanged from v1.0.15. The installed
 game scenario matches the SHA-256 above. None of these checks substitutes for the
@@ -99,7 +118,7 @@ Run the same audit after every build:
 ```bash
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.16.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.17.aoe2scenario" --strict
 ```
 
 The normal command fails only on structural errors; `--strict` also
