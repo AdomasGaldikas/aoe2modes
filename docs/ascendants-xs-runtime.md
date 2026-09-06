@@ -73,39 +73,25 @@ custom HUD and did not purge on defeat. The shared runtime resolver used
 precise engine failure is not yet captured; source assertions that the converter was
 called were not behavioral proof.
 
-v1.0.19 generates a 32-entry table from the final four placed Castle reference ids per
-color. `cbaWorldPlayerForColor` reads their owners with `xsGetUnitOwner`, validates live
-player ids 1–8, rejects inconsistent or duplicate territory bindings, and caches the
-result in `gCbaWorldByColor`. An unresolved color retries. A resolved color keeps its
-owner after all Castles disappear or its player resigns; it never remaps mid-match.
-The four consumers (HUD, active/occupied state, army spawning, builder rewards) share
-this boundary. XS generation occurs after final map/object processing.
+v1.0.19's Castle-reference lookup also failed live acceptance. v1.0.20 removes both
+lookup dependencies. Native owner detection latches occupancy after lobby settling;
+HUD values copy kills/deaths/razings from that same trigger owner. Elimination,
+cleanup and victory do not require a successful XS identity binding.
 
-`xsGetWorldPlayerId` remains only in a one-shot ten-second chat diagnostic:
-`[CBA identity] color:Castle-owner/converter P1:...`. Zero Castle-owner means unresolved
-or closed; occupied P7/P8 must be positive. Capture this line if live behavior fails.
+XS stamps `1000 + API player index` into reserved unused resource **10** for each
+runtime player in `main()`. Each `Color XS Identity S# W#` trigger waits for its
+Castle-owner latch and a token in 1001–1008, then copies that owner's resource into
+variables 137–144. The resolver subtracts 1000 and rejects out-of-range values.
+This translates through shared player data, never by assuming the two index domains
+agree. A delayed token retries; a successful binding remains after elimination.
+Resource 10 must not be reused by score, economy or civilization changes.
 
-Rules that follow from this:
-
-1. **XS never reads variables 40–47.** They carry the historical serialized name
-   `p#worldplayer`, which is actively misleading: they are trigger-side selectors. Passing
-   one into an XS player API is the ASC-020 bug.
-2. **Triggers keep their independent Castle-row resolver.** XS never imports that id.
-3. Every XS function that touches a player starts by converting the scenario color and
-   bailing out if the result is not a live slot:
-
-   ```c
-   int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
-   if (worldPlayer < 1 || xsGetPlayerInGame(worldPlayer) == false) {
-       return;
-   }
-   ```
-
-Tests execute the emitted resolver's limited C-like subset with mocked engine reads,
-including all 255 nonempty closed-color subsets in two seat orders, delayed objects,
-invalid/duplicate owners and post-elimination caching. They also pin reference ids
-against the serialized Castles. This proves resolver behavior given those API results,
-not DE reference-id stability or native API behavior: live acceptance is mandatory.
+XS never reads trigger-selector variables 40–47. Spawning and builder rewards require
+native occupancy, no elimination, and a valid decoded token. The objective HUD and
+participation no longer depend on XS conversion or aliveness reads. The old debug
+chat is removed. Tests exercise all 255 nonempty color subsets in two seat orders
+with independently permuted trigger owners, plus delayed/invalid tokens and zero-
+binding HUD/cleanup. These checks do not emulate native DE execution.
 
 ## The variable bridge
 
@@ -148,14 +134,13 @@ All XS globals are arrays created in `main()`:
 | `gCbaNameByCiv` | civilization id | Public civilization name for chat |
 | `gCbaBuilderThresholdByCiv` | civilization id | Razings needed for the first builder pair |
 | `gCbaEarnedBuilderPairsByColor` | scenario color (size 9) | Pairs earned so far, for edge detection |
-| `gCbaSeenInGameByColor` | scenario color (size 9) | Whether this color was ever seen live |
 
 Colour-indexed arrays are size 9 so that scenario color `n` indexes slot `n` directly with
 no off-by-one arithmetic at every use site.
 
 ## What `main()` does once
 
-Beyond filling the tables, `main()` walks every player in the lobby and:
+Beyond filling the tables, `main()` stamps resource 10 with its XS API identity token, then walks every player in the lobby and:
 
 - sets food/wood/stone/gold cost to zero for **every technology** the player has;
 - sets food/wood/stone/gold cost to zero for **every object** the player has;
@@ -192,40 +177,26 @@ An unmapped civilization returns early and silently. That silence is covered by
 
 ### `cbaCombatHudValues` — every 2s
 
-Calls `cbaUpdateCombatRow(color)`, which publishes kills, deaths and razings into that
-color's three HUD variables and then calls `cbaRefreshCombatValues`, which zeroes the
-thirteen non-combat score attributes and republishes kill/death/razing value from live
-engine attributes.
+Calls `cbaUpdateCombatRow(color)`, which refreshes combat-only score weighting for a
+resolved XS player. Native `Color Combat Values S# W#` triggers separately copy
+resource 20 (kills), 154 (deaths), and 43 (razings) into HUD variables 8–31 every 2s.
+HUD activation reads persistent occupancy and the trigger owner, not XS identity.
 
 ### `cbaColorRuntimeState` — every 1s
 
 Calls `cbaUpdateColorRuntime(color)`. **This is the sole writer of `p#coloractive`.**
 
 ```
-active = 1  iff  world player >= 1  AND  slot in game  AND  not eliminated
+active = 1 iff native occupied latch == 1 AND eliminated latch == 0
 ```
 
-It also **latches elimination**: a color that was seen in the game and has now left it
-gets its eliminated bit set. Without that latch, the active bit would flap back on if the
-engine ever reported the slot in game again, and the opposing side's victory would never
-resolve. v1.0.18 cleanup instead uses a persistent occupied-color flag and the cached
-trigger-side owner, so becoming inactive cannot disable object removal.
-
-Triggers write only `p#coloreliminated`. A second trigger-side writer of `p#coloractive`
-used to be silently reverted here within one second unless every defeat path also
-remembered to write the elimination bit — which made every future defeat path depend on
-remembering an unrelated second write.
-`test_evolution_alpha_color_active_has_exactly_one_writer` pins this.
-
-v1.0.18 adds two trigger-variable blocks: `coloroccupied` (121–128) is latched by
-XS when a color is first observed in-game; `colorcleaned` (129–136) initializes to
-1 in `main` for empty slots, then resets to 0 on the first in-game observation.
-Only owner-empty confirmation sets an occupied eliminated color clean again.
-The first-observation test uses `gCbaSeenInGameByColor`, so later polling cannot
-undo completed cleanup. No trigger writes the occupied or active blocks.
-
-`cbaSpawnColor` and `cbaQueueColorBuilders` now return immediately on elimination,
-independently of the next active-bit update.
+Native Castle-owner detectors latch `coloroccupied` (121–128) once and reset
+`colorcleaned` (129–136) to zero. Closed colors start clean in `main()`.
+Native resignation/defeat conditions and Castle-loss conditions set elimination;
+only owner-empty confirmation marks an occupied eliminated color clean again.
+No XS identity lookup can stop this state transition. XS remains the sole writer
+of active bits; triggers write occupancy and elimination. Spawning and builder
+queuing also test elimination directly before the next active refresh.
 
 ### `cbaBuilderRewardQueue` — every 1s
 

@@ -162,6 +162,11 @@ BUILDER_MOVE_PENDING_VARIABLE_BASE = 105
 HERO_RANGE_VARIABLE_BASE = 113
 COLOR_OCCUPIED_VARIABLE_BASE = 121
 COLOR_CLEANED_VARIABLE_BASE = 129
+COLOR_XS_VARIABLE_BASE = 137
+# Explicit cross-domain handshake, not a player-number conversion. Resource 10
+# is unused (unlike resource 8, now Sun Ce building conversion in current DE).
+XS_IDENTITY_RESOURCE = Attribute.UNUSED_RESOURCE_010
+XS_IDENTITY_TAG_BASE = 1000
 RANGE_LEVELS = tuple(range(6))
 DEFAULT_RANGE_LEVEL = 3
 VOTE_FLAG_OFFSETS = {
@@ -1031,9 +1036,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_782:
+    if len(ctx.tm.triggers) != 3_910:
         raise RuntimeError(
-            f"expected 3,782 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,910 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1529,6 +1534,10 @@ def _add_color_runtime_variables(ctx: BuildContext):
     """Create the color-to-runtime state shared by sparse-safe systems."""
     for player in PLAYERS:
         ctx.tm.add_variable(
+            f"p{int(player)}xsidentity",
+            variable_id=COLOR_XS_VARIABLE_BASE + int(player) - 1,
+        )
+        ctx.tm.add_variable(
             f"p{int(player)}coloroccupied",
             variable_id=COLOR_OCCUPIED_VARIABLE_BASE + int(player) - 1,
         )
@@ -1574,12 +1583,12 @@ def _add_color_owner_detection(ctx: BuildContext, world_variables) -> None:
 
     Trigger player fields and XS player arguments are separate identity domains in
     custom-scenario lobbies. These variables are intentionally consumed only by
-    trigger conditions/effects. XS reads the placed Castle references with
-    ``xsGetUnitOwner`` instead of reading this trigger-derived value.
+    trigger conditions/effects. The resource-token bridge translates that owner
+    into an independently stamped XS API index, without assuming numeric equality.
 
     This detector deliberately does **not** write ``p#coloractive``. That variable has
     exactly one writer, ``cbaUpdateColorRuntime`` in XS, which recomputes it every
-    second from the lobby-slot domain. A second trigger-side writer used to be silently
+    second from native occupancy and elimination latches. A second writer was silently
     reverted within one second unless it also wrote ``p#coloreliminated``, which made
     every future defeat path depend on remembering a second, unrelated write.
     """
@@ -1593,7 +1602,8 @@ def _add_color_owner_detection(ctx: BuildContext, world_variables) -> None:
                 short_description_stid=0,
                 looping=1,
             )
-            detector.new_condition.timer(timer=1)
+            detector.new_condition.timer(timer=LOBBY_SETTLE_SECONDS)
+            detector.new_condition.player_defeated(source_player=world_player, inverted=1)
             detector.new_condition.variable_value(
                 quantity=0,
                 variable=world_variables[color],
@@ -1613,7 +1623,45 @@ def _add_color_owner_detection(ctx: BuildContext, world_variables) -> None:
                 operation=Operation.SET,
                 variable=world_variables[color],
             )
+            detector.new_effect.change_variable(
+                quantity=1, operation=Operation.SET,
+                variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
+            )
+            detector.new_effect.change_variable(
+                quantity=0, operation=Operation.SET,
+                variable=COLOR_CLEANED_VARIABLE_BASE + int(color) - 1,
+            )
             detector.new_effect.deactivate_trigger(trigger_id=detector.trigger_id)
+
+            # XS stamps its own API player index into an unused resource. Read it
+            # from the SAME trigger owner that proved Castle ownership. This
+            # translates through shared player data, never by assuming the two
+            # player-number domains agree. A late stamp is retried independently.
+            bridge = ctx.tm.add_trigger(
+                f"Color XS Identity S{int(color)} W{int(world_player)}", looping=1,
+            )
+            bridge.new_condition.timer(timer=1)
+            bridge.new_condition.variable_value(
+                quantity=int(world_player), variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            bridge.new_condition.variable_value(
+                quantity=0, variable=COLOR_XS_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            bridge.new_condition.accumulate_attribute(
+                quantity=XS_IDENTITY_TAG_BASE + 1, attribute=XS_IDENTITY_RESOURCE,
+                source_player=world_player,
+            )
+            bridge.new_condition.accumulate_attribute(
+                quantity=XS_IDENTITY_TAG_BASE + 9, attribute=XS_IDENTITY_RESOURCE,
+                source_player=world_player, inverted=1,
+            )
+            bridge.new_effect.modify_variable_by_resource(
+                tribute_list=XS_IDENTITY_RESOURCE, source_player=world_player,
+                operation=Operation.SET, variable=COLOR_XS_VARIABLE_BASE + int(color) - 1,
+            )
+            bridge.new_effect.deactivate_trigger(trigger_id=bridge.trigger_id)
             configured += 1
     expected = len(PLAYERS) ** 2
     if configured != expected:
@@ -1953,24 +2001,6 @@ def _configure_custom_team_victory(
 
 
 def _render_color_spawn_xs(ctx: BuildContext) -> str:
-    # Read the final placed objects: unit reference ids, not object-type ids or
-    # trigger player selectors. Cache their XS owners before the Castles disappear.
-    castle_assignments = []
-    castle_references = []
-    for color in PLAYERS:
-        references = sorted(
-            unit.reference_id for unit in ctx.um.units[color]
-            if unit.unit_const == BuildingInfo.CASTLE.ID
-        )
-        if len(references) != 4:
-            raise RuntimeError(f"expected four identity Castles for P{int(color)}")
-        castle_references.extend(references)
-        castle_assignments.extend(
-            f"    xsArraySetInt(gCbaCastleRefs, {(int(color) - 1) * 4 + index}, {reference});"
-            for index, reference in enumerate(references)
-        )
-    if len(set(castle_references)) != 32 or min(castle_references) < 0:
-        raise RuntimeError("Castle identity references must be unique non-negative ids")
     # The XS arrays are indexed by civilization id, so they must be sized from the
     # tables that fill them. These used to be a hardcoded 60 in five places: adding a
     # civilization to CIV_SPAWN_RULES would have written past the end of a size-60
@@ -2022,10 +2052,11 @@ def _render_color_spawn_xs(ctx: BuildContext) -> str:
         f"    xsSetPlayerAttribute(worldPlayer, {int(attribute)}, 0);"
         for attribute in SCORE_NEUTRAL_ATTRIBUTES
     )
+    identity_base = COLOR_XS_VARIABLE_BASE
     return f"""// Sparse-lobby color-aware army spawning.
 // Scenario colors and runtime lobby slots are different identity domains. Trigger
-// player fields use the trigger-side Castle resolver. XS independently reads actual
-// placed Castle owners; the color converter is diagnostic only (ASC-049).
+// player fields use the trigger-side Castle resolver. A shared resource token
+// translates the detected owner into an XS API index (ASC-049).
 
 int gCbaNextSpawnByColor = -1;
 int gCbaUnitByCiv = -1;
@@ -2034,31 +2065,11 @@ int gCbaIntervalByCiv = -1;
 int gCbaNameByCiv = -1;
 int gCbaBuilderThresholdByCiv = -1;
 int gCbaEarnedBuilderPairsByColor = -1;
-int gCbaSeenInGameByColor = -1;
-int gCbaCastleRefs = -1;
-int gCbaWorldByColor = -1;
 
 int cbaWorldPlayerForColor(int scenarioPlayer = 0) {{
     if (scenarioPlayer < 1 || scenarioPlayer > 8) return(0);
-    int cachedOwner = xsArrayGetInt(gCbaWorldByColor, scenarioPlayer);
-    if (cachedOwner > 0) return(cachedOwner);
-    int worldPlayer = 0;
-    for (castleIndex = 0; < 4) {{
-        int reference = xsArrayGetInt(gCbaCastleRefs, (scenarioPlayer - 1) * 4 + castleIndex);
-        if (xsDoesUnitExist(reference)) {{
-            int owner = xsGetUnitOwner(reference);
-            if (owner < 1 || owner > 8) return(0);
-            if (worldPlayer > 0 && owner != worldPlayer) return(0);
-            worldPlayer = owner;
-        }}
-    }}
-    if (worldPlayer < 1) return(0);
-    if (xsGetPlayerInGame(worldPlayer) == false) return(0);
-    // Refuse an ambiguous binding; never attach two territories to one player.
-    for (otherColor = 1; <= 8) {{
-        if (xsArrayGetInt(gCbaWorldByColor, otherColor) == worldPlayer) return(0);
-    }}
-    xsArraySetInt(gCbaWorldByColor, scenarioPlayer, worldPlayer);
+    int worldPlayer = xsTriggerVariable({identity_base} + scenarioPlayer - 1) - {XS_IDENTITY_TAG_BASE};
+    if (worldPlayer < 1 || worldPlayer > 8) return(0);
     return(worldPlayer);
 }}
 
@@ -2072,8 +2083,9 @@ void cbaCreateWave(int scenarioPlayer = 0, int worldPlayer = 0, int unitId = -1)
 
 void cbaSpawnColor(int scenarioPlayer = 0) {{
     if (xsTriggerVariable({COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1) == 1) return;
+    if (xsTriggerVariable({COLOR_OCCUPIED_VARIABLE_BASE} + scenarioPlayer - 1) != 1) return;
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
-    if (worldPlayer < 1 || xsGetPlayerInGame(worldPlayer) == false) {{
+    if (worldPlayer < 1) {{
         return;
     }}
 
@@ -2108,8 +2120,9 @@ void cbaSpawnColor(int scenarioPlayer = 0) {{
 
 void cbaQueueColorBuilders(int scenarioPlayer = 0) {{
     if (xsTriggerVariable({COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1) == 1) return;
+    if (xsTriggerVariable({COLOR_OCCUPIED_VARIABLE_BASE} + scenarioPlayer - 1) != 1) return;
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
-    if (worldPlayer < 1 || xsGetPlayerInGame(worldPlayer) == false) {{
+    if (worldPlayer < 1) {{
         return;
     }}
 
@@ -2181,16 +2194,10 @@ void cbaRefreshCombatValues(int worldPlayer = 0) {{
 
 void cbaUpdateCombatRow(int scenarioPlayer = 0) {{
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
-    if (worldPlayer < 1 || xsGetPlayerInGame(worldPlayer) == false) {{
+    if (worldPlayer < 1) {{
         return;
     }}
-    int kills = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKills));
-    int deaths = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKilledByOthers));
-    int razings = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeRazings));
-    int variableBase = {COMBAT_ROW_VARIABLE_BASE} + ((scenarioPlayer - 1) * {COMBAT_ROW_VARIABLE_STRIDE});
-    xsSetTriggerVariable(variableBase, kills);
-    xsSetTriggerVariable(variableBase + 1, deaths);
-    xsSetTriggerVariable(variableBase + 2, razings);
+    // Objective HUD counters are copied by native owner-resolved triggers.
     cbaRefreshCombatValues(worldPlayer);
 }}
 
@@ -2201,32 +2208,12 @@ void cbaUpdateCombatRow(int scenarioPlayer = 0) {{
 // active again. Persistent occupancy lets owner-resolved cleanup continue after
 // active becomes zero; victory also requires the empty-owner confirmation.
 void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
-    int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
     int activeFlag = 0;
     int eliminatedFlag = xsTriggerVariable(
         {COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1
     );
-    if (worldPlayer >= 1) {{
-        if (xsGetPlayerInGame(worldPlayer)) {{
-            // Empty lobby colors start clean. Once occupied, require a real purge
-            // and empty-owner confirmation before that color can finish losing.
-            if (xsArrayGetInt(gCbaSeenInGameByColor, scenarioPlayer) == 0) {{
-                xsSetTriggerVariable({COLOR_CLEANED_VARIABLE_BASE} + scenarioPlayer - 1, 0);
-            }}
-            xsSetTriggerVariable({COLOR_OCCUPIED_VARIABLE_BASE} + scenarioPlayer - 1, 1);
-            if (eliminatedFlag == 0) {{
-                activeFlag = 1;
-            }}
-            xsArraySetInt(gCbaSeenInGameByColor, scenarioPlayer, 1);
-        }} else {{
-            if (eliminatedFlag == 0
-                && xsArrayGetInt(gCbaSeenInGameByColor, scenarioPlayer) == 1) {{
-                xsSetTriggerVariable(
-                    {COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1,
-                    1
-                );
-            }}
-        }}
+    if (xsTriggerVariable({COLOR_OCCUPIED_VARIABLE_BASE} + scenarioPlayer - 1) == 1 && eliminatedFlag == 0) {{
+        activeFlag = 1;
     }}
     xsSetTriggerVariable(
         {COLOR_ACTIVE_VARIABLE_BASE} + scenarioPlayer - 1,
@@ -2247,12 +2234,9 @@ void main() {{
     gCbaEarnedBuilderPairsByColor = xsArrayCreateInt(
         9, 0, "cbaEarnedBuilderPairsByColor"
     );
-    gCbaSeenInGameByColor = xsArrayCreateInt(9, 0, "cbaSeenInGameByColor");
-    gCbaCastleRefs = xsArrayCreateInt(32, -1, "cbaCastleRefs");
-    gCbaWorldByColor = xsArrayCreateInt(9, 0, "cbaWorldByColor");
-{chr(10).join(castle_assignments)}
 {chr(10).join(assignments)}
     for (worldPlayer = 1; <= xsGetNumPlayers()) {{
+        xsSetPlayerAttribute(worldPlayer, {int(XS_IDENTITY_RESOURCE)}, {XS_IDENTITY_TAG_BASE} + worldPlayer);
         int technologyCount = xsGetPlayerNumberOfTechs(worldPlayer);
         for (technology = 0; < technologyCount) {{
             xsEffectAmount(cModifyTech, technology, cAttrSetFoodCost, 0, worldPlayer);
@@ -2290,21 +2274,6 @@ rule cbaColorRuntimeState
     minInterval 1
 {{
 {color_runtime_calls}
-}}
-
-// One startup summary makes a missing binding visible without recurring chat spam.
-rule cbaIdentityDiagnostic
-    active
-    minInterval 10
-{{
-    string summary = "[CBA identity] color:Castle-owner/converter";
-    for (scenarioPlayer = 1; <= 8) {{
-        summary = summary + " P" + scenarioPlayer + ":"
-            + xsArrayGetInt(gCbaWorldByColor, scenarioPlayer) + "/"
-            + xsGetWorldPlayerId(scenarioPlayer);
-    }}
-    xsChatData(summary);
-    xsDisableSelf();
 }}
 
 rule cbaBuilderRewardQueue
@@ -5099,7 +5068,7 @@ def _add_sparse_lobby_scoreboard(
             gate.new_condition.timer(timer=LOBBY_SETTLE_SECONDS)
             gate.new_condition.variable_value(
                 quantity=1,
-                variable=active_variables[color],
+                variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
                 comparison=Comparison.EQUAL,
             )
             gate.new_condition.variable_value(
@@ -5117,6 +5086,26 @@ def _add_sparse_lobby_scoreboard(
                 trigger_id=placeholder_rows[color].trigger_id
             )
             gate.new_effect.activate_trigger(trigger_id=live_rows[color].trigger_id)
+
+            values = tm.add_trigger(
+                f"Color Combat Values S{int(color)} W{int(world_player)}", looping=1,
+            )
+            values.new_condition.timer(timer=2)
+            values.new_condition.variable_value(
+                quantity=int(world_player), variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            values.new_condition.variable_value(
+                quantity=1, variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            resources = (Attribute.UNITS_KILLED, Attribute.KILLED_BY_OTHERS, Attribute.RAZINGS)
+            for offset, resource in enumerate(resources):
+                values.new_effect.modify_variable_by_resource(
+                    tribute_list=resource, source_player=world_player, operation=Operation.SET,
+                    variable=(COMBAT_ROW_VARIABLE_BASE
+                              + (int(color) - 1) * COMBAT_ROW_VARIABLE_STRIDE + offset),
+                )
 
 
 def _add_live_white_king_kill_counters(ctx: BuildContext) -> None:

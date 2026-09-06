@@ -236,7 +236,7 @@ it is telling you an assumption moved — fix the cause, do not relax the assert
 
 | Assertion | Catches |
 | --- | --- |
-| `_assert_variable_ids_are_contiguous` | A hole, duplicate or collision in the 0–136 id space. Ids are handed out by independent passes from separate bases, and a condition addresses a variable **by id, not by name** — so a collision rewires trigger logic without changing a single visible field |
+| `_assert_variable_ids_are_contiguous` | A hole, duplicate or collision in the 0–144 id space. Ids are handed out by independent passes from separate bases, and a condition addresses a variable **by id, not by name** — so a collision rewires trigger logic without changing a single visible field |
 | `_validate_army_spawn_geometry` | A color's four wave pads being unsafe, duplicated or assigned to the wrong Castle |
 | `_unique_trigger` | An inherited trigger renamed or duplicated upstream |
 | Exact family counts | e.g. exactly 40 legacy late-hero triggers, exactly two legacy rename triggers, exactly one Blacksmith condition per color |

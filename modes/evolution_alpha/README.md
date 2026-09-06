@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.19
+# CBA Hero: Ascendants v1.0.20
 
 Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -22,16 +22,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.0.19 |
+| Metric | v1.0.20 |
 | --- | ---: |
-| Triggers | 3,783 (3,323 initially enabled) |
-| Conditions | 16,873 |
-| Effects | 15,136 |
+| Triggers | 3,911 (3,451 initially enabled) |
+| Conditions | 17,449 |
+| Effects | 15,584 |
 | Units | 956 |
-| Runtime variables | 137 (ids 0–136) |
+| Runtime variables | 145 (ids 0–144) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero Ascendants v1.0.19.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero Ascendants v1.0.20.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -94,13 +94,13 @@ lower tiers cannot burst-spawn after re-enabling Heroes.
 ## Lobby ownership
 
 The fixed scenario color and the runtime lobby player are separate identities in DE.
-Trigger-side systems resolve the owner standing in each Castle row. XS independently
-reads `xsGetUnitOwner` for that color's actual placed Castles and caches the result
-before civilization lookup, statistics access, or unit creation. v1.0.18's converter-
-only path failed to resolve the reported P7/P8 HUD/cleanup problem when two lobby
-slots were explicitly closed. v1.0.19 is a candidate correction, pending live DE
-acceptance. Its one-shot `[CBA identity]` startup chat compares Castle owners with
-the old converter. See [v1.0.19 notes](RELEASE_NOTES_v1.0.19.md).
+Native triggers resolve the owner standing in each Castle row, latch participation,
+and read that owner's HUD counters. XS stamps its own API index into reserved
+resource 10; owner-resolved triggers copy the token for spawning and builder rewards.
+This does not assume trigger selectors and XS indices coincide. v1.0.18 and v1.0.19
+both failed the reported closed-slot P7/P8 game; v1.0.20 removes the shared dependency
+that let a failed XS lookup hide score rows and prevent cleanup.
+See [v1.0.20 notes](RELEASE_NOTES_v1.0.20.md). Live DE acceptance remains separate.
 
 Blue, Red, Green, and Yellow form one side; Teal, Purple, Gray, and Orange form the
 other. At least one occupied color is required on each side. A resigned or defeated
@@ -108,9 +108,9 @@ runtime player's remaining units and buildings are removed from the entire map.
 
 ## Match resolution
 
-A color is alive while its lobby slot is in the game and it has not been eliminated.
-`p#coloractive` has exactly **one** writer, `cbaUpdateColorRuntime` in XS; triggers only
-ever write `p#coloreliminated`, and XS derives the active bit from it within a second.
+A color is alive after native Castle-owner detection latches participation and until elimination.
+`p#coloractive` has exactly **one** writer, `cbaUpdateColorRuntime` in XS; triggers
+write occupancy and elimination, and XS derives the active bit within a second.
 A second trigger-side writer used to be silently reverted unless every defeat path also
 remembered to set the elimination bit.
 
@@ -123,10 +123,9 @@ kept only as a redundant fast path; it cannot become true for a Castle that was
 
 `Color Castle Row Empty S#` is the last line: eight triggers, one per color, asking
 only whether *any* candidate owner still holds a Castle in that row. The owner-resolved
-resolvers need `p#worldplayer`, latched in the trigger-player domain, while the active
-bit comes from cached Castle ownership in the XS player domain; if those two disagree,
-none of a color's eight resolvers can match while it still reads alive. The row-empty
-fallback needs neither latch, so that disagreement can no longer hang a match.
+resolvers use the native trigger-owner latch and persistent occupancy.
+The row-empty fallback is redundant protection if an owner-specific Castle condition
+does not fire. Neither path requires an XS identity token.
 
 `Color Team Victory S# W#` ships disabled and is armed by the one owner detector whose
 latch it can match, so seven of every eight candidates leave the tick loop at start-up.

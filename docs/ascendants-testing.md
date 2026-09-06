@@ -44,7 +44,7 @@ warns; when one fires, an assumption moved and the fix belongs at the cause.
 
 | Assertion | What moved if it fires |
 | --- | --- |
-| `_assert_variable_ids_are_contiguous` | A variable block collided, duplicated or left a hole in ids 0–136 |
+| `_assert_variable_ids_are_contiguous` | A variable block collided, duplicated or left a hole in ids 0–144 |
 | `_validate_army_spawn_geometry` | A color's four wave pads are unsafe, duplicated, or nearest the wrong Castle |
 | `_unique_trigger(ctx, name)` | An inherited trigger was renamed, duplicated or removed upstream |
 | Exact family counts | e.g. exactly 40 legacy late-hero triggers, exactly two legacy rename triggers, one Blacksmith condition per color |
@@ -59,7 +59,7 @@ visible field. It is cheap to assert and expensive to debug in a lobby.
 
 ## Layer 2 — the test suite
 
-`tests/test_evolution_alpha.py` holds 82 test functions (count them with
+`tests/test_evolution_alpha.py` holds 83 test functions (count them with
 `pytest --collect-only -q tests/test_evolution_alpha.py`). They build the scenario once
 and interrogate the resulting graph. Grouped by what they pin:
 
@@ -67,15 +67,18 @@ and interrogate the resulting graph. Grouped by what they pin:
 
 The most load-bearing group. DE may seat any lobby slot in any Castle row.
 
-- `keeps_xs_spawn_and_trigger_routes_in_separate_identity_domains` — separates XS
-  Castle ownership from trigger selectors. v1.0.18's converter assertion did not
-  catch the reported closed-slot P7/P8 failure.
-- Four `identity_*` tests execute the emitted resolver's C-like subset with mocked
-  engine reads: all 255 nonempty occupied-color subsets in two seat orders, exact
-  serialized Castle references, retry, persistent ownership after defeat, invalid/
-  duplicate owners, and diagnostic-only converter access. They do not simulate DE's
-  actual reference-id mapping or native API behavior. The victory/cleanup matrix
-  also includes the reported P1/P3 vs P5/P6/P7/P8 game with P2/P4 explicitly closed.
+- `keeps_xs_spawn_and_trigger_routes_in_separate_identity_domains` separates native
+  trigger selectors from XS API indices.
+- Four `identity_*` tests execute emitted resolver code and serialized resource
+  bridges: all 255 nonempty occupied-color subsets in two seat orders, independent
+  trigger-selector permutations, delayed/invalid tokens, and persistent binding.
+- `native_hud_and_cleanup_work_with_no_xs_identity` starts participation at zero,
+  runs actual owner detectors, checks native HUD activation/value reads, and requires
+  owner cleanup and victory with every XS identity binding still zero. This closes
+  the old harness gap: pre-filled occupancy hid the reported P7/P8 failure.
+- The matrix includes the reported P1/P3 vs P5/P6/P7/P8 game, with two lobby slots
+  explicitly closed. Closed lobby numbers are not necessarily closed color numbers.
+  These tests do not execute DE's native lobby mapping.
 - `detects_every_color_owner_from_its_castles` — all 64 color/owner detectors.
 - `color_active_has_exactly_one_writer` — `p#coloractive` is written only by XS.
 - `xs_addresses_trigger_variables_through_named_bases` — no bare variable literals in the

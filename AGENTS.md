@@ -69,7 +69,7 @@ aoe2modes verify <id>                      # rebuild + prove content still match
 aoe2modes build <id> --deploy              # ship
 ```
 
-Trigger variables are part of the dump: `decompile` emits a `VARIABLES` table of `(id, name)` pairs into `generated/triggers/__init__.py` and declares them before the first trigger, and `verify` compares them. Ids matter more than names — conditions and effects address a variable by id — so a dropped variable silently rewires trigger logic without changing any trigger field. A mode may also add variables in its own `build.py`: Ascendants declares all 137 of its ids there, 0–136, and asserts after the build that the id space is contiguous and collision-free. Inspect the complete build before allocating another id; never assume `lib/variables.SHARED` or a generated table owns the full range.
+Trigger variables are part of the dump: `decompile` emits a `VARIABLES` table of `(id, name)` pairs into `generated/triggers/__init__.py` and declares them before the first trigger, and `verify` compares them. Ids matter more than names — conditions and effects address a variable by id — so a dropped variable silently rewires trigger logic without changing any trigger field. A mode may also add variables in its own `build.py`: Ascendants declares all 145 of its ids there, 0–144, and asserts after the build that the id space is contiguous and collision-free. Inspect the complete build before allocating another id; never assume `lib/variables.SHARED` or a generated table owns the full range.
 
 The decompiler works because `AoE2ScenarioParser`'s effect and condition factories (`NewEffectSupport`, `NewConditionSupport`) have introspectable signatures — the fields a factory *accepts* are exactly the fields we need to read back. `decompile.py` uses `inspect.signature` to derive the schema, then emits only fields that differ from a freshly constructed default. `verify.py` reduces both scenarios to plain-data snapshots (dicts) and diffs field-by-field, with a `version_only` bucket for fields that legitimately exist on the newer rebuild but not on the older original.
 
@@ -85,14 +85,16 @@ Documented at length in `docs/tooling.md`. Short version:
 ### Custom-scenario player identity is two separate domains
 
 Do not pass Ascendants' Castle-detector variable `p#worldplayer` into XS. Despite its
-historical name, that variable is a trigger-side player selector for trigger conditions
-and effects. XS player APIs take a runtime world player (the lobby slot). Convert a
-scenario color by reading `xsGetUnitOwner` on its actual placed Castle references at
-the XS boundary and caching that owner before elimination. v1.0.18's sole reliance on
-`xsGetWorldPlayerId(color)` did not resolve the reported closed-slot P7/P8 failure;
-v1.0.19 keeps that conversion only in the one-shot startup diagnostic. Trigger ids and
-XS ids must remain separate: mixing them previously cross-owned armies. Tests execute
-the generated resolver with mocked reads; only a live match can validate DE's APIs.
+historical name, it is a trigger-side player selector. Native Castle-owner detection
+latches participation and drives HUD reads, resignation, cleanup and victory.
+XS stamps its API index plus 1000 into reserved unused resource 10; an owner-resolved
+trigger copies that same player's resource into `p#xsidentity` (137–144).
+`cbaWorldPlayerForColor` decodes this token for spawning and builder rewards.
+Neither numeric selector equality, `xsGetWorldPlayerId`, `xsGetUnitOwner`, nor
+`xsGetPlayerInGame` is used to establish participation. v1.0.18 and v1.0.19 both
+failed the reported closed-slot P7/P8 match. Tests start with zero participation
+and exercise serialized detection/HUD/cleanup plus independently permuted XS and
+trigger domains. Automated evidence is not live DE acceptance.
 
 ### Shared libraries
 

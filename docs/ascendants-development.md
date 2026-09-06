@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.19**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.20**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.19.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.20.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +33,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.19.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.20.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -46,7 +46,7 @@ quietly wrong scenario. `aoe2modes audit` then checks the serialized output for 
 references, invalid coordinates, unreachable or unpaced loops, and immediate
 unconditional victory/defeat. See the current release notes for validation results;
 mocked engine reads and structural checks do not establish native lobby behavior.
-Repository Ruff checks and the 717-line embedded XS build also pass.
+Repository Ruff checks and the 624-line embedded XS build also pass.
 
 The structural audit cannot see whether a match can be *won*: a permanent deadlock is
 made of individually well-formed triggers. Two liveness tests cover that separately —
@@ -78,18 +78,24 @@ The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
 
-## v1.0.19 closed-slot identity correction (candidate)
+## v1.0.20 closed-slot participation and identity separation
 
-The user reproduced missing cleanup in v1.0.18: Blue/Green versus Teal/Purple/Gray/
-Orange, with two slots explicitly closed before starting. Gray and Orange also
-had blank custom HUD rows. Both symptoms depend on the same XS active/occupied
-mapping, so adding purges alone was insufficient. v1.0.19 reads the actual owner of
-each color's placed Castle references in XS and caches it independently of the
-trigger selector. The converter is retained only in a startup diagnostic.
+v1.0.18 and v1.0.19 both failed live in Blue/Green versus Teal/Purple/Gray/Orange
+with two explicitly closed lobby slots. The failed lookup also controlled whether
+Gray/Orange participated at all, making their HUD and cleanup depend on that lookup.
 
-The exact engine converter failure remains unproven; this is a candidate with
-generated-resolver regression tests, not a claim of live acceptance. See
-[`RELEASE_NOTES_v1.0.19.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.19.md).
+Native Castle-owner detectors now latch occupancy and reset cleanup state. Native
+HUD triggers copy the detected owner's resources directly. XS only derives activity
+from occupied/not-eliminated latches. A resource token translates the native owner
+to an XS API index for spawning and builder rewards, replacing converter and
+Castle-reference lookups. Cleanup/victory work even with no XS token.
+
+Tests now start with zero occupancy and run actual serialized detection, closing
+the prior harness blind spot. The resource bridge is exercised with independently
+permuted trigger and XS player identities. No debug-chat collection is required.
+See [v1.0.20 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.0.20.md) and the
+[recorded evidence](ascendants-closed-slot-investigation.md). Native DE acceptance
+is still distinct from automated validation.
 
 ## v1.0.18 cleanup after elimination
 
