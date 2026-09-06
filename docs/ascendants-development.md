@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.18**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.19**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.18.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.19.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +33,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.18.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.19.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -44,9 +44,9 @@ trigger-family counts, eight-way symmetry of the
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.18 passes with **0 errors and 0 warnings**. The
-full repository suite passes 138 tests (78 Ascendants and 60 other tests).
-Repository Ruff checks and the 646-line embedded XS build also pass.
+unconditional victory/defeat. See the current release notes for validation results;
+mocked engine reads and structural checks do not establish native lobby behavior.
+Repository Ruff checks and the 717-line embedded XS build also pass.
 
 The structural audit cannot see whether a match can be *won*: a permanent deadlock is
 made of individually well-formed triggers. Two liveness tests cover that separately —
@@ -77,6 +77,19 @@ The active issue inventory and manual acceptance cases are in
 The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.19 closed-slot identity correction (candidate)
+
+The user reproduced missing cleanup in v1.0.18: Blue/Green versus Teal/Purple/Gray/
+Orange, with two slots explicitly closed before starting. Gray and Orange also
+had blank custom HUD rows. Both symptoms depend on the same XS active/occupied
+mapping, so adding purges alone was insufficient. v1.0.19 reads the actual owner of
+each color's placed Castle references in XS and caches it independently of the
+trigger selector. The converter is retained only in a startup diagnostic.
+
+The exact engine converter failure remains unproven; this is a candidate with
+generated-resolver regression tests, not a claim of live acceptance. See
+[`RELEASE_NOTES_v1.0.19.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.19.md).
 
 ## v1.0.18 cleanup after elimination
 
@@ -245,7 +258,7 @@ an army owned by a different lobby player. The Sheep changed the correct color r
 variable, but the correctly mapped route trigger could not select that cross-owned
 army, so its failure appeared to be a second route-selector defect.
 
-XS now performs the official conversion at one explicit boundary, while the trigger
+v1.0.11 performed the official conversion at one explicit boundary, while the trigger
 graph retains the Castle resolver only for trigger-side player fields. An integrated
 regression follows each of the eight Sheep selectors through normal-wave and hero
 movement under identity order, an explicit Red/Green swap, and a full eight-color

@@ -1,20 +1,23 @@
-# Ascendants v1.0.18 candidate issue register
+# Ascendants v1.0.19 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.18** is the active source-verified candidate;
-v1.0.17 remains the immediately preceding candidate for focused comparison only.
+repair targets. **v1.0.19** is the active candidate pending live closed-slot acceptance;
+v1.0.18 remains the immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.18 candidate is 161,074 bytes with SHA-256
+The failed v1.0.18 candidate was 161,074 bytes with SHA-256
 `5262f6250889eb1dd6d0caeb9bdc080d8bf9c59c97725588d3f827274858a19d`.
+The v1.0.19 candidate is 161,657 bytes with SHA-256
+`ec4c03df92588582e5c5984e1befdd9d18b289b4553c9a4b86503a098c3991a0`;
+142 tests and the warning-free strict audit pass. Live ASC-049 acceptance is pending.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.18 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | Source status (historical claims qualified by ASC-049) | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -99,7 +102,25 @@ become true only on owner-empty confirmation. No trigger-owner number is passed 
 an XS player API. See
 [`RELEASE_NOTES_v1.0.18.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.18.md).
 
-## Additional parser findings
+## ASC-049 — two explicitly closed slots hide P7/P8 from runtime systems
+
+**Live failure confirmed in v1.0.18; v1.0.19 candidate, not engine-accepted.** The
+user played P1/P3 against P5/P6/P7/P8, explicitly closing two lobby slots before
+starting. P7/P8 had blank custom score rows and retained buildings on defeat.
+The recording header identifies a six-player v1.0.18 match (DE build 180059,
+save format 68.0); the available replay parser could not parse the complete
+player table, so it does not prove exact runtime ids or converter return values.
+
+All four XS color consumers depended on an unchecked converter result. v1.0.19
+replaces that dependency with cached actual owners read from the final 32 Castle
+reference ids. Trigger-side player selectors remain independent. New tests execute
+the emitted resolver with mocked engine reads rather than asserting a converter
+call exists. The precise DE failure and new native reference behavior still need
+live verification. Capture the ten-second `[CBA identity]` line, confirm all six HUD
+rows/armies, then eliminate Gray and Orange and inspect every remaining object.
+See [v1.0.19 release notes](../modes/evolution_alpha/RELEASE_NOTES_v1.0.19.md).
+
+## Additional parser findings (v1.0.18 historical snapshot)
 
 The v1.0.18 serialized candidate passes the strict structural audit with **0 errors and
 0 warnings**, with:
@@ -134,7 +155,7 @@ Run the same audit after every build:
 ```bash
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.18.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.19.aoe2scenario" --strict
 ```
 
 The normal command fails only on structural errors; `--strict` also

@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.18
+# CBA Hero: Ascendants v1.0.19
 
 Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -22,7 +22,7 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.0.18 |
+| Metric | v1.0.19 |
 | --- | ---: |
 | Triggers | 3,783 (3,323 initially enabled) |
 | Conditions | 16,873 |
@@ -31,7 +31,7 @@ This file is the release summary. The reference documentation lives in `docs/`:
 | Runtime variables | 137 (ids 0–136) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero Ascendants v1.0.18.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero Ascendants v1.0.19.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -94,11 +94,13 @@ lower tiers cannot burst-spawn after re-enabling Heroes.
 ## Lobby ownership
 
 The fixed scenario color and the runtime lobby player are separate identities in DE.
-Trigger-side systems resolve the owner standing in each Castle row. XS calls
-`xsGetWorldPlayerId(scenarioPlayer)` before civilization lookup, statistics access, or
-unit creation. This boundary keeps every army, Hero, route, reward, HUD row,
-resignation, and victory result attached to the correct color territory in full,
-sparse, and shuffled lobbies.
+Trigger-side systems resolve the owner standing in each Castle row. XS independently
+reads `xsGetUnitOwner` for that color's actual placed Castles and caches the result
+before civilization lookup, statistics access, or unit creation. v1.0.18's converter-
+only path failed to resolve the reported P7/P8 HUD/cleanup problem when two lobby
+slots were explicitly closed. v1.0.19 is a candidate correction, pending live DE
+acceptance. Its one-shot `[CBA identity]` startup chat compares Castle owners with
+the old converter. See [v1.0.19 notes](RELEASE_NOTES_v1.0.19.md).
 
 Blue, Red, Green, and Yellow form one side; Teal, Purple, Gray, and Orange form the
 other. At least one occupied color is required on each side. A resigned or defeated
@@ -122,7 +124,7 @@ kept only as a redundant fast path; it cannot become true for a Castle that was
 `Color Castle Row Empty S#` is the last line: eight triggers, one per color, asking
 only whether *any* candidate owner still holds a Castle in that row. The owner-resolved
 resolvers need `p#worldplayer`, latched in the trigger-player domain, while the active
-bit comes from `xsGetWorldPlayerId` in the lobby-slot domain; if those two disagree,
+bit comes from cached Castle ownership in the XS player domain; if those two disagree,
 none of a color's eight resolvers can match while it still reads alive. The row-empty
 fallback needs neither latch, so that disagreement can no longer hang a match.
 

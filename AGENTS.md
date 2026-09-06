@@ -87,10 +87,12 @@ Documented at length in `docs/tooling.md`. Short version:
 Do not pass Ascendants' Castle-detector variable `p#worldplayer` into XS. Despite its
 historical name, that variable is a trigger-side player selector for trigger conditions
 and effects. XS player APIs take a runtime world player (the lobby slot). Convert a
-scenario player/color with the engine function `xsGetWorldPlayerId(scenarioPlayer)` at
-the XS boundary. Treating the two numbers as interchangeable caused Red/Green and
-Green/Yellow cross-owned army spawns in shuffled lobbies. Tests must assert the engine
-conversion itself; enumerating Python permutations does not simulate the DE engine.
+scenario color by reading `xsGetUnitOwner` on its actual placed Castle references at
+the XS boundary and caching that owner before elimination. v1.0.18's sole reliance on
+`xsGetWorldPlayerId(color)` did not resolve the reported closed-slot P7/P8 failure;
+v1.0.19 keeps that conversion only in the one-shot startup diagnostic. Trigger ids and
+XS ids must remain separate: mixing them previously cross-owned armies. Tests execute
+the generated resolver with mocked reads; only a live match can validate DE's APIs.
 
 ### Shared libraries
 

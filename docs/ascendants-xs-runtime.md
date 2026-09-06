@@ -21,7 +21,7 @@ include = []
 scripts = []
 ```
 
-`_render_color_spawn_xs()` returns the entire runtime as a Python f-string and `build.py`
+`_render_color_spawn_xs(ctx)` returns the entire runtime as a Python f-string and `build.py`
 hands it to the builder via `ctx.add_xs`. `aoe2modes info evolution_alpha` therefore
 reports no XS for this mode, which is accurate about the *files* and misleading about the
 *scenario* — the built artifact contains a full script.
@@ -66,24 +66,31 @@ territory).
 | Trigger-side owner | Which trigger player selector owns that Castle row, latched into variables 40–47 | Trigger condition and effect `source_player` / `target_player` fields |
 | World player | The lobby slot DE actually seated there | **Every XS player API** |
 
-DE compacts sparse lobbies: with only Blue and Teal occupied, Teal is runtime player 2,
-not 5. A trigger effect aimed at a fixed `P5` therefore hits the wrong person, and an XS
-call given a trigger-side selector hits a different wrong person.
+Do not assume a color number, compacted player index, and trigger selector coincide.
+v1.0.18 failed in a six-player match with two explicitly closed slots: P7/P8 had no
+custom HUD and did not purge on defeat. The shared runtime resolver used
+`xsGetWorldPlayerId(color)` without independently checking the actual objects. Its
+precise engine failure is not yet captured; source assertions that the converter was
+called were not behavioral proof.
 
-The conversion is an engine function, and XS uses it at every boundary:
+v1.0.19 generates a 32-entry table from the final four placed Castle reference ids per
+color. `cbaWorldPlayerForColor` reads their owners with `xsGetUnitOwner`, validates live
+player ids 1–8, rejects inconsistent or duplicate territory bindings, and caches the
+result in `gCbaWorldByColor`. An unresolved color retries. A resolved color keeps its
+owner after all Castles disappear or its player resigns; it never remaps mid-match.
+The four consumers (HUD, active/occupied state, army spawning, builder rewards) share
+this boundary. XS generation occurs after final map/object processing.
 
-```c
-int cbaWorldPlayerForColor(int scenarioPlayer = 0) {
-    return(xsGetWorldPlayerId(scenarioPlayer));
-}
-```
+`xsGetWorldPlayerId` remains only in a one-shot ten-second chat diagnostic:
+`[CBA identity] color:Castle-owner/converter P1:...`. Zero Castle-owner means unresolved
+or closed; occupied P7/P8 must be positive. Capture this line if live behavior fails.
 
 Rules that follow from this:
 
 1. **XS never reads variables 40–47.** They carry the historical serialized name
    `p#worldplayer`, which is actively misleading: they are trigger-side selectors. Passing
    one into an XS player API is the ASC-020 bug.
-2. **Triggers never call `xsGetWorldPlayerId`.** They use the Castle-row resolver.
+2. **Triggers keep their independent Castle-row resolver.** XS never imports that id.
 3. Every XS function that touches a player starts by converting the scenario color and
    bailing out if the result is not a live slot:
 
@@ -94,10 +101,11 @@ Rules that follow from this:
    }
    ```
 
-A test pins the boundary itself rather than enumerating Python permutations —
-`test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_domains`.
-Enumerating permutations in Python does not simulate the DE engine and proves nothing
-about this.
+Tests execute the emitted resolver's limited C-like subset with mocked engine reads,
+including all 255 nonempty closed-color subsets in two seat orders, delayed objects,
+invalid/duplicate owners and post-elimination caching. They also pin reference ids
+against the serialized Castles. This proves resolver behavior given those API results,
+not DE reference-id stability or native API behavior: live acceptance is mandatory.
 
 ## The variable bridge
 

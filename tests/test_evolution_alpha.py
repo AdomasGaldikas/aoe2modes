@@ -1729,7 +1729,7 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
     assert "cAttributeKills" in xs_source
     assert "cAttributeKilledByOthers" in xs_source
     assert "cAttributeRazings" in xs_source
-    assert "return(xsGetWorldPlayerId(scenarioPlayer));" in xs_source
+    assert "int owner = xsGetUnitOwner(reference);" in xs_source
     assert "return(xsTriggerVariable(" not in xs_source
     assert "40 + scenarioPlayer - 1" not in xs_source
     assert xs_source.count("cbaWorldPlayerForColor(scenarioPlayer)") == 4
@@ -2643,11 +2643,9 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
     assert "xsGetPlayerCivilization(localPlayer)" in xs_source
     assert "first builder pair after" in xs_source
     assert "if (xsGetGameTime() >= 4)" in xs_source
-    # Exactly two local chat messages, both inside cbaAnnounceLocalBuilderGoal and
-    # mutually exclusive: the builder-goal line for a supported civilization, and the
-    # unsupported-civilization warning that replaced a silent `return`. Anything more
-    # means a message escaped into a loop and will spam the chat every tick.
-    assert xs_source.count("xsChatData(") == 2
+    # Two mutually exclusive builder messages, plus the one-shot identity diagnostic.
+    # The dedicated identity test pins its timer and self-disable to prevent spam.
+    assert xs_source.count("xsChatData(") == 3
     assert "Unsupported civilization (id " in xs_source
     assert "xsDisableSelf();" in xs_source
     assert xs_source.count("cbaQueueColorBuilders(") == 9
@@ -2964,7 +2962,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
     xs_trigger = next(trigger for trigger in triggers if trigger.name == "XS SCRIPT")
     xs_source = xs_trigger.effects[0].message
     assert "void cbaUpdateColorRuntime(int scenarioPlayer = 0)" in xs_source
-    assert "return(xsGetWorldPlayerId(scenarioPlayer));" in xs_source
+    assert "int owner = xsGetUnitOwner(reference);" in xs_source
     assert "int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);" in xs_source
     assert "rule cbaColorRuntimeState" in xs_source
     assert xs_source.count("cbaUpdateColorRuntime(") == 9
@@ -3038,7 +3036,7 @@ def test_evolution_alpha_detects_every_color_owner_from_its_castles(
 
     # This proves complete trigger-side candidate coverage only. XS lobby-slot
     # ownership is a different identity domain and is guarded separately by the
-    # direct xsGetWorldPlayerId(scenarioPlayer) assertion.
+    # Castle-reference binding tests; the converter is diagnostic only.
     assert detectors[3, 4].name == "Color Owner Detect S3 W4"
     assert detectors[4, 3].name == "Color Owner Detect S4 W3"
 
@@ -4141,8 +4139,8 @@ def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_
 ):
     """A shuffled lobby must keep one color's complete control chain together.
 
-    Parser tests cannot execute DE's lobby mapping. They can prove that XS delegates
-    that mapping to the engine, while every trigger-side candidate uses one consistent
+    Parser tests cannot execute DE's lobby mapping. They can prove that XS reads
+    actual Castle owners, while every trigger-side candidate uses one consistent
     owner for milestone creation and normal/hero movement in the color's own geometry.
     """
     triggers = evolution_alpha.trigger_manager.triggers
@@ -4288,7 +4286,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     assert len(xs_trigger.effects) == 1
     assert xs_trigger.effects[0].effect_type == EffectId.SCRIPT_CALL
     xs_source = xs_trigger.effects[0].message
-    assert "return(xsGetWorldPlayerId(scenarioPlayer));" in xs_source
+    assert "int owner = xsGetUnitOwner(reference);" in xs_source
     assert "int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);" in xs_source
     assert "xsGetPlayerCivilization(worldPlayer)" in xs_source
     assert "xsPlayerAttribute(worldPlayer, cAttributeMilitaryPopulation)" in xs_source
@@ -5607,6 +5605,7 @@ def _run_victory_subsystem(
 LOBBY_SHAPES = {
     "full 4v4": {color: color for color in range(1, 9)},
     "solo vs four": {1: 1, 5: 2, 6: 3, 7: 4, 8: 5},
+    "reported 2v4 with two closed slots": {1: 1, 3: 2, 5: 3, 6: 4, 7: 5, 8: 6},
     "four vs solo": {1: 1, 2: 2, 3: 3, 4: 4, 5: 5},
     "minimum 1v1": {1: 1, 5: 2},
     "non-adjacent 2v2": {2: 1, 4: 2, 5: 3, 8: 4},
@@ -5677,7 +5676,7 @@ def test_evolution_alpha_victory_survives_split_player_identity(evolution_alpha)
     """The two player-identity domains may disagree without deadlocking the match.
 
     ``p#worldplayer`` is latched from the trigger-side Castle owner; ``p#coloractive``
-    comes from ``xsGetWorldPlayerId``. A sparse lobby can make the two differ. When they
+    comes from cached XS Castle ownership. A sparse lobby can make the two differ. When they
     do, every owner-resolved defeat trigger for that colour is unsatisfiable, so the
     match can only end because elimination also has a path needing neither latch.
     """
@@ -5867,6 +5866,118 @@ def test_evolution_alpha_color_active_has_exactly_one_writer(evolution_alpha):
     )
     assert "void cbaUpdateColorRuntime(int scenarioPlayer = 0)" in xs_source
     assert "gCbaSeenInGameByColor" in xs_source
+
+
+def _castle_identity_runtime(scenario, owners, in_game):
+    """Execute the emitted resolver's small C-like subset with mocked engine reads.
+
+    This tests its actual branch/loop/cache code, not a separately reimplemented
+    mapping algorithm. It does NOT emulate DE or prove that engine unit ids survive
+    lobby loading. Unknown syntax fails translation rather than being skipped.
+    """
+    xs = next(t for t in scenario.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
+    body = xs.split("int cbaWorldPlayerForColor(int scenarioPlayer = 0) {\n", 1)[1].split("\n}\n", 1)[0]
+    lines = ["def resolve(scenarioPlayer=0):"]
+    indent = 1
+    for raw in body.splitlines():
+        line = raw.split("//", 1)[0].strip()
+        if not line:
+            continue
+        if line == "}":
+            indent -= 1
+            continue
+        line = line.replace("||", "or").replace("&&", "and").replace("false", "False")
+        if loop := re.fullmatch(r"for \((\w+) = (\d+); (<|<=) (\d+)\) \{", line):
+            name, start, operator, stop = loop.groups()
+            line = f"for {name} in range({start}, {int(stop) + (operator == '<=')}):"
+        elif line.startswith("if ("):
+            condition, action = line[4:].rsplit(") ", 1)
+            line = f"if {condition}:" + ("" if action == "{" else " " + action.removesuffix(";"))
+        else:
+            assert line.endswith(";"), line
+            line = line.removeprefix("int ").removesuffix(";")
+        lines.append("    " * indent + line)
+        if line.endswith(":"):
+            indent += 1
+    assert indent == 1
+    refs = [-1] * 32
+    for index, reference in re.findall(r"xsArraySetInt\(gCbaCastleRefs, (\d+), (\d+)\);", xs):
+        assert refs[int(index)] == -1
+        refs[int(index)] = int(reference)
+    assert -1 not in refs and len(set(refs)) == 32
+    for color in range(1, 9):
+        actual = {u.reference_id for u in scenario.unit_manager.units[color] if u.unit_const == 82}
+        assert set(refs[(color - 1) * 4:color * 4]) == actual
+    cache = [0] * 9
+    namespace = {
+        "gCbaWorldByColor": cache, "gCbaCastleRefs": refs,
+        "xsArrayGetInt": lambda array, index: array[index],
+        "xsArraySetInt": lambda array, index, value: array.__setitem__(index, value),
+        "xsDoesUnitExist": lambda reference: reference in owners,
+        "xsGetUnitOwner": lambda reference: owners[reference],
+        "xsGetPlayerInGame": lambda player: player in in_game,
+    }
+    # No converter or trigger-variable mock: accidentally consulting either fails.
+    exec("\n".join(lines), namespace)
+    return namespace["resolve"], refs, cache
+
+
+def test_evolution_alpha_identity_handles_explicitly_closed_slots(evolution_alpha):
+    """All nonempty subsets, including P1/P3 versus P5/P6/P7/P8 with P2/P4 closed."""
+    for mask in range(1, 256):
+        colors = [c for c in range(1, 9) if mask & (1 << (c - 1))]
+        # Exercise compacted lobby seats in both ascending and shuffled order.
+        for order in (colors, list(reversed(colors))):
+            seats = {color: index + 1 for index, color in enumerate(order)}
+            owners = {
+                u.reference_id: seats[color]
+                for color in colors for u in evolution_alpha.unit_manager.units[color]
+                if u.unit_const == 82
+            }
+            resolve, _refs, cache = _castle_identity_runtime(evolution_alpha, owners, set(seats.values()))
+            assert {c: resolve(c) for c in range(1, 9)} == {c: seats.get(c, 0) for c in range(1, 9)}
+            assert cache[1:] == [seats.get(c, 0) for c in range(1, 9)]
+            assert resolve(0) == resolve(9) == 0
+
+
+def test_evolution_alpha_identity_persists_after_castle_loss_and_resignation(evolution_alpha):
+    seats = {1: 2, 3: 1, 5: 4, 6: 3, 7: 6, 8: 5}
+    owners = {}
+    live = set(seats.values())
+    resolve, refs, _cache = _castle_identity_runtime(evolution_alpha, owners, live)
+    for color, owner in seats.items():
+        # A delayed engine load must be retried, not cached as permanently closed.
+        assert resolve(color) == 0
+        owners[refs[(color - 1) * 4]] = owner
+        assert resolve(color) == owner
+    owners.clear()
+    live.clear()
+    assert {color: resolve(color) for color in seats} == seats
+
+
+def test_evolution_alpha_identity_refuses_ambiguous_or_inactive_owners(evolution_alpha):
+    owners, live = {}, {1, 2, 7, 8}
+    resolve, refs, _cache = _castle_identity_runtime(evolution_alpha, owners, live)
+    for invalid in (0, -1, 9, 3):
+        owners[refs[0]] = invalid
+        assert resolve(1) == 0
+    owners[refs[0]], owners[refs[1]] = 1, 2
+    assert resolve(1) == 0  # mixed ownership must not choose the first Castle
+    owners[refs[1]] = 1
+    assert resolve(1) == 1
+    owners[refs[4]] = 1
+    assert resolve(2) == 0  # duplicate territory binding
+    owners[refs[24]], owners[refs[28]] = 7, 8
+    assert resolve(7) == 7 and resolve(8) == 8  # never bound by a six-player count
+
+
+def test_evolution_alpha_identity_converter_is_diagnostic_only(evolution_alpha):
+    xs = next(t for t in evolution_alpha.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
+    resolver = xs.split("int cbaWorldPlayerForColor", 1)[1].split("void cbaCreateWave", 1)[0]
+    assert "xsGetWorldPlayerId" not in resolver and "xsTriggerVariable" not in resolver
+    diagnostic = xs.split("rule cbaIdentityDiagnostic", 1)[1].split("rule ", 1)[0]
+    assert "minInterval 10" in diagnostic and "xsDisableSelf();" in diagnostic
+    assert "xsGetWorldPlayerId(scenarioPlayer)" in diagnostic
 
 
 def test_evolution_alpha_xs_addresses_trigger_variables_through_named_bases(
