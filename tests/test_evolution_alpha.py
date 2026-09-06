@@ -35,6 +35,7 @@ from aoe2modes import registry
 from aoe2modes.builder import build_mode
 from aoe2modes.lib import mapview
 from aoe2modes.lib.audit import audit_scenario
+from ascendants_runtime import guard_runtime, logical_conditions
 
 
 def v2_cell_for_player(player, source_x, source_y):
@@ -220,7 +221,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 3_911
+    assert len(triggers) == 3_903
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 956
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -1701,26 +1702,19 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
     assert divider.description_order == 14
 
     for player in range(1, 9):
-        empty = next(
-            trigger for trigger in trigger_manager.triggers if trigger.name == f"Combat HUD Empty P{player}"
-        )
         live = next(
             trigger for trigger in trigger_manager.triggers if trigger.name == f"Combat HUD Live P{player}"
         )
-        assert empty.enabled
         assert not live.enabled
-        assert empty.display_on_screen and live.display_on_screen
-        assert not empty.display_as_objective and not live.display_as_objective
+        assert live.display_on_screen and not live.display_as_objective
         expected_order = 19 - player if player <= 4 else 18 - player
-        assert empty.description_order == live.description_order == expected_order
-        assert empty.short_description == f"P{player} | - | - | -"
+        assert live.description_order == expected_order
         assert live.short_description == (
             f"P{player} | <p{player}k> | <p{player}d> | <p{player}r>"
         )
-        for row in (empty, live):
-            assert len(row.conditions) == 1
-            assert row.conditions[0].condition_type == ConditionId.PLAYER_DEFEATED
-            assert row.conditions[0].source_player == PlayerId.GAIA
+        assert len(live.conditions) == 1
+        assert live.conditions[0].condition_type == ConditionId.PLAYER_DEFEATED
+        assert live.conditions[0].source_player == PlayerId.GAIA
 
     xs_trigger = next(trigger for trigger in trigger_manager.triggers if trigger.name == "XS SCRIPT")
     xs_source = xs_trigger.effects[0].message
@@ -1889,7 +1883,8 @@ def test_evolution_alpha_equalizes_only_confirmed_occupied_slots(evolution_alpha
         if trigger.name.startswith("White King Kills S")
     }
 
-    assert len(equalizers) == len(free_costs) == len(empty_rows) == len(live_rows) == 8
+    assert len(equalizers) == len(free_costs) == len(live_rows) == 8
+    assert empty_rows == {}
     assert len(gates) == len(VALID_COLOR_WORLD_PAIRS)
     assert {
         tuple(map(int, re.fullmatch(r"Occupied Slot S([1-8]) W([1-8])", name).groups()))
@@ -1902,7 +1897,7 @@ def test_evolution_alpha_equalizes_only_confirmed_occupied_slots(evolution_alpha
 
         defeated = [
             condition
-            for condition in equalizer.conditions
+            for condition in logical_conditions(evolution_alpha, equalizer)
             if condition.condition_type == ConditionId.PLAYER_DEFEATED
         ]
         assert len(defeated) == 1
@@ -1944,12 +1939,12 @@ def test_evolution_alpha_equalizes_only_confirmed_occupied_slots(evolution_alpha
         assert gate.enabled and gate.looping
         gate_timers = [
             condition
-            for condition in gate.conditions
+            for condition in logical_conditions(evolution_alpha, gate)
             if condition.condition_type == ConditionId.TIMER
         ]
         gate_variables = [
             condition
-            for condition in gate.conditions
+            for condition in logical_conditions(evolution_alpha, gate)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         ]
         assert len(gate_timers) == 1 and gate_timers[0].timer == 3
@@ -1973,10 +1968,7 @@ def test_evolution_alpha_equalizes_only_confirmed_occupied_slots(evolution_alpha
         deactivated = {
             effect.trigger_id for effect in gate.effects if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
         }
-        assert deactivated == {
-            empty_rows[f"Combat HUD Empty P{color}"].trigger_id,
-            gate.trigger_id,
-        }
+        assert deactivated == {gate.trigger_id}
 
     p1_p5_values = {
         **{120 + color: int(color in {1, 5}) for color in range(1, 9)},
@@ -1987,7 +1979,7 @@ def test_evolution_alpha_equalizes_only_confirmed_occupied_slots(evolution_alpha
         for gate in gates.values()
         if all(
             p1_p5_values[condition.variable] == condition.quantity
-            for condition in gate.conditions
+            for condition in logical_conditions(evolution_alpha, gate)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         )
     }
@@ -2495,7 +2487,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                     condition.comparison,
                     condition.quantity,
                 )
-                for condition in reward.conditions
+                for condition in logical_conditions(evolution_alpha, reward)
                 if condition.condition_type == ConditionId.VARIABLE_VALUE
             }
             assert {
@@ -2507,7 +2499,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
 
             castle = next(
                 condition
-                for condition in reward.conditions
+                for condition in logical_conditions(evolution_alpha, reward)
                 if condition.condition_type == ConditionId.OBJECTS_IN_AREA
             )
             assert castle.source_player == PlayerId(world_player)
@@ -2571,11 +2563,11 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
             assert any(
                 condition.condition_type == ConditionId.TIMER
                 and condition.timer == 1
-                for condition in mover.conditions
+                for condition in logical_conditions(evolution_alpha, mover)
             )
             assert {
                 (condition.variable, condition.quantity, condition.comparison)
-                for condition in mover.conditions
+                for condition in logical_conditions(evolution_alpha, mover)
                 if condition.condition_type == ConditionId.VARIABLE_VALUE
             } == {
                 (104 + color, 1, Comparison.EQUAL),
@@ -2793,7 +2785,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
     assert all(
         condition.source_player != -1
         for trigger in triggers
-        for condition in trigger.conditions
+        for condition in logical_conditions(evolution_alpha, trigger)
         if condition.condition_type == ConditionId.OBJECTS_IN_AREA
         and condition.object_list == BuildingInfo.OUTPOST.ID
     )
@@ -2805,17 +2797,17 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
         assert 1 <= world_player <= 8
         timers = [
             condition
-            for condition in marker_detector.conditions
+            for condition in logical_conditions(evolution_alpha, marker_detector)
             if condition.condition_type == ConditionId.TIMER
         ]
         variables = [
             condition
-            for condition in marker_detector.conditions
+            for condition in logical_conditions(evolution_alpha, marker_detector)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         ]
         deleted_markers = [
             condition
-            for condition in marker_detector.conditions
+            for condition in logical_conditions(evolution_alpha, marker_detector)
             if condition.condition_type == ConditionId.OBJECTS_IN_AREA
         ]
         assert len(timers) == 1 and timers[0].timer == 4
@@ -2861,12 +2853,12 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
 
         timers = [
             condition
-            for condition in detector.conditions
+            for condition in logical_conditions(evolution_alpha, detector)
             if condition.condition_type == ConditionId.TIMER
         ]
         variables = [
             condition
-            for condition in detector.conditions
+            for condition in logical_conditions(evolution_alpha, detector)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         ]
         assert len(detector.conditions) == 7
@@ -2897,7 +2889,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
         assert len(resolver.conditions) == 4
         castle = next(
             condition
-            for condition in resolver.conditions
+            for condition in logical_conditions(evolution_alpha, resolver)
             if condition.condition_type == ConditionId.OBJECTS_IN_AREA
         )
         assert castle.condition_type == ConditionId.OBJECTS_IN_AREA
@@ -2908,7 +2900,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
         )
         assert {
             (condition.variable, condition.quantity, condition.comparison)
-            for condition in resolver.conditions
+            for condition in logical_conditions(evolution_alpha, resolver)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         } == {
             (56, 1, Comparison.EQUAL),
@@ -2982,10 +2974,10 @@ def test_evolution_alpha_detects_every_color_owner_from_its_castles(
         assert detector.enabled and detector.looping
         assert len(detector.conditions) == 4
         assert any(c.condition_type == ConditionId.PLAYER_DEFEATED and c.inverted == 1
-                   and c.source_player == world_player for c in detector.conditions)
+                   and c.source_player == world_player for c in logical_conditions(evolution_alpha, detector))
         castle = next(
             condition
-            for condition in detector.conditions
+            for condition in logical_conditions(evolution_alpha, detector)
             if condition.condition_type == ConditionId.OBJECTS_IN_AREA
         )
         assert (
@@ -3636,12 +3628,12 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
         assert len(trigger.conditions) == 4
         variable_conditions = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         ]
         castle_guards = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.OBJECTS_IN_AREA
         ]
         assert len(variable_conditions) == 3
@@ -3708,12 +3700,12 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
         color, world_player = map(int, resigned_pattern.fullmatch(trigger.name).groups())
         variables = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         ]
         defeated = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.PLAYER_DEFEATED
         ]
         assert len(variables) == 3
@@ -3757,12 +3749,12 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
         )
         timers = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.TIMER
         ]
         variables = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         ]
         assert trigger.looping
@@ -3804,12 +3796,12 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
         assert trigger.enabled and not trigger.looping
         timers = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.TIMER
         ]
         guards = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.OBJECTS_IN_AREA
         ]
         assert len(trigger.conditions) == len(timers) + len(guards)
@@ -3838,12 +3830,12 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
         assert not trigger.enabled
         timers = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.TIMER
         ]
         variables = [
             condition
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         ]
         assert len(timers) == 1 and timers[0].timer == 5
@@ -3899,7 +3891,7 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
     def variable_conditions_match(trigger, values):
         return all(
             values[condition.variable] == condition.quantity
-            for condition in trigger.conditions
+            for condition in logical_conditions(evolution_alpha, trigger)
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         )
 
@@ -4147,7 +4139,7 @@ def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_
     triggers = evolution_alpha.trigger_manager.triggers
     by_name = {trigger.name: trigger for trigger in triggers}
     xs_source = by_name["XS SCRIPT"].effects[0].message
-    assert "xsGetWorldPlayerId" not in xs_source
+    assert "xsGetWorldPlayerId" not in xs_source.split("int cbaWorldPlayerForColor", 1)[1]
     assert "40 + scenarioPlayer - 1" not in xs_source
 
     army_destinations = (
@@ -4231,7 +4223,7 @@ def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_
                 ]
                 assert {
                     (condition.variable, condition.quantity)
-                    for condition in normal.conditions
+                    for condition in logical_conditions(evolution_alpha, normal)
                     if condition.condition_type == ConditionId.VARIABLE_VALUE
                 } >= {
                     (39 + color, trigger_player),
@@ -4267,7 +4259,7 @@ def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_
                 )
                 assert {
                     (condition.variable, condition.quantity)
-                    for condition in hero.conditions
+                    for condition in logical_conditions(evolution_alpha, hero)
                     if condition.condition_type == ConditionId.VARIABLE_VALUE
                 } >= {
                     (39 + color, trigger_player),
@@ -4314,7 +4306,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
     assert len(teal_for_compacted_p2.conditions) == 6
     owner = next(
         condition
-        for condition in teal_for_compacted_p2.conditions
+        for condition in logical_conditions(evolution_alpha, teal_for_compacted_p2)
         if condition.condition_type == ConditionId.OBJECTS_IN_AREA
     )
     assert owner.condition_type == ConditionId.OBJECTS_IN_AREA
@@ -4526,7 +4518,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
                 ]
                 assert {
                     (condition.variable, condition.quantity)
-                    for condition in movement.conditions
+                    for condition in logical_conditions(evolution_alpha, movement)
                     if condition.condition_type == ConditionId.VARIABLE_VALUE
                 } == {
                     (80 + scenario_player, 1),
@@ -5348,7 +5340,8 @@ def test_evolution_alpha_has_no_unconditional_all_slot_resource_loop(evolution_a
             for effect in trigger.effects
         )
         and not any(
-            condition.condition_type == ConditionId.PLAYER_DEFEATED for condition in trigger.conditions
+            condition.condition_type == ConditionId.PLAYER_DEFEATED
+            for condition in logical_conditions(evolution_alpha, trigger)
         )
     ]
     assert unsafe_equalizers == []
@@ -5451,7 +5444,7 @@ def _victory_subsystem(scenario):
 
 
 def _run_victory_subsystem(
-    subsystem, castle_areas, seats, phases, *, objects=(), pre_eliminate=(), report=None,
+    scenario, subsystem, castle_areas, seats, phases, *, objects=(), pre_eliminate=(), report=None,
 ):
     """Run the subsystem to a fixpoint per phase and return every declared winner.
 
@@ -5483,6 +5476,24 @@ def _run_victory_subsystem(
     winners = set()
     seated_slots = set(seats.values())
     trigger_owner, castles = {}, {}
+    # Native effect selectors and XS owners intentionally disagree. The conversion
+    # is stable after a Castle is lost; it is not inferred from currently live units.
+    to_xs = {phases[0][0][color]: owner for color, owner in seats.items()}
+    ref_colors = {u.reference_id: color for color in range(1, 9)
+                  for u in scenario.unit_manager.units[color] if u.unit_const == BuildingInfo.CASTLE.ID}
+
+    def ref_owner(ref):
+        color = ref_colors[ref]
+        return to_xs.get(trigger_owner.get(color), 0) if castles.get(color) else 0
+
+    guards = guard_runtime(
+        scenario,
+        xsGetWorldPlayerId=lambda source: to_xs.get(source, -1),
+        xsGetUnitOwner=ref_owner,
+        xsDoesUnitExist=lambda ref: castles.get(ref_colors[ref], False),
+        xsGetUnitHitpoints=lambda ref: 1000 if castles.get(ref_colors[ref]) else 0,
+        xsGetPlayerInGame=lambda owner: owner in seated_slots,
+    )
 
     def refresh_active():
         # cbaUpdateColorRuntime: XS is the only writer of p#coloractive.
@@ -5504,6 +5515,8 @@ def _run_victory_subsystem(
 
     def holds(condition):
         kind = condition.condition_type
+        if kind == ConditionId.SCRIPT_CALL:
+            return guards[condition.xs_function]()
         if kind == ConditionId.TIMER:
             return True
         if kind == ConditionId.DESTROY_OBJECT:
@@ -5518,7 +5531,7 @@ def _run_victory_subsystem(
             return value >= condition.quantity
         if kind == ConditionId.OBJECTS_IN_AREA:
             assert condition.object_list == BuildingInfo.CASTLE.ID
-            present = castle_present(condition)
+            present = condition.source_player <= len(seated_slots) and castle_present(condition)
             return not present if condition.inverted == 1 else present
         if kind in {ConditionId.OWN_OBJECTS, ConditionId.OWN_FEWER_OBJECTS}:
             assert condition.object_list == condition.object_type == condition.object_group == -1
@@ -5658,7 +5671,7 @@ def test_evolution_alpha_victory_resolves_for_every_lobby_shape(evolution_alpha)
                     castles[color] = False
                     owners[color] = None
                 winners = _run_victory_subsystem(
-                    subsystem, castle_areas, seats, [start, (owners, castles)]
+                    evolution_alpha, subsystem, castle_areas, seats, [start, (owners, castles)]
                 )
                 assert winners == {seats[color] for color in survivors}, (
                     f"{shape}, closed slots cleaned={closed_slots_cleaned}, "
@@ -5669,7 +5682,7 @@ def test_evolution_alpha_victory_resolves_for_every_lobby_shape(evolution_alpha)
         for closed_slots_cleaned in (False, True):
             start = _starting_rows(seats, closed_slots_cleaned)
             assert (
-                _run_victory_subsystem(subsystem, castle_areas, seats, [start])
+                _run_victory_subsystem(evolution_alpha, subsystem, castle_areas, seats, [start])
                 == set()
             ), f"{shape} declared a winner while both sides still hold Castles"
 
@@ -5709,7 +5722,7 @@ def test_evolution_alpha_victory_survives_split_player_identity(evolution_alpha)
         # fields; that it resolves at all is what this test pins.
         assert (
             _run_victory_subsystem(
-                subsystem, castle_areas, seats, [start, (owners, castles)]
+                evolution_alpha, subsystem, castle_areas, seats, [start, (owners, castles)]
             )
             == {start_owners[color] for color in surviving}
         ), losing_side
@@ -5760,7 +5773,7 @@ def test_evolution_alpha_elimination_purges_objects_before_any_winner(evolution_
                         phase_owners[color], phase_castles[color] = seats[color], True
                 report = {}
                 winners = _run_victory_subsystem(
-                    selected, castle_areas, seats, [start, (phase_owners, phase_castles)],
+                    evolution_alpha, selected, castle_areas, seats, [start, (phase_owners, phase_castles)],
                     objects=objects, pre_eliminate=losing_colors, report=report,
                 )
                 assert winners == set(seats.values()) - losing_owners
@@ -5910,8 +5923,15 @@ def _resource_identity_runtime(scenario, variables):
     return namespace["resolve"]
 
 
-def _run_identity_bridges(scenario, variables, resources):
-    """Execute the serialized bridge conditions/effects through trigger selectors."""
+def _run_identity_bridges(scenario, variables, resources, to_xs=None):
+    """Execute XS guards and native effects against the same physical resources."""
+    to_xs = to_xs or {owner: owner for owner in range(1, 9)}
+    native_for_xs = {api: native for native, api in to_xs.items()}
+    guards = guard_runtime(
+        scenario,
+        xsGetWorldPlayerId=lambda source: to_xs.get(source, -1),
+        xsPlayerAttribute=lambda owner, resource: resources.get((native_for_xs[owner], resource), 0),
+    )
     for trigger in scenario.trigger_manager.triggers:
         if not trigger.name.startswith("Color XS Identity "):
             continue
@@ -5922,6 +5942,8 @@ def _run_identity_bridges(scenario, variables, resources):
             if condition.condition_type == ConditionId.VARIABLE_VALUE:
                 assert condition.comparison == Comparison.EQUAL
                 matched &= variables.get(condition.variable, 0) == condition.quantity
+            elif condition.condition_type == ConditionId.SCRIPT_CALL:
+                matched &= guards[condition.xs_function]()
             else:
                 assert condition.condition_type == ConditionId.ACCUMULATE_ATTRIBUTE
                 value = resources.get((condition.source_player, condition.attribute), 0)
@@ -5948,7 +5970,10 @@ def test_evolution_alpha_identity_handles_explicitly_closed_slots(evolution_alph
             trigger_owners = {color: 9 - seats[color] for color in colors}
             variables = {39 + color: owner for color, owner in trigger_owners.items()}
             resources = {(trigger_owners[color], 10): 1000 + seats[color] for color in colors}
-            _run_identity_bridges(evolution_alpha, variables, resources)
+            _run_identity_bridges(
+                evolution_alpha, variables, resources,
+                {trigger_owners[color]: seats[color] for color in colors},
+            )
             resolve = _resource_identity_runtime(evolution_alpha, variables)
             assert {c: resolve(c) for c in range(1, 9)} == {c: seats.get(c, 0) for c in range(1, 9)}
             assert resolve(0) == resolve(9) == 0
@@ -5960,10 +5985,10 @@ def test_evolution_alpha_identity_persists_after_castle_loss_and_resignation(evo
     resources = {}
     resolve = _resource_identity_runtime(evolution_alpha, variables)
     for color, owner in seats.items():
-        _run_identity_bridges(evolution_alpha, variables, resources)
+        _run_identity_bridges(evolution_alpha, variables, resources, {9 - api: api for api in seats.values()})
         assert resolve(color) == 0
         resources[9 - owner, 10] = 1000 + owner
-        _run_identity_bridges(evolution_alpha, variables, resources)
+        _run_identity_bridges(evolution_alpha, variables, resources, {9 - api: api for api in seats.values()})
         assert resolve(color) == owner
     resources.clear()
     _run_identity_bridges(evolution_alpha, variables, resources)
@@ -5986,7 +6011,7 @@ def test_evolution_alpha_identity_uses_only_shared_resource_tokens(evolution_alp
     xs = next(t for t in evolution_alpha.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
     resolver = xs.split("int cbaWorldPlayerForColor", 1)[1].split("void cbaCreateWave", 1)[0]
     assert "xsTriggerVariable(137 + scenarioPlayer - 1) - 1000" in resolver
-    assert "xsGetWorldPlayerId" not in xs and "xsGetUnitOwner" not in xs
+    assert "xsGetWorldPlayerId" not in resolver and "xsGetUnitOwner" not in resolver
     assert "cbaIdentityDiagnostic" not in xs
     assert "xsSetPlayerAttribute(worldPlayer, 10, 1000 + worldPlayer);" in xs
     assert 10 not in ascendants_build_module().SCORE_NEUTRAL_ATTRIBUTES
@@ -6014,7 +6039,9 @@ def test_evolution_alpha_native_hud_and_cleanup_work_with_no_xs_identity(evoluti
     for shape, seats in LOBBY_SHAPES.items():
         start = _starting_rows(seats, True)
         initial = {}
-        assert _run_victory_subsystem(subsystem, areas, seats, [start], report=initial) == set()
+        assert _run_victory_subsystem(
+            evolution_alpha, subsystem, areas, seats, [start], report=initial,
+        ) == set()
         variables = initial["variables"]
         assert all(variables.get(136 + color, 0) == 0 for color in range(1, 9))
         for color in range(1, 9):
@@ -6049,7 +6076,8 @@ def test_evolution_alpha_native_hud_and_cleanup_work_with_no_xs_identity(evoluti
         objects = [dict(owner=seats[color], kind="protected building") for color in losers]
         final = {}
         winners = _run_victory_subsystem(
-            subsystem, areas, seats, [start, (owners, castles)], objects=objects, report=final,
+            evolution_alpha, subsystem, areas, seats, [start, (owners, castles)],
+            objects=objects, report=final,
         )
         assert winners == {seats[color] for color in seats if color < 5}, shape
         assert final["remaining"] == [], shape
@@ -6184,3 +6212,98 @@ def test_ascendants_docs_variable_registry_matches_the_source(repo, evolution_al
         variable.variable_id
         for variable in evolution_alpha.trigger_manager.variables
     }
+
+
+def test_runtime_castle_guards_ignore_missing_dead_and_wrong_owner_castles(evolution_alpha):
+    """Execute serialized guards with independently numbered owners and unit state."""
+    from ascendants_runtime import guard_bodies, xs_source
+
+    bodies = guard_bodies(xs_source(evolution_alpha))
+    state = {}
+    resolved_owner = 17
+    runtime = guard_runtime(
+        evolution_alpha,
+        xsGetWorldPlayerId=lambda source: resolved_owner,
+        xsDoesUnitExist=lambda ref: state[ref][0],
+        xsGetUnitHitpoints=lambda ref: state[ref][1],
+        xsGetUnitOwner=lambda ref: state[ref][2],
+    )
+    checked = 0
+    for name, body in bodies.items():
+        if "int count = 0;" not in body:
+            continue
+        refs = list(map(int, re.findall(r"xsGetUnitOwner\((\d+)\)", body)))
+        operator, threshold = re.search(r"return\(count (<|>=) (\d+)\);", body).groups()
+        for count in range(5):
+            for invalid in ((False, 100, 17), (True, 0, 17), (True, 100, 23)):
+                state.update({ref: (True, 100, 17) if i < count else invalid
+                              for i, ref in enumerate(refs)})
+                expected = count < int(threshold) if operator == "<" else count >= int(threshold)
+                assert runtime[name]() == expected
+        resolved_owner = 0
+        assert runtime[name]() == (operator == "<" and int(threshold) > 0)
+        resolved_owner = 17
+        checked += 1
+    assert checked >= 64
+
+
+def test_full_tech_tree_is_embedded_in_scenario(evolution_alpha):
+    assert evolution_alpha.sections["Options"].all_techs == 1
+
+
+def test_each_castle_controls_only_its_own_wave_spawn(evolution_alpha):
+    """Run the emitted wave function through every combination of surviving Castles."""
+    from ascendants_runtime import xs_source
+
+    body = xs_source(evolution_alpha).split("void cbaCreateWave", 1)[1].split("void cbaSpawnColor", 1)[0]
+    body = body[body.index("{") + 1:body.rindex("}")]
+    lines = ["def wave(scenarioPlayer, worldPlayer, unitId):"]
+    indent = 1
+    for token in re.split(r"([{};])", body):
+        token = " ".join(token.split())
+        if not token or token == ";":
+            continue
+        if token == "{":
+            indent += 1
+            continue
+        if token == "}":
+            indent -= 1
+            continue
+        token = token.replace("&&", "and").replace("false", "False")
+        if token.startswith("else if ("):
+            token = f"elif {token[9:-1]}:"
+        elif token.startswith("if ("):
+            token = f"if {token[4:-1]}:"
+        else:
+            assert token.startswith(("xsCreateUnit(", "xsSetTriggerVariable(")), token
+        lines.append("    " * indent + token)
+    assert indent == 1
+    states, created = {}, []
+    namespace = {
+        "xsDoesUnitExist": lambda ref: states[ref][0],
+        "xsGetUnitHitpoints": lambda ref: states[ref][1],
+        "xsGetUnitOwner": lambda ref: states[ref][2],
+        "xsCreateUnit": lambda unit, owner, position, *args: created.append((owner, position)),
+        "xsSetTriggerVariable": lambda *args: None,
+        "vector": lambda x, y, z: (x, y),
+    }
+    exec("\n".join(lines), namespace)
+    for color in range(1, 9):
+        castles = [u for u in evolution_alpha.unit_manager.units[color]
+                   if u.unit_const == BuildingInfo.CASTLE.ID]
+        states.update({u.reference_id: (True, 100, 17) for u in castles})
+        created.clear()
+        namespace["wave"](color, 17, 239)
+        assert len(created) == 4
+        positions = [p for _, p in created]
+        castle_for_position = {p: min(castles, key=lambda u: (u.x-p[0])**2 + (u.y-p[1])**2).reference_id
+                               for p in positions}
+        assert len(set(castle_for_position.values())) == 4
+        for mask in range(16):
+            for invalid in ((False, 100, 17), (True, 0, 17), (True, 100, 23)):
+                alive = {u.reference_id for i, u in enumerate(castles) if mask & (1 << i)}
+                states.update({u.reference_id: (True, 100, 17) if u.reference_id in alive else invalid
+                               for u in castles})
+                created.clear()
+                namespace["wave"](color, 17, 239)
+                assert created == [(17, p) for p in positions if castle_for_position[p] in alive]

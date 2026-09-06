@@ -57,6 +57,7 @@ from aoe2modes.lib.decompile import (
     safe_get,
 )
 
+from .runtime_conditions import configure_runtime_conditions
 from .scenario import apply as apply_scenario_source
 from .v2_map import apply_v2_map, v2_cell_for_player, v2_position_for_player
 
@@ -1036,9 +1037,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_910:
+    if len(ctx.tm.triggers) != 3_902:
         raise RuntimeError(
-            f"expected 3,910 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,902 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1696,8 +1697,8 @@ def _configure_custom_team_victory(
 ) -> None:
     """Resolve defeat and victory through each occupied color's runtime player.
 
-    The Castle detector latches the trigger-side owner. XS independently latches
-    whether the color participated, using independently cached XS Castle ownership.
+    The XS-guarded Castle detector latches the trigger-side owner and participation.
+    Native effects preserve that occupancy after the starting objects disappear.
     Occupancy remains true after elimination: active=0 must not prevent cleanup.
 
     Victory requires inactive opponents AND confirmed empty owners. A timed purge
@@ -2036,10 +2037,22 @@ def _render_color_spawn_xs(ctx: BuildContext) -> str:
     ):
         prefix = "if" if index == 0 else "else if"
         coordinate_branches.append(f"    {prefix} (scenarioPlayer == {int(scenario_player)}) {{")
-        coordinate_branches.extend(
-            f"        xsCreateUnit(unitId, worldPlayer, vector({x}, {y}, -1), false, false, false);"
-            for x, y in points
-        )
+        castles = [u for u in ctx.um.units[scenario_player] if u.unit_const == BuildingInfo.CASTLE.ID]
+        bound_refs = set()
+        for x, y in points:
+            castle = min(castles, key=lambda u: (u.x - x) ** 2 + (u.y - y) ** 2)
+            ref = castle.reference_id
+            if ref in bound_refs:
+                raise RuntimeError(f"P{int(scenario_player)}: two spawn points share Castle {ref}")
+            bound_refs.add(ref)
+            coordinate_branches.extend((
+                f"        if (xsDoesUnitExist({ref}) && xsGetUnitHitpoints({ref}) > 0 && "
+                f"xsGetUnitOwner({ref}) == worldPlayer) {{",
+                f"            xsCreateUnit(unitId, worldPlayer, vector({x}, {y}, -1), false, false, false);",
+                "        }",
+            ))
+        if len(bound_refs) != 4:
+            raise RuntimeError(f"P{int(scenario_player)}: expected four distinct Castle spawn bindings")
         coordinate_branches.append("    }")
 
     spawn_calls = "\n".join(f"    cbaSpawnColor({int(player)});" for player in PLAYERS)
@@ -5002,7 +5015,6 @@ def _add_sparse_lobby_scoreboard(
     )
     divider.new_condition.player_defeated(source_player=PlayerId.GAIA)
 
-    placeholder_rows = {}
     live_rows = {}
     for player in PLAYERS:
         player_number = int(player)
@@ -5022,19 +5034,6 @@ def _add_sparse_lobby_scoreboard(
             if player_number <= 4
             else 18 - player_number
         )
-        placeholder = tm.add_trigger(
-            f"Combat HUD Empty P{player_number}",
-            description_stid=0,
-            short_description=f"P{player_number} | - | - | -",
-            short_description_stid=0,
-            display_on_screen=1,
-            description_order=display_order,
-            enabled=1,
-            mute_objectives=1,
-        )
-        placeholder.new_condition.player_defeated(source_player=PlayerId.GAIA)
-        placeholder_rows[player] = placeholder
-
         kills_name, deaths_name, razings_name = variable_names
         live = tm.add_trigger(
             f"Combat HUD Live P{player_number}",
@@ -5081,9 +5080,6 @@ def _add_sparse_lobby_scoreboard(
             )
             gate.new_effect.activate_trigger(
                 trigger_id=free_costs[world_player].trigger_id
-            )
-            gate.new_effect.deactivate_trigger(
-                trigger_id=placeholder_rows[color].trigger_id
             )
             gate.new_effect.activate_trigger(trigger_id=live_rows[color].trigger_id)
 
@@ -5586,6 +5582,12 @@ def build(ctx: BuildContext) -> None:
         )
 
     _compact_legacy_trigger_graph(ctx)
+    ctx.add_xs(
+        configure_runtime_conditions(
+            ctx, identity_resource=XS_IDENTITY_RESOURCE, identity_tag=XS_IDENTITY_TAG_BASE,
+        ),
+        label="sparse-lobby runtime conditions",
+    )
     _assert_variable_ids_are_contiguous(ctx)
     ctx.add_xs(_render_color_spawn_xs(ctx), label="color-aware army spawning")
 

@@ -1,6 +1,9 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. Kept in sync with [AGENTS.md](./AGENTS.md) — same content, both filenames exist so tools that look for either one find the same knowledge. If you edit one, edit the other.
+Guidance for AI coding agents working in this repository. Kept in sync with
+[CLAUDE.md](./CLAUDE.md) — the two files have the same content so tools that
+look for either filename (Claude Code, Aider, Codex, and others) find the same
+project knowledge. If you edit one, edit the other.
 
 ## What this repo is
 
@@ -81,17 +84,22 @@ Documented at length in `docs/tooling.md`. Short version:
 
 ### Custom-scenario player identity is two separate domains
 
-Do not pass Ascendants' Castle-detector variable `p#worldplayer` into XS. Despite its
-historical name, it is a trigger-side player selector. Native Castle-owner detection
-latches participation and drives HUD reads, resignation, cleanup and victory.
+Ascendants' historical `p#worldplayer` variables (40–47) hold trigger-side
+selectors, not XS API indices. Live P1/P3/P5/P8 testing found that native player
+conditions fail for high colors in sparse lobbies while native effects still work.
+`runtime_conditions.py` replaces starting-Castle, defeat and identity-token
+conditions with embedded XS guards. Guards convert each candidate selector with
+`xsGetWorldPlayerId`, then verify the four stable starting-Castle references using
+existence, positive hitpoints and actual owner. They preserve condition ordering.
+Native effects latch occupancy and perform HUD copies, cleanup and victory.
 XS stamps its API index plus 1000 into reserved unused resource 10; an owner-resolved
-trigger copies that same player's resource into `p#xsidentity` (137–144).
-`cbaWorldPlayerForColor` decodes this token for spawning and builder rewards.
-Neither numeric selector equality, `xsGetWorldPlayerId`, `xsGetUnitOwner`, nor
-`xsGetPlayerInGame` is used to establish participation. v1.0.18 and v1.0.19 both
-failed the reported closed-slot P7/P8 match. Tests start with zero participation
-and exercise serialized detection/HUD/cleanup plus independently permuted XS and
-trigger domains. Automated evidence is not live DE acceptance.
+trigger copies it into `p#xsidentity` (137–144). `cbaWorldPlayerForColor` decodes that
+token for spawning and builder rewards; it does not consume variables 40–47.
+Objective rows activate only for colors that actually started and remain after
+elimination to preserve their final stats. Closed slots have no placeholder rows.
+Tests execute the serialized XS guards against independently numbered identities.
+Keep automated evidence separate from live DE acceptance; v1.0.20 passed automated
+checks but failed the sparse match. See the v1.0.1.0 release notes for current scope.
 
 ### Shared libraries
 
@@ -121,7 +129,7 @@ trigger domains. Automated evidence is not live DE acceptance.
 
 ## Project-scoped reference material
 
-`.claude/skills/aoe2-scenario-parser/` is a curated reference for `AoE2ScenarioParser`, generated against the version actually pinned in this repo (0.8.4) rather than the upstream docs (which are ahead in places). When Claude Code auto-loads it via the Skill tool, use it; when working outside a skill invocation (or as any other agent reading the repo), read the files directly:
+`.claude/skills/aoe2-scenario-parser/` is a curated reference for `AoE2ScenarioParser`, generated against the version actually pinned in this repo (0.8.4) rather than the upstream docs (which are ahead in places). Even if your tool cannot invoke a "skill", read these files as markdown when writing or debugging a mode's `build.py`:
 
 - `SKILL.md` — entry point. **The `Version drift` section flags concrete divergences between the upstream docs at ksneijders.github.io/AoE2ScenarioParser and what 0.8.4 actually exposes** (e.g. `PlayerId` instead of `Player`, no `UnitInfo.VILLAGER`). Consult it before trusting an upstream snippet.
 - `references/managers.md`, `references/conditions.md`, `references/effects.md`, `references/xs.md`, `references/area.md`, `references/data-triggers.md`, `references/datasets.md` — API and dataset reference.

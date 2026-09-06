@@ -1,6 +1,18 @@
+# Live follow-up: v1.0.1.0
+
+The v1.0.20 candidate also failed the private P1/P3/P5/P8 reproduction on
+2026-09-06. Native Objects in Area and token conditions did not recognize high
+colors, while native effects continued to address the correct scenario players.
+Isolated XS-condition probes restored P5/P8. The final fix converts candidate
+selectors, verifies actual starting Castle references and retains native effects.
+The production build initialized all four colors and displayed only those four
+Objectives rows. See [v1.0.1.0 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.0.1.0.md).
+
+The earlier investigation below is retained as historical evidence.
+
 # Closed-slot failure: live evidence, 2026-09-06
 
-Status: **v1.0.19 failed live acceptance. v1.0.20 replaces the shared detection
+Historical status: **v1.0.19 failed live acceptance. v1.0.20 replaces the shared detection
 failure path in code; native acceptance has not yet been observed.**
 The user reports lobby slots 3 and 4 were explicitly closed. Occupied colors are
 P1/P3 versus P5/P6/P7/P8. Lobby slot numbers must not be confused with color numbers.

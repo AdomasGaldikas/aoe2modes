@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.20
+# CBA Hero: Ascendants v1.0.1.0
 
 Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -22,16 +22,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.0.20 |
+| Metric | v1.0.1.0 |
 | --- | ---: |
-| Triggers | 3,911 (3,451 initially enabled) |
-| Conditions | 17,449 |
-| Effects | 15,584 |
+| Triggers | 3,903 (3,443 initially enabled) |
+| Conditions | 17,441 |
+| Effects | 15,520 |
 | Units | 956 |
 | Runtime variables | 145 (ids 0–144) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero Ascendants v1.0.20.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero Ascendants v1.0.1.0.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -40,7 +40,7 @@ keeps this file's version in step with `mode.toml`.
 Every color has two movable, protected controllers on separate rear tracks:
 
 - **Sheep — Castle armies.** Its snowy HOLD pad (level 0) sends each new
-  four-unit Castle wave one tile back toward its own Castle row. Levels 1–5 send each
+  Castle wave (one unit per surviving Castle) one tile back toward its own Castle row. Levels 1–5 send each
   new wave progressively farther toward the battle.
 - **War Penguin — Heroes.** Its snowy OFF pad (level 0) switches Hero
   production off. Levels 1–5 switch it on and send each newly spawned Hero
@@ -94,13 +94,17 @@ lower tiers cannot burst-spawn after re-enabling Heroes.
 ## Lobby ownership
 
 The fixed scenario color and the runtime lobby player are separate identities in DE.
-Native triggers resolve the owner standing in each Castle row, latch participation,
-and read that owner's HUD counters. XS stamps its own API index into reserved
-resource 10; owner-resolved triggers copy the token for spawning and builder rewards.
-This does not assume trigger selectors and XS indices coincide. v1.0.18 and v1.0.19
-both failed the reported closed-slot P7/P8 game; v1.0.20 removes the shared dependency
-that let a failed XS lookup hide score rows and prevent cleanup.
-See [v1.0.20 notes](RELEASE_NOTES_v1.0.20.md). Live DE acceptance remains separate.
+XS guards resolve each Castle row from stable references, positive hitpoints and
+actual ownership. Native effects latch participation and read HUD counters. XS
+stamps its API index into reserved resource 10; native effects copy that token for
+spawning and builder rewards. v1.0.20's native conditions failed for high colors in
+sparse lobbies; v1.0.1.0 passed a live P1/P3 versus P5/P8 match through natural victory.
+Only colors that started have an Objectives row; final stats survive elimination.
+See [v1.0.1.0 notes](RELEASE_NOTES_v1.0.1.0.md) for the precise acceptance scope.
+
+Full Tech Tree is enabled inside the scenario. Hosts do not need to enable its lobby
+checkbox. Each army spawn point stops producing units when its own Castle is razed;
+surviving Castles continue on the normal wave timer.
 
 Blue, Red, Green, and Yellow form one side; Teal, Purple, Gray, and Orange form the
 other. At least one occupied color is required on each side. A resigned or defeated
@@ -108,7 +112,7 @@ runtime player's remaining units and buildings are removed from the entire map.
 
 ## Match resolution
 
-A color is alive after native Castle-owner detection latches participation and until elimination.
+A color is alive after XS-guarded Castle-owner detection latches participation and until elimination.
 `p#coloractive` has exactly **one** writer, `cbaUpdateColorRuntime` in XS; triggers
 write occupancy and elimination, and XS derives the active bit within a second.
 A second trigger-side writer used to be silently reverted unless every defeat path also

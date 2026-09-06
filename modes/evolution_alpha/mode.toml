@@ -1,7 +1,7 @@
 [mode]
 id = "evolution_alpha"
 name = "CBA Hero Ascendants"
-version = "1.0.20"
+version = "1.0.1.0"
 description = "A complete CBA Hero arena with independent Castle-army and Hero spawn sliders, six hero tiers, free development, protected team routes, live K/D/R, center rewards, and team vote-kicks."
 authors = []
 tags = ["cba", "hero", "arena", "4v4"]

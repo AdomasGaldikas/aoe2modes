@@ -1,9 +1,10 @@
-# Ascendants v1.0.20 issue register
+# Ascendants v1.0.1.0 issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.20** is the current code correction; live DE acceptance remains
-separate. v1.0.18 and v1.0.19 both failed the reported closed-slot game.
+repair targets. **v1.0.1.0** is the current correction. v1.0.20 also failed live sparse-lobby
+acceptance; v1.0.1.0 initialized P1/P3/P5/P8 and displayed only participating rows.
+Broader engine acceptance remains separate from automated checks.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
@@ -12,7 +13,7 @@ The failed v1.0.18 candidate was 161,074 bytes with SHA-256
 The failed v1.0.19 candidate was 161,657 bytes with SHA-256
 `ec4c03df92588582e5c5984e1befdd9d18b289b4553c9a4b86503a098c3991a0`;
 142 tests and the warning-free strict audit passed, but did not catch the live failure.
-See v1.0.20 release notes for the replacement detection path and validation.
+See v1.0.1.0 release notes for the current detection path and live validation.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
@@ -105,21 +106,39 @@ an XS player API. See
 
 ## ASC-049 — two explicitly closed slots hide P7/P8 from runtime systems
 
-**Live failure confirmed in v1.0.18 and v1.0.19. Code correction in v1.0.20;
-native acceptance not yet observed.** The user played P1/P3 against P5/P6/P7/P8,
-explicitly closing lobby slots before starting. P7/P8 had blank custom score rows,
-retained buildings after Castle loss, and prevented victory. Read-only replay
-inspection confirms the current v1.0.19 match and compacted Gray/Orange world
-players 5/6; it does not establish native XS return values.
+**Live failures confirmed through v1.0.20; corrected and tested in v1.0.1.0.**
+Native player conditions failed for high colors in a sparse P1/P3 vs P5/P8 match,
+leaving those colors uninitialized. Embedded XS guards now resolve the stable
+starting-Castle references through converted player identities and verify existence,
+positive HP and actual owner. Native effects still copy HUD data and perform cleanup.
+The spawn token remains separate from participation and victory.
 
-v1.0.20 moves participation and HUD reads to native owner-resolved triggers.
-The active bit is derived from persistent occupancy and elimination, without XS
-identity lookup. A reserved-resource token separately translates owners into XS
-indices for spawning and builder rewards. Cleanup and victory no longer require
-this token. The former converter and Castle-reference paths, including debug chat,
-are removed. Tests begin with zero participation instead of supplying the answer.
-See [v1.0.20 release notes](../modes/evolution_alpha/RELEASE_NOTES_v1.0.20.md) and
-[recording evidence](ascendants-closed-slot-investigation.md).
+A private P1/P3 vs P5/P8 production match initialized all four, updated all four
+score rows, removed defeated owners and reached normal victory at 31:14.
+Closed colors had no objective rows or gaps. A full-eight-player diagnostic match
+also initialized all eight and reached victory after timed enemy Castle removal.
+See [v1.0.1.0 release notes](../modes/evolution_alpha/RELEASE_NOTES_v1.0.1.0.md) for scope.
+
+## ASC-050 — missing players should not leave objective placeholders
+
+Objective rows begin disabled and activate only for occupied colors. A defeated
+participant keeps its final stats. Verified live in P1/P3 vs P5/P8 and full-eight
+matches; serialized tests cover every nonempty subset.
+
+## ASC-051 — Full Tech Tree regardless of lobby checkbox
+
+The scenario embeds `Options.all_techs = 1`. With the lobby checkbox explicitly
+unchecked, a live Persian probe reported Bracer and Siege Onager as state 0
+(enabled, prerequisites not ready), rather than disabled. This enables the tree;
+it does not research all technologies at game start.
+
+## ASC-052 — a razed Castle must stop its own production
+
+Every spawn point is bound to its own starting Castle. A wave requires that exact
+reference to exist, have positive HP and still belong to the resolved owner.
+A live probe razed one P1 Castle at 35 seconds: its lane stopped at 2 waves while
+the other three reached 13. Serialized tests execute all eight colors and every
+Castle survival mask, including missing, dead and wrong-owner objects.
 
 ## Additional parser findings (v1.0.18 historical snapshot)
 
@@ -156,7 +175,7 @@ Run the same audit after every build:
 ```bash
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.20.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.1.0.aoe2scenario" --strict
 ```
 
 The normal command fails only on structural errors; `--strict` also

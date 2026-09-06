@@ -29,7 +29,7 @@ so the two sides cannot drift apart.
 | 97–104 | `HERO_MOVE_PENDING_VARIABLE_BASE` | 8 | One-shot new-Hero pulse | Triggers |
 | 105–112 | `BUILDER_MOVE_PENDING_VARIABLE_BASE` | 8 | One-shot new-builder-pair pulse | Triggers |
 | 113–120 | `HERO_RANGE_VARIABLE_BASE` | 8 | Penguin-selected Hero level, 0–5 | Triggers |
-| 121–128 | `COLOR_OCCUPIED_VARIABLE_BASE` | 8 | Color has participated; survives elimination | Native Castle-owner detector, latched |
+| 121–128 | `COLOR_OCCUPIED_VARIABLE_BASE` | 8 | Color has participated; survives elimination | XS-guarded Castle-owner detector, latched |
 | 129–136 | `COLOR_CLEANED_VARIABLE_BASE` | 8 | Empty slot or confirmed removal of all defeated owner's objects | XS initializes; owner detector resets; cleanup confirms |
 | 137–144 | `COLOR_XS_VARIABLE_BASE` | 8 | XS API index plus 1000, copied from reserved resource 10 | Native owner-resolved identity bridge |
 

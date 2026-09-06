@@ -28,6 +28,9 @@ def apply(ctx) -> None:
     mm.map_size = 144
     mm.map_color_mood = ColorMood.DEFAULT
 
+    # Parser 0.8.4 has no manager property for the editor's Full Tech Tree flag.
+    # Store it in the scenario so hosting does not depend on the lobby checkbox.
+    ctx.scenario.sections["Options"].all_techs = 1
     pm.active_players = 8
     # --- GAIA
     p = pm.players[0]

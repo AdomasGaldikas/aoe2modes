@@ -73,10 +73,12 @@ custom HUD and did not purge on defeat. The shared runtime resolver used
 precise engine failure is not yet captured; source assertions that the converter was
 called were not behavioral proof.
 
-v1.0.19's Castle-reference lookup also failed live acceptance. v1.0.20 removes both
-lookup dependencies. Native owner detection latches occupancy after lobby settling;
-HUD values copy kills/deaths/razings from that same trigger owner. Elimination,
-cleanup and victory do not require a successful XS identity binding.
+v1.0.20's native conditions also failed live for P5/P8 in a four-player match.
+v1.0.1.0 uses embedded XS guards for Castle, defeat and token-bound conditions.
+A guard converts the candidate trigger selector with `xsGetWorldPlayerId` and
+checks stable starting-Castle references, positive hitpoints and actual unit owner.
+Native effects still latch occupancy and copy HUD resources from the detected
+trigger owner. Cleanup and victory do not require the spawning identity token.
 
 XS stamps `1000 + API player index` into reserved unused resource **10** for each
 runtime player in `main()`. Each `Color XS Identity S# W#` trigger waits for its
@@ -86,9 +88,9 @@ This translates through shared player data, never by assuming the two index doma
 agree. A delayed token retries; a successful binding remains after elimination.
 Resource 10 must not be reused by score, economy or civilization changes.
 
-XS never reads trigger-selector variables 40–47. Spawning and builder rewards require
-native occupancy, no elimination, and a valid decoded token. The objective HUD and
-participation no longer depend on XS conversion or aliveness reads. The old debug
+The spawning resolver never reads trigger-selector variables 40–47. Spawning and builder rewards require
+native occupancy, no elimination, and a valid decoded token. The objective HUD copies use native effects after XS-guarded participation detection.
+They do not require the spawning token. The old debug
 chat is removed. Tests exercise all 255 nonempty color subsets in two seat orders
 with independently permuted trigger owners, plus delayed/invalid tokens and zero-
 binding HUD/cleanup. These checks do not emulate native DE execution.
@@ -190,11 +192,11 @@ Calls `cbaUpdateColorRuntime(color)`. **This is the sole writer of `p#coloractiv
 active = 1 iff native occupied latch == 1 AND eliminated latch == 0
 ```
 
-Native Castle-owner detectors latch `coloroccupied` (121–128) once and reset
+XS-guarded Castle-owner detectors latch `coloroccupied` (121–128) once and reset
 `colorcleaned` (129–136) to zero. Closed colors start clean in `main()`.
-Native resignation/defeat conditions and Castle-loss conditions set elimination;
+XS resignation/defeat guards and Castle-loss guards set elimination;
 only owner-empty confirmation marks an occupied eliminated color clean again.
-No XS identity lookup can stop this state transition. XS remains the sole writer
+No spawning identity-token lookup can stop this state transition. XS remains the sole writer
 of active bits; triggers write occupancy and elimination. Spawning and builder
 queuing also test elimination directly before the next active refresh.
 

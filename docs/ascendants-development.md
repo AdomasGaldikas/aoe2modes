@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.20**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.1.0**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.20.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.1.0.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +33,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.20.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.1.0.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -78,24 +78,22 @@ The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
 
-## v1.0.20 closed-slot participation and identity separation
+## v1.0.1.0 live sparse-lobby correction
 
-v1.0.18 and v1.0.19 both failed live in Blue/Green versus Teal/Purple/Gray/Orange
-with two explicitly closed lobby slots. The failed lookup also controlled whether
-Gray/Orange participated at all, making their HUD and cleanup depend on that lookup.
+Native Castle and resource conditions failed for P5/P8 in the live P1/P3/P5/P8
+match even though v1.0.20 passed automated tests. `runtime_conditions.py` now
+emits XS guards for those conditions and player defeat. Each candidate trigger
+selector is converted into an XS index before checking the actual starting Castle
+references, owner and positive hitpoints. Native effects remain responsible for
+latches, HUD copies, cleanup and victory. The resource-token spawning bridge remains.
 
-Native Castle-owner detectors now latch occupancy and reset cleanup state. Native
-HUD triggers copy the detected owner's resources directly. XS only derives activity
-from occupied/not-eliminated latches. A resource token translates the native owner
-to an XS API index for spawning and builder rewards, replacing converter and
-Castle-reference lookups. Cleanup/victory work even with no XS token.
+Only occupied colors activate an Objectives row. Closed slots have no placeholder;
+players who later resign or lose retain their final stats. The live production
+build showed precisely P1/P3/P5/P8, with no gaps, and initialized all four players.
+Tests execute serialized guard bodies with mocked APIs, including missing, dead
+and wrong-owner Castles; they are not an engine emulator.
 
-Tests now start with zero occupancy and run actual serialized detection, closing
-the prior harness blind spot. The resource bridge is exercised with independently
-permuted trigger and XS player identities. No debug-chat collection is required.
-See [v1.0.20 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.0.20.md) and the
-[recorded evidence](ascendants-closed-slot-investigation.md). Native DE acceptance
-is still distinct from automated validation.
+See [v1.0.1.0 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.0.1.0.md).
 
 ## v1.0.18 cleanup after elimination
 

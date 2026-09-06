@@ -1,4 +1,4 @@
-# Ascendants v1.0.20 control and ownership map
+# Ascendants v1.0.1.0 control and ownership map
 
 This is the authoritative manifest for the two spawn controls in CBA Hero:
 Ascendants. Coordinates are scenario cells unless they include `.5`, which denotes an
@@ -10,9 +10,10 @@ Purple, Gray, and Orange.
 | Use | Authoritative identity |
 | --- | --- |
 | Territory, Castle row, controllers, and color-local variables | Scenario color P1–P8 |
-| Trigger conditions and effects | Castle-row-resolved player in variables 40–47 |
+| Native effects | Castle-row-resolved trigger selector in variables 40–47 |
+| Castle, defeat and identity conditions | XS guards convert the candidate selector and verify actual runtime state |
 | XS civilization, score weighting, and army creation | Reserved-resource token translated from the native Castle owner into variables 137–144 |
-| Participation, HUD counters, and cleanup | Native Castle-owner latch; independent of XS identity |
+| Participation, HUD counters, and cleanup | Castle-owner latch from XS guards; independent of the spawning identity token |
 
 The last two rows are deliberately separate. Variables 40–47 retain the historical
 name `p#worldplayer`, but XS never reads them. This prevents a shuffled Green Castle,

@@ -5,6 +5,22 @@ Ascendants is a code-defined mode with no binary reference, so there is no
 layers, and each has a hard limit. This document says what each one covers, and — just as
 importantly — what none of them can cover.
 
+## v1.0.1.0 live evidence — 2026-09-06
+
+- Uninstrumented P1/P3 vs P5/P8: all four initialized, compact objective rows,
+  combat stats for all four, opponent cleanup and natural victory at 31:14.
+- Full-eight-player diagnostic copy: all eight initialized; timed removal of enemy
+  Castles reached victory. One P1 Castle was destroyed at 35 seconds; its wave
+  counter stopped at 2 while the other lanes reached 13.
+- The same diagnostic match explicitly unchecked Full Tech Tree in the lobby.
+  Persian Bracer and Siege Onager returned tech state 0 (enabled but prerequisites
+  unmet). The scenario embeds the tree setting; it does not pre-research everything.
+
+The diagnostic copy adds counters and timed destruction outside this repository.
+It is not the shipped artifact. Exhaustive civilization, shuffled-seat, controller,
+hero-tier, resignation and vote-kick acceptance remains in the matrix below;
+these live observations do not claim that whole matrix passed.
+
 ## The three layers
 
 | Layer | Runs when | Catches |
