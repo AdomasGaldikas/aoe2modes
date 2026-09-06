@@ -93,6 +93,16 @@ build showed precisely P1/P3/P5/P8, with no gaps, and initialized all four playe
 Tests execute serialized guard bodies with mocked APIs, including missing, dead
 and wrong-owner Castles; they are not an engine emulator.
 
+The sweep covers three condition classes and no more; the build now refuses to emit an
+artifact where one of them returned to the native domain. The remaining 3,499
+player-scoped conditions — hero tiers, age gates, center rewards, vote markers, wall
+caps and the `Color Cleanup Complete` victory gate — still resolve owners natively.
+Whether that matters depends on a root cause nobody has isolated yet, so it is tracked
+as an open item (ASC-053) rather than patched on inference. The next person to reproduce
+the sparse lobby should carry a probe that reports one inverted and one non-inverted
+native check for a high color; that single observation decides whether the sweep should
+grow or the diagnosis should shrink.
+
 See [v1.0.1.0 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.0.1.0.md).
 
 ## v1.0.18 cleanup after elimination

@@ -1634,10 +1634,14 @@ def _add_color_owner_detection(ctx: BuildContext, world_variables) -> None:
             )
             detector.new_effect.deactivate_trigger(trigger_id=detector.trigger_id)
 
-            # XS stamps its own API player index into an unused resource. Read it
-            # from the SAME trigger owner that proved Castle ownership. This
-            # translates through shared player data, never by assuming the two
-            # player-number domains agree. A late stamp is retried independently.
+            # XS stamps its own API player index into an unused resource. The
+            # *effect* reads it from the SAME trigger owner that proved Castle
+            # ownership, so the copied value crosses domains through shared player
+            # data rather than by assuming the two numbers agree. Since v1.0.1.0 the
+            # token *conditions* below are rewritten into XS guards by
+            # ``runtime_conditions``, so the gate does resolve through
+            # ``xsGetWorldPlayerId``; only the copied value is converter-independent.
+            # A late stamp is retried independently.
             bridge = ctx.tm.add_trigger(
                 f"Color XS Identity S{int(color)} W{int(world_player)}", looping=1,
             )

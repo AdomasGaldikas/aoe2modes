@@ -47,6 +47,16 @@ Where `make` is available, `make check-ascendants` runs the focused tests, the b
 audit and the map report in one go. It derives the audited filename from `mode.toml`, so a
 version bump needs no edit.
 
+**The artifact SHA-256 is checkout-dependent, so do not treat it as a build fingerprint
+across machines.** `xs/` is committed with `text` line endings, and this repository is
+normally cloned with `core.autocrlf=true` on Windows, so the embedded XS bytes — and
+therefore the file hash — differ between a CRLF and an LF working tree. Trigger,
+condition, effect, object and variable counts *are* reproducible, and a release note that
+quotes them is making a checkable claim; a quoted hash only verifies a re-download of the
+same file from the same machine. v1.0.1.0 illustrates this: its recorded hash
+`1e587093…` does not reproduce from a CRLF checkout, which rebuilds deterministically to
+`9ecd620b…` with every documented count identical.
+
 The two pytest invocations are split deliberately: the Ascendants file is large and slow,
 and running it separately from the rest of the suite keeps a failure in one from masking
 the other. Together they are the full repository suite.
@@ -241,7 +251,12 @@ correct**, not that it plays correctly. In particular these can only be settled 
 - whether lobby compaction seats players the way the identity model assumes;
 - whether a trigger fires within the expected number of seconds under multiplayer
   scheduling;
-- anything about how the UI renders.
+- anything about how the UI renders;
+- **whether a native player-scoped condition sees a high color at all.** This is the
+  ASC-049 failure, and no layer here can reproduce it: the tests execute the emitted XS
+  guards against mocked APIs, so they prove the guards are correct, not that the native
+  conditions they replaced were wrong. 3,499 conditions still resolve owners natively
+  (ASC-053) and no layer here can tell whether they work.
 
 Those cases live in [`ascendants-issue-register.md`](ascendants-issue-register.md), whose
 "Required game check" column is the acceptance checklist. In that register, **"Guarded"

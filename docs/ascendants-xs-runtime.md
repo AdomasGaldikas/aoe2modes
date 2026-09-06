@@ -84,8 +84,12 @@ XS stamps `1000 + API player index` into reserved unused resource **10** for eac
 runtime player in `main()`. Each `Color XS Identity S# W#` trigger waits for its
 Castle-owner latch and a token in 1001–1008, then copies that owner's resource into
 variables 137–144. The resolver subtracts 1000 and rejects out-of-range values.
-This translates through shared player data, never by assuming the two index domains
-agree. A delayed token retries; a successful binding remains after elimination.
+The copied *value* crosses domains through shared player data, never by assuming the
+two index numbers agree. Since v1.0.1.0 the *gate* is different: the two token
+conditions on that trigger are rewritten into XS guards, so admission does resolve
+through `xsGetWorldPlayerId`. If that converter is ever wrong, the gate and the copied
+value disagree about which player they mean. A delayed token retries; a successful
+binding remains after elimination.
 Resource 10 must not be reused by score, economy or civilization changes.
 
 The spawning resolver never reads trigger-selector variables 40–47. Spawning and builder rewards require
@@ -94,6 +98,22 @@ They do not require the spawning token. The old debug
 chat is removed. Tests exercise all 255 nonempty color subsets in two seat orders
 with independently permuted trigger owners, plus delayed/invalid tokens and zero-
 binding HUD/cleanup. These checks do not emulate native DE execution.
+
+## What the guards do not cover
+
+`runtime_conditions.configure_runtime_conditions` rewrites exactly three condition
+classes: Castle `Objects in Area`, `Player Defeated`, and the identity-token
+`Accumulate Attribute` pair. In v1.0.1.0 that is 976 script-call conditions, 712 of
+them on looping triggers, collapsed into a deduplicated set of `cbaRuntimeCondition#`
+functions. The build fails if any condition of those three classes survives with a
+1–8 selector, so a geometry change cannot silently reinstate the native path.
+
+Every other player-scoped condition still resolves its owner natively — 3,499 of them,
+listed in ASC-053. If the sparse-lobby diagnosis is right, those systems carry the same
+exposure, and their failure directions differ: a non-inverted check fails closed (a
+reward or upgrade never arrives), an inverted check fails open (a vote registers, or a
+pad is treated as clear). `tests/test_evolution_alpha.py` pins the inventory so the
+exposure cannot grow unnoticed.
 
 ## The variable bridge
 

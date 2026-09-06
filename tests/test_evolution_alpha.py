@@ -6307,3 +6307,61 @@ def test_each_castle_controls_only_its_own_wave_spawn(evolution_alpha):
                 created.clear()
                 namespace["wave"](color, 17, 239)
                 assert created == [(17, p) for p in positions if castle_for_position[p] in alive]
+
+
+def test_sparse_lobby_sweep_left_no_native_castle_defeat_or_token_conditions(evolution_alpha):
+    """The serialized artifact must not keep the condition classes ASC-049 replaced."""
+    survivors = []
+    for trigger in evolution_alpha.trigger_manager.triggers:
+        for condition in trigger.conditions:
+            if not 1 <= condition.source_player <= 8:
+                continue
+            kind = condition.condition_type
+            if kind == ConditionId.OBJECTS_IN_AREA and condition.object_list == BuildingInfo.CASTLE.ID:
+                survivors.append((trigger.name, "Castle row"))
+            elif kind == ConditionId.PLAYER_DEFEATED:
+                survivors.append((trigger.name, "Player Defeated"))
+            elif (
+                kind == ConditionId.ACCUMULATE_ATTRIBUTE
+                and condition.attribute == Attribute.UNUSED_RESOURCE_010
+                and trigger.name.startswith("Color XS Identity ")
+            ):
+                survivors.append((trigger.name, "identity token"))
+    assert survivors == []
+
+    # Pins the guard load quoted in docs/ascendants-xs-runtime.md: every guard on a
+    # looping trigger is an XS call per evaluation tick, so growth should be deliberate.
+    hosts = [
+        trigger
+        for trigger in evolution_alpha.trigger_manager.triggers
+        for condition in trigger.conditions
+        if condition.condition_type == ConditionId.SCRIPT_CALL
+    ]
+    assert len(hosts) == 976
+    assert sum(1 for trigger in hosts if trigger.looping) == 712
+
+
+def test_native_player_scoped_conditions_stay_a_declared_inventory(evolution_alpha):
+    """Pin what still resolves owners natively (ASC-053).
+
+    v1.0.1.0 moved Castle, defeat and identity-token conditions into XS guards because
+    native player selectors did not recognize P5/P8 in a live sparse lobby. Every other
+    player-scoped condition below still trusts the native domain, so if that diagnosis
+    is right these are the systems still exposed. The counts are a tripwire, not an
+    endorsement: a change here means a system either joined or left the exposure, and
+    the register entry must move with it.
+    """
+    inventory = Counter()
+    for trigger in evolution_alpha.trigger_manager.triggers:
+        for condition in trigger.conditions:
+            if 1 <= condition.source_player <= 8:
+                inventory[ConditionId(condition.condition_type).name] += 1
+    assert dict(inventory) == {
+        "ACCUMULATE_ATTRIBUTE": 1123,  # Hero milestone/boost kill thresholds
+        "OBJECTS_IN_AREA": 776,  # hero pads, vote markers, center rewards, age gates
+        "RESEARCH_TECHNOLOGY": 736,  # Goth restrictions and civilization age-ups
+        "OWN_FEWER_OBJECTS": 640,  # hero caps and Color Cleanup Complete
+        "OWN_OBJECTS": 128,  # wall cap warn/wipe
+        "DESTROY_OBJECT": 96,  # wall breach
+    }
+

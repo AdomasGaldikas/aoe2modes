@@ -98,6 +98,11 @@ token for spawning and builder rewards; it does not consume variables 40–47.
 Objective rows activate only for colors that actually started and remain after
 elimination to preserve their final stats. Closed slots have no placeholder rows.
 Tests execute the serialized XS guards against independently numbered identities.
+The sweep covers those three condition classes only; the build fails if one of them
+returns to the native domain, and every other player-scoped condition (hero tiers, age
+gates, center rewards, vote markers, wall caps, the cleanup gate) still resolves owners
+natively. That exposure is pinned by an inventory test and tracked as open ASC-053 —
+read it before widening or narrowing the sweep.
 Keep automated evidence separate from live DE acceptance; v1.0.20 passed automated
 checks but failed the sparse match. See the v1.0.1.0 release notes for current scope.
 

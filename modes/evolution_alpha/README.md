@@ -100,6 +100,8 @@ stamps its API index into reserved resource 10; native effects copy that token f
 spawning and builder rewards. v1.0.20's native conditions failed for high colors in
 sparse lobbies; v1.0.1.0 passed a live P1/P3 versus P5/P8 match through natural victory.
 Only colors that started have an Objectives row; final stats survive elimination.
+The guards cover Castle, defeat and token conditions; hero tiers, age gates, center
+rewards, vote markers and wall caps still resolve their owner natively (open ASC-053).
 See [v1.0.1.0 notes](RELEASE_NOTES_v1.0.1.0.md) for the precise acceptance scope.
 
 Full Tech Tree is enabled inside the scenario. Hosts do not need to enable its lobby

@@ -1,10 +1,35 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.18 source review. Current candidate: **v1.0.18**;
+Open work from the v1.0.7–v1.0.1.0 source review. Current release: **v1.0.1.0**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
+
+---
+
+## v1.0.1.0 — sparse-lobby owner resolution
+
+- [x] ASC-049–052: Castle, defeat and identity-token conditions resolve through embedded
+  XS guards; objective rows carry no closed-slot placeholders; Full Tech Tree is embedded;
+  each spawn pad is bound to its own Castle.
+- [x] The build refuses to emit an artifact where a swept condition class returned to the
+  native domain, and a test pins the inventory of what is still native.
+- [ ] **ASC-053 probe, before any further identity work.** Carry an instrumented copy into
+  a sparse lobby and report one inverted and one non-inverted native player condition for
+  a high color. Everything else here is inference: the same match that proved the guards
+  work also ran hero boosts, age upgrades and vote markers on the untouched native path,
+  which the current diagnosis says should have failed.
+- [~] Decide from that probe whether to widen the sweep (start with `Color Cleanup
+  Complete` and the vote markers) or to narrow the stated root cause in the docs. Do not
+  do both halves on inference — each replaced condition costs a per-tick XS call.
+- [~] Release numbering: **1.0.1.0** sorts below 1.0.20 everywhere (release-note filenames,
+  any semver comparison, the scenario list in-game). Either accept it permanently or
+  rename the series once, before another release lands on top of it.
+- [ ] The artifact SHA-256 in a release note is checkout-dependent (CRLF vs LF `xs/`).
+  Either normalize the XS bundle to LF at build time — an artifact-byte change, so it
+  belongs in a version bump with a live smoke test — or stop quoting hashes and quote the
+  reproducible counts instead.
 
 ---
 

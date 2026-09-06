@@ -140,6 +140,41 @@ A live probe razed one P1 Castle at 35 seconds: its lane stopped at 2 waves whil
 the other three reached 13. Serialized tests execute all eight colors and every
 Castle survival mask, including missing, dead and wrong-owner objects.
 
+## ASC-053 — open: most owner resolution is still native
+
+**Open. No live failure attributed to it yet; recorded because the v1.0.1.0 diagnosis
+predicts one.** v1.0.1.0 replaced Castle, defeat and identity-token conditions with XS
+guards after native selectors did not recognize P5/P8 live. The other 3,499
+player-scoped conditions in the artifact were left native:
+
+| Condition | Count | Systems | Direction if the diagnosis holds |
+| --- | ---: | --- | --- |
+| `Accumulate Attribute` | 1,123 | Hero milestone and boost kill thresholds | Fails closed — high colors never reach a hero tier |
+| `Objects in Area` | 776 | Hero pads (inverted), vote markers (inverted), center rewards, Blacksmith/Town Center age gates, Goth Barracks ban | Mixed — rewards and upgrades never arrive; pad and vote checks read "clear" and fire early |
+| `Research Technology` | 736 | Goth restrictions, civilization age-ups | Mixed |
+| `Own Fewer Objects` | 640 | Hero caps, `Color Cleanup Complete` | Fails open — the empty-owner gate that authorizes victory |
+| `Own Objects` | 128 | Wall cap warn/wipe | Fails closed |
+| `Destroy Object` | 96 | Wall breach | Fails closed |
+
+Two readings are consistent with the evidence, and they need different work:
+
+1. Native player conditions really are broken for high colors. Then these systems
+   misbehaved silently in the 2026-09-06 P1/P3/P5/P8 match, and the sweep should be
+   widened — starting with `Color Cleanup Complete` and the vote markers.
+2. The failure is narrower than "native conditions do not see P5/P8". Then the guards
+   fixed the real defect for another reason, and the docs overstate the cause.
+
+The second reading has direct support: that match ran 31 minutes with hero boosts, age
+upgrades and no spurious vote-kick, all of which run on the untouched native path.
+Resolve this by probe, not by inference — one instrumented sparse lobby that reports a
+non-inverted and an inverted native check for a high color would settle it. Until then
+do not widen the sweep on the strength of the current diagnosis alone; each replaced
+condition adds a per-tick XS call and removes an engine behaviour that is working today.
+
+`test_native_player_scoped_conditions_stay_a_declared_inventory` pins the counts above,
+and the build refuses to emit an artifact where a swept class returned to the native
+domain.
+
 ## Additional parser findings (v1.0.18 historical snapshot)
 
 The v1.0.18 serialized candidate passes the strict structural audit with **0 errors and
