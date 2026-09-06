@@ -1,4 +1,4 @@
-# Ascendants v1.0.17 control and ownership map
+# Ascendants v1.0.18 control and ownership map
 
 This is the authoritative manifest for the two spawn controls in CBA Hero:
 Ascendants. Coordinates are scenario cells unless they include `.5`, which denotes an

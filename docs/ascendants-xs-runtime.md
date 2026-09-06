@@ -200,14 +200,24 @@ active = 1  iff  world player >= 1  AND  slot in game  AND  not eliminated
 It also **latches elimination**: a color that was seen in the game and has now left it
 gets its eliminated bit set. Without that latch, the active bit would flap back on if the
 engine ever reported the slot in game again, and the opposing side's victory would never
-resolve — a color that has left cannot be resolved by the owner-resolved defeat triggers,
-because those need a live player selector.
+resolve. v1.0.18 cleanup instead uses a persistent occupied-color flag and the cached
+trigger-side owner, so becoming inactive cannot disable object removal.
 
 Triggers write only `p#coloreliminated`. A second trigger-side writer of `p#coloractive`
 used to be silently reverted here within one second unless every defeat path also
 remembered to write the elimination bit — which made every future defeat path depend on
 remembering an unrelated second write.
 `test_evolution_alpha_color_active_has_exactly_one_writer` pins this.
+
+v1.0.18 adds two trigger-variable blocks: `coloroccupied` (121–128) is latched by
+XS when a color is first observed in-game; `colorcleaned` (129–136) initializes to
+1 in `main` for empty slots, then resets to 0 on the first in-game observation.
+Only owner-empty confirmation sets an occupied eliminated color clean again.
+The first-observation test uses `gCbaSeenInGameByColor`, so later polling cannot
+undo completed cleanup. No trigger writes the occupied or active blocks.
+
+`cbaSpawnColor` and `cbaQueueColorBuilders` now return immediately on elimination,
+independently of the next active-bit update.
 
 ### `cbaBuilderRewardQueue` — every 1s
 

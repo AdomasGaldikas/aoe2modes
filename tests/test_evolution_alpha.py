@@ -220,7 +220,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 3_655
+    assert len(triggers) == 3_783
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 956
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -719,6 +719,7 @@ def test_evolution_alpha_kings_use_symmetric_island_destinations(evolution_alpha
             } == {
                 (31 + int(player), 1, Comparison.EQUAL),
                 (39 + int(player), world_player, Comparison.EQUAL),
+                (47 + int(player), 0, Comparison.EQUAL),
             }
 
 
@@ -963,6 +964,7 @@ def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
                     (
                         "Color Defeat Resolve ",
                         "Color Runtime Defeated ",
+                        "Color Elimination Cleanup ",
                         "Vote Kick Resolve ",
                     )
                 )
@@ -1671,6 +1673,11 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
         (112 + player, f"hero_range_p{player}")
         for player in range(1, 9)
     }
+    expected_variables |= {
+        (base + player, f"p{player}color{suffix}")
+        for base, suffix in ((120, "occupied"), (128, "cleaned"))
+        for player in range(1, 9)
+    }
     assert {
         (variable.variable_id, variable.name) for variable in trigger_manager.variables
     } == expected_variables
@@ -2241,6 +2248,7 @@ def test_evolution_alpha_maps_center_rewards_to_runtime_players(evolution_alpha)
             } == {
                 (31 + color, 1, Comparison.EQUAL),
                 (39 + color, world_player, Comparison.EQUAL),
+                *(() if family == "Kills" else ((47 + color, 0, Comparison.EQUAL),)),
             }
             if family == "Kills":
                 tribute = next(
@@ -2481,7 +2489,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
         for world_player in range(1, 9):
             reward = rewards[f"Builder Reward S{color} W{world_player}"]
             assert reward.enabled and reward.looping
-            assert len(reward.conditions) == 5
+            assert len(reward.conditions) == 6
 
             variable_conditions = {
                 (
@@ -2496,6 +2504,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 (color - 1, Comparison.LARGER_OR_EQUAL, 1),
                 (31 + color, Comparison.EQUAL, 1),
                 (39 + color, Comparison.EQUAL, world_player),
+                (47 + color, Comparison.EQUAL, 0),
             } == variable_conditions
 
             castle = next(
@@ -2938,7 +2947,7 @@ def test_evolution_alpha_uses_sparse_safe_two_teammate_vote_kick(evolution_alpha
             purges[0].area_y1,
             purges[0].area_x2,
             purges[0].area_y2,
-        ) == (0, 0, 143, 143)
+        ) == (-1, -1, -1, -1)
         # Only the elimination bit: XS owns p#coloractive and derives it from this.
         assert len(clears) == 1
         assert chats[0].source_player == -1
@@ -3545,13 +3554,14 @@ def test_evolution_alpha_has_no_unauthorized_wall_or_gate_destruction(evolution_
                 found["bounded_wall_cap"] += 1
                 continue
             assert re.fullmatch(
-                r"(?:(?:Color Defeat Resolve|Color Runtime Defeated) S[1-8]|Vote Kick Resolve P[1-8]) W[1-8]",
+                r"(?:(?:Color Defeat Resolve|Color Runtime Defeated|Color Elimination Cleanup) "
+                r"S[1-8]|Vote Kick Resolve P[1-8]) W[1-8]",
                 trigger.name,
             ), trigger.name
-            assert (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2) == (0, 0, 143, 143)
+            assert (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2) == (-1, -1, -1, -1)
             found["player_elimination"] += 1
     assert found["exact_breach"] == 64
-    assert found["player_elimination"] == 192
+    assert found["player_elimination"] == 256
     assert found["bounded_wall_cap"] > 64
     assert set(found) == {"exact_breach", "player_elimination", "bounded_wall_cap"}
 
@@ -3645,7 +3655,7 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             (condition.variable, condition.quantity)
             for condition in variable_conditions
         } == {
-            (31 + color, 1),
+            (120 + color, 1),
             (39 + color, world_player),
             (56, 1),
         }
@@ -3686,7 +3696,7 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             removals[0].area_y1,
             removals[0].area_x2,
             removals[0].area_y2,
-        ) == (0, 0, 143, 143)
+        ) == (-1, -1, -1, -1)
 
     legacy_cleanup = [
         trigger
@@ -3707,13 +3717,14 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             for condition in trigger.conditions
             if condition.condition_type == ConditionId.PLAYER_DEFEATED
         ]
-        assert len(variables) == 2
+        assert len(variables) == 3
         assert len(defeated) == 1
         assert {
             (condition.variable, condition.quantity) for condition in variables
         } == {
             (39 + color, world_player),
             (56, 1),
+            (120 + color, 1),
         }
         assert defeated[0].source_player == world_player
         changes = [
@@ -3739,7 +3750,7 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             removals[0].area_y1,
             removals[0].area_x2,
             removals[0].area_y2,
-        ) == (0, 0, 143, 143)
+        ) == (-1, -1, -1, -1)
 
     for trigger in ready_triggers:
         left_color, right_color = map(
@@ -3837,13 +3848,14 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             if condition.condition_type == ConditionId.VARIABLE_VALUE
         ]
         assert len(timers) == 1 and timers[0].timer == 5
-        assert len(variables) == 7
+        assert len(variables) == 11
         assert all(condition.comparison == Comparison.EQUAL for condition in variables)
         assert {(condition.variable, condition.quantity) for condition in variables} == {
             (31 + color, 1),
             (39 + color, world_player),
             (56, 1),
             *((31 + opponent, 0) for opponent in opponents),
+            *((128 + opponent, 1) for opponent in opponents),
         }
         effects = [
             effect
@@ -3874,6 +3886,9 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             values[31 + color] = int(color in alive_colors)
             values[39 + color] = mapping.get(color, 0)
             values[47 + color] = int(color in mapping and color not in alive_colors)
+            values[120 + color] = int(color in mapping)
+            # These older truth-table cases represent fully cleaned eliminations.
+            values[128 + color] = int(color not in alive_colors)
         if match_ready is None:
             match_ready = bool(
                 occupied_colors.intersection(range(1, 5))
@@ -4090,7 +4105,7 @@ def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
             expected_defeats = (
                 {
                     f"Color Defeat Resolve S{color} W{mapping[color]}"
-                    for color in alive
+                    for color in occupied
                 }
                 if values[56]
                 else set()
@@ -4864,6 +4879,7 @@ def test_evolution_alpha_late_heroes_arm_one_shot_route_orders(evolution_alpha):
                 (31 + color, 1, Comparison.EQUAL),
                 (39 + color, world_player, Comparison.EQUAL),
                 (112 + color, 1, Comparison.LARGER_OR_EQUAL),
+                (47 + color, 0, Comparison.EQUAL),
             }
             own_fewer = [
                 condition
@@ -5373,11 +5389,15 @@ def ascendants_build_module():
 COLOR_ACTIVE_VARIABLES = {color: 31 + color for color in range(1, 9)}
 COLOR_WORLD_VARIABLES = {color: 39 + color for color in range(1, 9)}
 COLOR_ELIMINATED_VARIABLES = {color: 47 + color for color in range(1, 9)}
+COLOR_OCCUPIED_VARIABLES = {color: 120 + color for color in range(1, 9)}
+COLOR_CLEANED_VARIABLES = {color: 128 + color for color in range(1, 9)}
 MATCH_READY_VARIABLE = 56
 VICTORY_STATE_VARIABLES = (
     set(COLOR_ACTIVE_VARIABLES.values())
     | set(COLOR_WORLD_VARIABLES.values())
     | set(COLOR_ELIMINATED_VARIABLES.values())
+    | set(COLOR_OCCUPIED_VARIABLES.values())
+    | set(COLOR_CLEANED_VARIABLES.values())
     | {MATCH_READY_VARIABLE}
 )
 
@@ -5386,7 +5406,8 @@ def _victory_subsystem(scenario):
     """Every trigger that can move victory state, plus whatever activates it.
 
     Selected from the serialized data, never by name: a trigger belongs if it writes a
-    variable in the victory block or declares a victory/defeat, and the set is then
+    variable in the victory block, purges an eliminated owner, or declares a result;
+    the set is then
     closed over incoming Activate Trigger edges so nothing that gates the subsystem is
     left outside the model.
     """
@@ -5401,6 +5422,15 @@ def _victory_subsystem(scenario):
                 and effect.variable in VICTORY_STATE_VARIABLES
             )
             or effect.effect_type == EffectId.DECLARE_VICTORY
+            or (
+                effect.effect_type == EffectId.REMOVE_OBJECT
+                and any(
+                    c.condition_type == ConditionId.VARIABLE_VALUE
+                    and c.variable in COLOR_ELIMINATED_VARIABLES.values()
+                    and c.quantity == 1 and c.comparison == Comparison.EQUAL
+                    for c in trigger.conditions
+                )
+            )
             for effect in trigger.effects
         )
     }
@@ -5421,7 +5451,9 @@ def _victory_subsystem(scenario):
     return [by_id[trigger_id] for trigger_id in sorted(selected)]
 
 
-def _run_victory_subsystem(subsystem, castle_areas, seats, phases):
+def _run_victory_subsystem(
+    subsystem, castle_areas, seats, phases, *, objects=(), pre_eliminate=(), report=None,
+):
     """Run the subsystem to a fixpoint per phase and return every declared winner.
 
     ``seats`` maps a colour to the lobby slot XS resolves for it; a colour absent from
@@ -5442,6 +5474,13 @@ def _run_victory_subsystem(subsystem, castle_areas, seats, phases):
     """
     row_color = {area: color for color, area in castle_areas.items()}
     variables = defaultdict(int)
+    # main() starts empty slots clean; the first in-game XS observation latches
+    # occupancy and resets cleanliness. Neither is derived from current aliveness.
+    for color in range(1, 9):
+        variables[COLOR_OCCUPIED_VARIABLES[color]] = int(color in seats)
+        variables[COLOR_CLEANED_VARIABLES[color]] = int(color not in seats)
+    remaining = [dict(item) for item in objects]
+    victory_snapshots = []
     enabled = {trigger.trigger_id: bool(trigger.enabled) for trigger in subsystem}
     winners = set()
     seated_slots = set(seats.values())
@@ -5483,11 +5522,26 @@ def _run_victory_subsystem(subsystem, castle_areas, seats, phases):
             assert condition.object_list == BuildingInfo.CASTLE.ID
             present = castle_present(condition)
             return not present if condition.inverted == 1 else present
+        if kind in {ConditionId.OWN_OBJECTS, ConditionId.OWN_FEWER_OBJECTS}:
+            assert condition.object_list == condition.object_type == condition.object_group == -1
+            count = sum(item["owner"] == condition.source_player for item in remaining)
+            count += sum(
+                present and trigger_owner.get(color) == condition.source_player
+                for color, present in castles.items()
+            )
+            return (
+                count < condition.quantity if kind == ConditionId.OWN_FEWER_OBJECTS
+                else count >= condition.quantity
+            )
         assert kind == ConditionId.PLAYER_DEFEATED, ConditionId(kind).name
         return condition.source_player not in seated_slots
 
-    for phase_owner, phase_castles in phases:
-        trigger_owner, castles = phase_owner, phase_castles
+    for phase, (phase_owner, phase_castles) in enumerate(phases):
+        trigger_owner, castles = dict(phase_owner), dict(phase_castles)
+        if phase > 0:
+            # Reproduce fallback/XS pre-emption BEFORE the normal resolver runs.
+            for color in pre_eliminate:
+                variables[COLOR_ELIMINATED_VARIABLES[color]] = 1
         for _pass in range(64):
             changed = False
             refresh_active()
@@ -5518,9 +5572,24 @@ def _run_victory_subsystem(subsystem, castle_areas, seats, phases):
                         if enabled.get(effect.trigger_id):
                             enabled[effect.trigger_id] = False
                             changed = True
+                    elif effect.effect_type == EffectId.REMOVE_OBJECT:
+                        assert effect.source_player in range(1, 9)
+                        assert effect.object_list_unit_id == effect.object_type == effect.object_group == -1
+                        assert effect.object_state == effect.max_units_affected == -1
+                        assert (
+                            effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2
+                        ) == (-1, -1, -1, -1)
+                        kept = [item for item in remaining if item["owner"] != effect.source_player]
+                        changed |= len(kept) != len(remaining)
+                        remaining = kept
+                        for color in castles:
+                            if castles[color] and trigger_owner.get(color) == effect.source_player:
+                                castles[color] = False
+                                changed = True
                     elif (
                         effect.effect_type == EffectId.DECLARE_VICTORY and effect.enabled
                     ):
+                        victory_snapshots.append([dict(item) for item in remaining])
                         if effect.source_player not in winners:
                             winners.add(effect.source_player)
                             changed = True
@@ -5529,6 +5598,8 @@ def _run_victory_subsystem(subsystem, castle_areas, seats, phases):
                 break
         else:  # pragma: no cover - a fixpoint always exists here
             raise AssertionError("victory subsystem did not settle")
+    if report is not None:
+        report.update(remaining=remaining, victory_snapshots=victory_snapshots, variables=dict(variables))
     return winners
 
 
@@ -5642,6 +5713,125 @@ def test_evolution_alpha_victory_survives_split_player_identity(evolution_alpha)
             )
             == {start_owners[color] for color in surviving}
         ), losing_side
+
+
+def test_evolution_alpha_elimination_purges_objects_before_any_winner(evolution_alpha):
+    """Exercise the serialized effects, including XS pre-emption and spent resolvers.
+
+    This is a trigger-state model, not an engine test of garrison/collision behavior.
+    Geometry/filter coverage is independently checked for all 64 mappings below.
+    """
+    subsystem = _victory_subsystem(evolution_alpha)
+    castle_areas = castle_row_areas(evolution_alpha)
+    for seats in LOBBY_SHAPES.values():
+        objects = [
+            {"owner": seats[color], "id": unit.reference_id, "state": unit.status}
+            for color in seats
+            for unit in evolution_alpha.unit_manager.units[color]
+            if unit.unit_const != BuildingInfo.CASTLE.ID
+        ]
+        objects += [
+            {"owner": owner, "id": f"{owner}-{kind}", "state": state}
+            for owner in seats.values()
+            for kind, state in (("foundation", 0), ("unfinished", 1), ("garrisoned", 2), ("dying", 4))
+        ]
+        objects.append({"owner": 0, "id": "gaia", "state": 2})
+        start = _starting_rows(seats, True)
+        for side in (range(1, 5), range(5, 9)):
+            losing_colors = set(side) & seats.keys()
+            losing_owners = {seats[color] for color in losing_colors}
+            owners, castles = _starting_rows(seats, True)
+            for color in losing_colors:
+                castles[color] = False
+                owners[color] = None
+            for immediate_resolvers, castles_still_present in (
+                (True, False), (False, False), (True, True), (False, True),
+            ):
+                # Once a one-shot resolver has fired, only durable cleanup can
+                # catch delayed objects. Remove those resolvers from this case.
+                selected = subsystem if immediate_resolvers else [
+                    trigger for trigger in subsystem
+                    if not trigger.name.startswith(("Color Defeat Resolve ", "Color Runtime Defeated "))
+                ]
+                phase_owners, phase_castles = dict(owners), dict(castles)
+                if castles_still_present:
+                    # Resignation/XS loss can latch elimination with Castles intact.
+                    for color in losing_colors:
+                        phase_owners[color], phase_castles[color] = seats[color], True
+                report = {}
+                winners = _run_victory_subsystem(
+                    selected, castle_areas, seats, [start, (phase_owners, phase_castles)],
+                    objects=objects, pre_eliminate=losing_colors, report=report,
+                )
+                assert winners == set(seats.values()) - losing_owners
+                assert {item["id"] for item in report["remaining"]} == {
+                    item["id"] for item in objects if item["owner"] not in losing_owners
+                }
+                assert report["victory_snapshots"]
+                assert all(
+                    item["owner"] not in losing_owners
+                    for snapshot in report["victory_snapshots"] for item in snapshot
+                ), "victory fired while defeated owners still had objects"
+
+
+def test_evolution_alpha_cleanup_is_owner_wide_and_inactive_safe(evolution_alpha):
+    by_name = {trigger.name: trigger for trigger in evolution_alpha.trigger_manager.triggers}
+    for color in range(1, 9):
+        for owner in range(1, 9):
+            cleanup = by_name[f"Color Elimination Cleanup S{color} W{owner}"]
+            complete = by_name[f"Color Cleanup Complete S{color} W{owner}"]
+            for trigger in (cleanup, complete):
+                assert trigger.enabled and trigger.looping
+                assert {
+                    (condition.variable, condition.quantity)
+                    for condition in trigger.conditions
+                    if condition.condition_type == ConditionId.VARIABLE_VALUE
+                } == {(39 + color, owner), (120 + color, 1), (47 + color, 1), (56, 1)}
+                assert any(c.condition_type == ConditionId.TIMER and c.timer == 1 for c in trigger.conditions)
+            for family in ("Color Defeat Resolve", "Color Runtime Defeated", "Color Elimination Cleanup"):
+                trigger = by_name[f"{family} S{color} W{owner}"]
+                removal, = [e for e in trigger.effects if e.effect_type == EffectId.REMOVE_OBJECT]
+                enable, = [e for e in trigger.effects if e.effect_type == EffectId.ENABLE_OBJECT_DELETION]
+                assert trigger.effects.index(enable) < trigger.effects.index(removal)
+                for effect in (enable, removal):
+                    assert effect.source_player == owner
+                    assert (
+                        effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2
+                    ) == (-1, -1, -1, -1)
+                    assert not effect.selected_object_ids and effect.object_list_unit_id == -1
+                assert removal.object_type == removal.object_group == removal.object_state == -1
+                assert removal.max_units_affected == -1
+            empty, = [c for c in complete.conditions if c.condition_type == ConditionId.OWN_FEWER_OBJECTS]
+            assert empty.source_player == owner and empty.quantity == 1
+            assert empty.object_list == empty.object_type == empty.object_group == -1
+            assert (empty.area_x1, empty.area_y1, empty.area_x2, empty.area_y2) == (-1, -1, -1, -1)
+            assert [(e.variable, e.quantity) for e in complete.effects] == [(128 + color, 1)]
+
+
+def test_evolution_alpha_cannot_produce_after_elimination(evolution_alpha):
+    checked = 0
+    for trigger in evolution_alpha.trigger_manager.triggers:
+        if not any(e.effect_type in {
+            EffectId.CREATE_OBJECT, EffectId.CREATE_GARRISONED_OBJECT,
+            EffectId.TRAIN_UNIT, EffectId.PLACE_FOUNDATION,
+        } for e in trigger.effects):
+            continue
+        active = [
+            c for c in trigger.conditions if c.condition_type == ConditionId.VARIABLE_VALUE
+            and 32 <= c.variable <= 39 and c.quantity == 1
+        ]
+        for condition in active:
+            assert any(
+                c.condition_type == ConditionId.VARIABLE_VALUE and c.variable == condition.variable + 16
+                and c.quantity == 0 and c.comparison == Comparison.EQUAL
+                for c in trigger.conditions
+            ), trigger.name
+            checked += 1
+    assert checked >= 640  # All milestone/late Heroes and builder producers, plus rewards.
+    xs = next(t for t in evolution_alpha.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
+    for name in ("cbaSpawnColor", "cbaQueueColorBuilders"):
+        body = xs.split(f"void {name}(int scenarioPlayer = 0) {{", 1)[1]
+        assert body.lstrip().startswith("if (xsTriggerVariable(48 + scenarioPlayer - 1) == 1) return;")
 
 
 def test_evolution_alpha_color_active_has_exactly_one_writer(evolution_alpha):

@@ -1,4 +1,4 @@
-# CBA Hero: Ascendants v1.0.17
+# CBA Hero: Ascendants v1.0.18
 
 Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -22,16 +22,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.0.17 |
+| Metric | v1.0.18 |
 | --- | ---: |
-| Triggers | 3,655 (3,195 initially enabled) |
-| Conditions | 15,081 |
-| Effects | 14,752 |
+| Triggers | 3,783 (3,323 initially enabled) |
+| Conditions | 16,873 |
+| Effects | 15,136 |
 | Units | 956 |
-| Runtime variables | 121 (ids 0–120) |
+| Runtime variables | 137 (ids 0–136) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero Ascendants v1.0.17.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero Ascendants v1.0.18.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -62,8 +62,8 @@ scenario cap is 251 to preserve 250 ordinary gameplay slots.
 
 The sliders latch color-local variables; they do not continuously order existing
 units. A creation pulse is armed only after a Castle wave, Hero, or builder pair is
-created. Exactly one owner-correct movement trigger consumes that pulse. Units that
-later cross a spawn pad therefore keep the player's manual order.
+created. Exactly one owner-correct movement trigger consumes that pulse. Returning units keep orders between births; an old unit sharing the capture pad
+during a later birth can still be retasked (open issue ASC-037).
 
 Army waves are created at transformed cell centres and selected only on that exact
 cell. The 32 decorative Hay Stack creates are removed: their two-by-two footprints had
@@ -138,6 +138,12 @@ mirrored anti-Trebuchet areas. It contains no Transport Ships, submerged corner
 Palisades, corner Saboteurs, decorative selector Relics/Rugs/Torches, or hidden Goth
 Palisade HP bonus.
 
+v1.0.18 cleanup is eligible after active=0 because occupancy is latched separately.
+Castle loss, resignation and vote-kick share an owner-only purge without area/type/state
+limits, including protected buildings and foundations. Timed retries remain active
+after elimination, and victory waits for owner-empty confirmation. New object
+production stops as soon as elimination is set. All 64 mappings are covered.
+
 Every color shares one roster: 159 banned units, 16 banned buildings, one banned
 technology. The unit ban is derived from `CIV_SPAWN_RULES` rather than the imported
 per-color lists, so no civilization can hand-train the unique unit its own Castles
@@ -167,13 +173,13 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero Ascendants v1.0.17.aoe2scenario" --strict
+  "dist/CBA Hero Ascendants v1.0.18.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```
 
-v1.0.17 passes all 73 Ascendants-focused tests and all 60 remaining repository tests
-in two complementary runs: 133/133 total. The strict structural audit reports
+v1.0.18 passes all 78 Ascendants-focused tests and all 60 remaining repository tests
+in two complementary runs: 138/138 total. The strict structural audit reports
 0 errors and 0 warnings, and repository Ruff checks pass.
 Parser tests pin all eight colors, all 96 slider selectors, all 704 army/Hero movement mappings,
 the complete ownership matrix, controller safety, isolated connected tracks, visible
@@ -182,12 +188,13 @@ mutually exclusive Hero bands, and the one-shot movement invariant.
 Wall checks cover all 64 exact-reference breaches, the owner-resolved warning/wipe
 pairs, protected-footprint exclusion, and closed-gate reachability after removal of
 the side walls. Each owner's wipe uses 49 rectangles covering the 20,368 map cells
-outside 368 protected barrier cells. All 940 existing objects and every terrain cell
-are unchanged; exactly 16 front end posts are added. Controller confinement and names
+outside 368 protected barrier cells. All 956 placed objects, every terrain cell, and every roster restriction
+are unchanged from the pulled v1.0.17 update. Controller confinement and names
 are unchanged from v1.0.14. Two liveness tests walk the serialized victory subsystem as
 a state machine across six lobby shapes, closed slots both cleaned and left in place,
 and a split player identity, and prove a side that has lost its Castles always ends
-the match.
+the match. The new cleanup model additionally checks remaining objects before victory
+and reproduces the defect on the old artifact.
 
 AoE2ScenarioParser cannot execute DE pathfinding, lobby compaction, or multiplayer
 scheduling. The remaining in-game acceptance cases are tracked in
@@ -197,4 +204,4 @@ scheduling. The remaining in-game acceptance cases are tracked in
 
 Older candidates are retained only as investigation history in `RELEASE_NOTES_v*.md`.
 They are not alternative repair targets. See
-[`RELEASE_NOTES_v1.0.17.md`](RELEASE_NOTES_v1.0.17.md) for the current change set.
+[`RELEASE_NOTES_v1.0.18.md`](RELEASE_NOTES_v1.0.18.md) for the current change set.

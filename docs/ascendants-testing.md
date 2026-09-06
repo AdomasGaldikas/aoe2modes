@@ -44,7 +44,7 @@ warns; when one fires, an assumption moved and the fix belongs at the cause.
 
 | Assertion | What moved if it fires |
 | --- | --- |
-| `_assert_variable_ids_are_contiguous` | A variable block collided, duplicated or left a hole in ids 0–120 |
+| `_assert_variable_ids_are_contiguous` | A variable block collided, duplicated or left a hole in ids 0–136 |
 | `_validate_army_spawn_geometry` | A color's four wave pads are unsafe, duplicated, or nearest the wrong Castle |
 | `_unique_trigger(ctx, name)` | An inherited trigger was renamed, duplicated or removed upstream |
 | Exact family counts | e.g. exactly 40 legacy late-hero triggers, exactly two legacy rename triggers, one Blacksmith condition per color |
@@ -59,7 +59,7 @@ visible field. It is cheap to assert and expensive to debug in a lobby.
 
 ## Layer 2 — the test suite
 
-`tests/test_evolution_alpha.py` holds 73 test functions (count them with
+`tests/test_evolution_alpha.py` holds 78 test functions (count them with
 `pytest --collect-only -q tests/test_evolution_alpha.py`). They build the scenario once
 and interrogate the resulting graph. Grouped by what they pin:
 
@@ -85,6 +85,15 @@ The most load-bearing group. DE may seat any lobby slot in any Castle row.
   closed slots both cleaned and left in place, and a deliberately split player identity,
   and prove that a side which has lost its Castles always ends the match.
 - `uses_color_side_custom_victory`, `keeps_fixed_slot_teams`.
+
+The v1.0.18 model also evaluates elimination removals and inspects every victory
+snapshot. `elimination_purges_objects_before_any_winner` fails on the pulled v1.0.17
+artifact. It tests elimination before cleanup, residual placed objects/foundations,
+already-spent one-shot resolvers, six lobby shapes, both losing sides, and preservation
+of other owners and Gaia. `cleanup_is_owner_wide_and_inactive_safe` pins all 64
+owner mappings and unrestricted filters. `cannot_produce_after_elimination` covers
+trigger producers and the XS birth/queue early exits. This remains a state model,
+not a DE garrison or scheduler simulation.
 
 ### Controllers and movement
 

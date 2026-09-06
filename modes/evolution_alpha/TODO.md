@@ -1,12 +1,22 @@
 # Ascendants TODO
 
-Open work from the v1.0.7–v1.0.17 source review. Current candidate: **v1.0.17**;
+Open work from the v1.0.7–v1.0.18 source review. Current candidate: **v1.0.18**;
 what remains is either a decision for the maintainer or something only the game engine
 can settle.
 
 Status key: `[x]` done · `[~]` decision needed · `[ ]` open
 
 ---
+
+## v1.0.18 — no objects left after elimination
+
+- [x] ASC-047: persistent occupancy instead of active=1 for defeat cleanup; shared
+  unrestricted owner purge, timed retries, and empty-owner confirmation before victory.
+- [x] ASC-048: trigger and XS production stop immediately when elimination is latched.
+- [x] Regression reproduces the cleanup failure on the pulled v1.0.17 artifact.
+- [ ] Engine acceptance: all colors, shuffled/sparse lobbies, Castle loss, resignation,
+  and vote-kick; leave foundations, walls, University/towers and garrisoned units.
+  Defeated-owned objects must disappear without touching survivors or Gaia.
 
 ## v1.0.17 — the reported 1 v 4 deadlock
 

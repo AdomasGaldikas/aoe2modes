@@ -11,7 +11,7 @@ that consume them sit).
 
 ## Trigger-variable registry
 
-121 variables, ids **0–120**, contiguous with no holes. Every block is declared once as a
+137 variables, ids **0–136**, contiguous with no holes. Every block is declared once as a
 `*_VARIABLE_BASE` constant and read by both the Python trigger code and the generated XS,
 so the two sides cannot drift apart.
 
@@ -29,6 +29,8 @@ so the two sides cannot drift apart.
 | 97–104 | `HERO_MOVE_PENDING_VARIABLE_BASE` | 8 | One-shot new-Hero pulse | Triggers |
 | 105–112 | `BUILDER_MOVE_PENDING_VARIABLE_BASE` | 8 | One-shot new-builder-pair pulse | Triggers |
 | 113–120 | `HERO_RANGE_VARIABLE_BASE` | 8 | Penguin-selected Hero level, 0–5 | Triggers |
+| 121–128 | `COLOR_OCCUPIED_VARIABLE_BASE` | 8 | Color has participated; survives elimination | XS, latched |
+| 129–136 | `COLOR_CLEANED_VARIABLE_BASE` | 8 | Empty slot or confirmed removal of all defeated owner's objects | XS initializes; cleanup triggers confirm |
 
 Colour-indexed blocks are addressed as `BASE + scenario_color - 1`. The combat block is
 `BASE + (color - 1) * COMBAT_ROW_VARIABLE_STRIDE`, then `+0` kills, `+1` deaths,

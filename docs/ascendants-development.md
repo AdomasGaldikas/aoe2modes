@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.17**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.18**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.17.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.18.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +33,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.17.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.18.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -44,9 +44,9 @@ trigger-family counts, eight-way symmetry of the
 mirrored areas, and a contiguous-variable-id assertion all raise rather than emit a
 quietly wrong scenario. `aoe2modes audit` then checks the serialized output for broken
 references, invalid coordinates, unreachable or unpaced loops, and immediate
-unconditional victory/defeat. v1.0.17 passes with **0 errors and 0 warnings**. The
-full repository suite passes 133 tests (73 Ascendants and 60 other tests).
-Repository Ruff checks and the 637-line embedded XS build also pass.
+unconditional victory/defeat. v1.0.18 passes with **0 errors and 0 warnings**. The
+full repository suite passes 138 tests (78 Ascendants and 60 other tests).
+Repository Ruff checks and the 646-line embedded XS build also pass.
 
 The structural audit cannot see whether a match can be *won*: a permanent deadlock is
 made of individually well-formed triggers. Two liveness tests cover that separately —
@@ -77,6 +77,18 @@ The active issue inventory and manual acceptance cases are in
 The exact Castle rows, Sheep/Penguin zones, army/hero creation pads, range
 variables, and destinations for all eight colors are in
 [`ascendants-control-map.md`](ascendants-control-map.md).
+
+## v1.0.18 cleanup after elimination
+
+Pulled Adomas's `eb9a077` update before applying this focused fix. An eliminated
+color could become inactive before the active-gated purge ran, while the row-empty
+fallback allowed victory without object cleanup. Persistent occupancy now keeps
+cleanup eligible; unrestricted owner-only purges cover protected buildings and
+foundations, 64 timed retries handle residue, and 64 empty-owner confirmations gate
+victory. Trigger and XS producers also check elimination directly. There are 137
+variables (0–136); map objects, terrain, roster, ranges, and Scorpion lifetime are
+unchanged. See
+[`RELEASE_NOTES_v1.0.18.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.18.md).
 
 ## v1.0.17 match resolution and roster derivation
 

@@ -237,7 +237,9 @@ removed by cleanup, or lost when a slot closed.
 - Destroy every Castle belonging to the opposing side and your side wins.
 - When a player resigns or is defeated, **all** of their remaining units and buildings are
   removed from the map.
-- Victory resolves within a few seconds of the last enemy Castle leaving the map.
+- Cleanup includes protected walls/gates, controllers, and unfinished buildings. It
+  retries after elimination; other players' objects and Gaia are not targeted.
+- Victory waits for defeated-owner cleanup after the last enemy Castle leaves the map.
 - A match needs at least one occupied color on each side to be meaningful; that is the one
   lobby rule the scenario cannot enforce for you.
 

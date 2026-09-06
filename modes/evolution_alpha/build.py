@@ -160,6 +160,8 @@ ARMY_RANGE_VARIABLE_BASE = 89
 HERO_MOVE_PENDING_VARIABLE_BASE = 97
 BUILDER_MOVE_PENDING_VARIABLE_BASE = 105
 HERO_RANGE_VARIABLE_BASE = 113
+COLOR_OCCUPIED_VARIABLE_BASE = 121
+COLOR_CLEANED_VARIABLE_BASE = 129
 RANGE_LEVELS = tuple(range(6))
 DEFAULT_RANGE_LEVEL = 3
 VOTE_FLAG_OFFSETS = {
@@ -1029,9 +1031,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_654:
+    if len(ctx.tm.triggers) != 3_782:
         raise RuntimeError(
-            f"expected 3,654 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,782 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1525,6 +1527,15 @@ def _ban_castle_class_buildings(ctx: BuildContext) -> None:
 
 def _add_color_runtime_variables(ctx: BuildContext):
     """Create the color-to-runtime state shared by sparse-safe systems."""
+    for player in PLAYERS:
+        ctx.tm.add_variable(
+            f"p{int(player)}coloroccupied",
+            variable_id=COLOR_OCCUPIED_VARIABLE_BASE + int(player) - 1,
+        )
+        ctx.tm.add_variable(
+            f"p{int(player)}colorcleaned",
+            variable_id=COLOR_CLEANED_VARIABLE_BASE + int(player) - 1,
+        )
     active_variables = {
         player: ctx.tm.add_variable(
             f"p{int(player)}coloractive",
@@ -1611,6 +1622,23 @@ def _add_color_owner_detection(ctx: BuildContext, world_variables) -> None:
         )
 
 
+def _purge_player_objects(trigger, world_player) -> None:
+    """Remove the resolved owner's objects, including protected fortifications.
+
+    No area, type, class, state, reference, or quantity filter: foundations, buildings,
+    units, and controllers all belong to the same elimination cleanup. Never use
+    a wildcard owner or a territory rectangle, which could affect other players.
+    """
+    trigger.new_effect.enable_object_deletion(
+        source_player=world_player,
+    )
+    trigger.new_effect.remove_object(
+        source_player=world_player,
+        object_state=-1,
+        max_units_affected=-1,
+    )
+
+
 def _configure_custom_team_victory(
     ctx: BuildContext,
     active_variables,
@@ -1620,13 +1648,13 @@ def _configure_custom_team_victory(
 ) -> None:
     """Resolve defeat and victory through each occupied color's runtime player.
 
-    DE compacts sparse colors into consecutive runtime player numbers.  A fixed
-    ``P5`` defeat effect therefore targets runtime P5, not the person occupying
-    teal when teal has been compacted to runtime P2.  Runtime variables written
-    by XS keep every declaration attached to the selected color instead.
+    The Castle detector latches the trigger-side owner. XS independently latches
+    whether the color participated, using the engine's lobby-slot conversion.
+    Occupancy remains true after elimination: active=0 must not prevent cleanup.
 
-    Victory is gated on ``p#coloractive``, and XS clears that bit only from
-    ``p#coloreliminated``. Three properties keep that from deadlocking a match:
+    Victory requires inactive opponents AND confirmed empty owners. A timed purge
+    remains live after the one-shot defeat/resignation paths have run. Three
+    additional properties keep resolution independent of event/identity timing:
 
     1. **Defeat is a map state, not an event.** Each resolver ships enabled and fires
        from its own "no Castle of this owner in this colour's row" condition. It used to
@@ -1642,16 +1670,6 @@ def _configure_custom_team_victory(
     3. **Victory ships disabled** and is armed by the matching owner detector, so seven
        of every eight candidates are never evaluated after start-up.
     """
-
-    def purge_runtime_player(trigger, world_player) -> None:
-        """Remove every unit and building still owned by an eliminated player."""
-        trigger.new_effect.remove_object(
-            source_player=world_player,
-            area_x1=0,
-            area_y1=0,
-            area_x2=143,
-            area_y2=143,
-        )
 
     ctx.scenario.option_manager.victory_condition = VictoryCondition.CUSTOM
     ctx.scenario.option_manager.victory_custom_conditions_required = False
@@ -1708,7 +1726,8 @@ def _configure_custom_team_victory(
             )
             defeat.new_condition.variable_value(
                 quantity=1,
-                variable=active_variables[color],
+                # Occupancy persists when XS/fallback clears the active bit.
+                variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
                 comparison=Comparison.EQUAL,
             )
             defeat.new_condition.variable_value(
@@ -1734,7 +1753,7 @@ def _configure_custom_team_victory(
                 operation=Operation.SET,
                 variable=eliminated_variables[color],
             )
-            purge_runtime_player(defeat, world_player)
+            _purge_player_objects(defeat, world_player)
             defeat.new_effect.declare_victory(
                 source_player=world_player,
                 enabled=0,
@@ -1757,21 +1776,51 @@ def _configure_custom_team_victory(
                 comparison=Comparison.EQUAL,
             )
             resigned.new_condition.player_defeated(source_player=world_player)
+            resigned.new_condition.variable_value(
+                quantity=1,
+                variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
             resigned.new_effect.change_variable(
                 quantity=1,
                 operation=Operation.SET,
                 variable=eliminated_variables[color],
             )
-            purge_runtime_player(resigned, world_player)
+            _purge_player_objects(resigned, world_player)
 
-    # Fallback elimination. Everything above needs ``p#worldplayer``, which is latched
-    # in the trigger-player domain, while ``p#coloractive`` is written by XS from the
-    # lobby-slot domain. If the two ever disagree for a colour, none of its eight
-    # resolvers can match while it still reads alive, and the opposing side can never
-    # win. This asks a question neither domain can answer wrongly: does *any* candidate
-    # owner still hold a Castle in that colour's row? It only clears the victory gate —
-    # declaring defeat and purging objects stay with the owner-resolved resolvers,
-    # which need a specific player.
+            # Elimination and removal are separate durable states. These passes
+            # must still work after active=0, and must never touch an unused color.
+            cleanup = ctx.tm.add_trigger(
+                f"Color Elimination Cleanup S{int(color)} W{int(world_player)}",
+                looping=1,
+            )
+            complete = ctx.tm.add_trigger(
+                f"Color Cleanup Complete S{int(color)} W{int(world_player)}",
+                looping=1,
+            )
+            for trigger in (cleanup, complete):
+                trigger.new_condition.timer(timer=1)
+                for variable, quantity in (
+                    (world_variables[color], int(world_player)),
+                    (COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1, 1),
+                    (eliminated_variables[color], 1),
+                    (match_ready_variable, 1),
+                ):
+                    trigger.new_condition.variable_value(
+                        quantity=quantity, variable=variable, comparison=Comparison.EQUAL,
+                    )
+            _purge_player_objects(cleanup, world_player)
+            # Count all owned objects, not just units or buildings in the base.
+            complete.new_condition.own_fewer_objects(quantity=1, source_player=world_player)
+            complete.new_effect.change_variable(
+                quantity=1, operation=Operation.SET,
+                variable=COLOR_CLEANED_VARIABLE_BASE + int(color) - 1,
+            )
+
+    # Fallback elimination does not need an owner latch: does *any* candidate
+    # owner still hold a Castle in that colour's row? It latches elimination only.
+    # Purging stays with the cached owner and persistent occupancy, and victory
+    # still waits for the separate empty-owner confirmation.
     for color in PLAYERS:
         area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[color]
         row_empty = ctx.tm.add_trigger(
@@ -1886,6 +1935,11 @@ def _configure_custom_team_victory(
                         variable=active_variables[opponent],
                         comparison=Comparison.EQUAL,
                     )
+                    victory.new_condition.variable_value(
+                        quantity=1,
+                        variable=COLOR_CLEANED_VARIABLE_BASE + int(opponent) - 1,
+                        comparison=Comparison.EQUAL,
+                    )
                 victory.new_effect.declare_victory(
                     source_player=world_player,
                     enabled=1,
@@ -1977,6 +2031,7 @@ void cbaCreateWave(int scenarioPlayer = 0, int worldPlayer = 0, int unitId = -1)
 }}
 
 void cbaSpawnColor(int scenarioPlayer = 0) {{
+    if (xsTriggerVariable({COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1) == 1) return;
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
     if (worldPlayer < 1 || xsGetPlayerInGame(worldPlayer) == false) {{
         return;
@@ -2012,6 +2067,7 @@ void cbaSpawnColor(int scenarioPlayer = 0) {{
 }}
 
 void cbaQueueColorBuilders(int scenarioPlayer = 0) {{
+    if (xsTriggerVariable({COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1) == 1) return;
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
     if (worldPlayer < 1 || xsGetPlayerInGame(worldPlayer) == false) {{
         return;
@@ -2101,11 +2157,9 @@ void cbaUpdateCombatRow(int scenarioPlayer = 0) {{
 // Sole writer of the color-active bit. Trigger systems read it; none of them write
 // it, because a second writer is reverted here within a second.
 //
-// Elimination is latched, not merely observed. A color that was seen in the game and
-// then left it can no longer be resolved by the owner-resolved defeat triggers, since
-// those need a live player selector. Without the latch its active bit would flap back
-// on if the engine ever reported the slot in game again, and the opposing side's
-// victory would never resolve.
+// Elimination is latched, not merely observed, so a departed color cannot become
+// active again. Persistent occupancy lets owner-resolved cleanup continue after
+// active becomes zero; victory also requires the empty-owner confirmation.
 void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
     int activeFlag = 0;
@@ -2114,6 +2168,12 @@ void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
     );
     if (worldPlayer >= 1) {{
         if (xsGetPlayerInGame(worldPlayer)) {{
+            // Empty lobby colors start clean. Once occupied, require a real purge
+            // and empty-owner confirmation before that color can finish losing.
+            if (xsArrayGetInt(gCbaSeenInGameByColor, scenarioPlayer) == 0) {{
+                xsSetTriggerVariable({COLOR_CLEANED_VARIABLE_BASE} + scenarioPlayer - 1, 0);
+            }}
+            xsSetTriggerVariable({COLOR_OCCUPIED_VARIABLE_BASE} + scenarioPlayer - 1, 1);
             if (eliminatedFlag == 0) {{
                 activeFlag = 1;
             }}
@@ -2135,6 +2195,9 @@ void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
 }}
 
 void main() {{
+    for (scenarioPlayer = 1; <= 8) {{
+        xsSetTriggerVariable({COLOR_CLEANED_VARIABLE_BASE} + scenarioPlayer - 1, 1);
+    }}
     gCbaNextSpawnByColor = xsArrayCreateInt(9, 0, "cbaNextSpawnByColor");
     gCbaUnitByCiv = xsArrayCreateInt({civilization_array_size}, -1, "cbaUnitByCiv");
     gCbaCapByCiv = xsArrayCreateInt({civilization_array_size}, 0, "cbaCapByCiv");
@@ -4511,6 +4574,29 @@ def _force_bombard_tower_unlock(ctx: BuildContext) -> None:
         )
 
 
+def _stop_eliminated_color_production(ctx: BuildContext) -> None:
+    """Do not create rewards between the elimination latch and the next XS tick."""
+    creation_effects = {
+        EffectId.CREATE_OBJECT, EffectId.CREATE_GARRISONED_OBJECT,
+        EffectId.TRAIN_UNIT, EffectId.PLACE_FOUNDATION,
+    }
+    for trigger in ctx.tm.triggers:
+        if not any(effect.effect_type in creation_effects for effect in trigger.effects):
+            continue
+        colors = {
+            condition.variable - COLOR_ACTIVE_VARIABLE_BASE + 1
+            for condition in trigger.conditions
+            if condition.condition_type == ConditionId.VARIABLE_VALUE
+            and COLOR_ACTIVE_VARIABLE_BASE <= condition.variable < COLOR_ACTIVE_VARIABLE_BASE + 8
+            and condition.comparison == Comparison.EQUAL and condition.quantity == 1
+        }
+        for color in sorted(colors):
+            trigger.new_condition.variable_value(
+                quantity=0, variable=COLOR_ELIMINATED_VARIABLE_BASE + color - 1,
+                comparison=Comparison.EQUAL,
+            )
+
+
 def _finalize_occupied_slot_gates(ctx: BuildContext) -> None:
     """Retry occupied-color setup until its owner is known, then stop it."""
     configured = 0
@@ -5294,13 +5380,7 @@ def _configure_sparse_vote_kick(
                 operation=Operation.SET,
                 variable=eliminated_variables[target],
             )
-            resolver.new_effect.remove_object(
-                source_player=world_player,
-                area_x1=0,
-                area_y1=0,
-                area_x2=143,
-                area_y2=143,
-            )
+            _purge_player_objects(resolver, world_player)
             resolver.new_effect.declare_victory(
                 source_player=world_player,
                 enabled=0,
@@ -5441,6 +5521,7 @@ def build(ctx: BuildContext) -> None:
         match_ready_variable,
     )
     _finalize_occupied_slot_gates(ctx)
+    _stop_eliminated_color_production(ctx)
     _retire_obsolete_public_loops(ctx)
     _neutralize_fixed_color_tags(ctx)
     _sanitize_serialized_labels(ctx)

@@ -1,20 +1,20 @@
-# Ascendants v1.0.17 candidate issue register
+# Ascendants v1.0.18 candidate issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.17** is the active source-verified candidate;
-v1.0.16 remains the immediately preceding candidate for focused comparison only.
+repair targets. **v1.0.18** is the active source-verified candidate;
+v1.0.17 remains the immediately preceding candidate for focused comparison only.
 
 The baseline file is 99,694 bytes with SHA-256
 `4082a73c9e9323cda5678a758518c12a5e387c3beafa20ce3835f40466fb8d34`.
-The v1.0.17 candidate is 145,667 bytes with SHA-256
-`fe6e287ea09ce9abeaae221d72bf9e0aec6a8fdcca85fe6b6804b95c756d44e4`.
+The v1.0.18 candidate is 161,074 bytes with SHA-256
+`5262f6250889eb1dd6d0caeb9bdc080d8bf9c59c97725588d3f827274858a19d`.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
 ## Reported issues
 
-| ID | Report or requirement | v1.0.17 source status | Parser/source evidence | Required game check |
+| ID | Report or requirement | v1.0.18 source status | Parser/source evidence | Required game check |
 | --- | --- | --- | --- | --- |
 | ASC-001 | Leave two fewer rows behind every player's Castles. | Guarded | The canonical rear wall moved from source x=10.5 to x=14.5. Land is x=14..16: one wall row plus exactly two protected interior rows, transformed identically eight ways. | Visually inspect all eight rear Castle strips. |
 | ASC-002 | Red, Teal, Purple, and Orange lost a side wall. | Guarded | All 16 `no wall` / `re no wall` shells and their 16 no-op incoming deactivations are removed. Complete rear-wall slots and their eight transforms are asserted. | Start 4v4, reveal the map, and inspect every side wall after trigger initialization. |
@@ -83,24 +83,40 @@ maintenance defects around it. All are fixed in v1.0.17; the detailed record is 
 | ASC-045 | 64-way victory fan-out stayed live for the whole match | Improved. `Color Team Victory` ships disabled and is armed by the single owner detector whose latch it can match, so 56 of the 64 leave the tick loop at start-up. Initially enabled triggers are unchanged at 3,195 because the 64 defeat resolvers became enabled in the same change. | None; structural. |
 | ASC-046 | Imported Portuguese trigger names and a stale README | Fixed. The three hero-order template triggers are named in English in the `scenario/` source, so the build no longer keys on the imported scenario's display language. The mode README tracked v1.0.15 while `mode.toml` and the docs were on v1.0.16; a regression now asserts the README title matches `mode.toml`. | None; structural. |
 
+## v1.0.18 — remaining objects after defeat
+
+GitHub had one new commit after our last change: Adomas's `eb9a077` (September 5),
+which was pulled by fast-forward before this patch. Its other fixes are preserved.
+
+| ID | Finding | Source status and verification | Required game check |
+| --- | --- | --- | --- |
+| ASC-047 | Some defeated players keep buildings/items after losing their Castles | Corrected. Fallback/XS elimination could clear active before the active-gated purge. Persistent occupancy now keeps the resolver eligible. All defeat/resignation/vote paths share an owner-only purge with no area/type/class/state/count filter, preceded by enabling deletion. There are 64 timed cleanup retries and 64 owner-empty confirmations; victory also requires every opposing color clean. The new object-state regression fails on the pulled v1.0.17 artifact and verifies residue is gone before a winner is declared. | Leave University, walls/gates, towers, foundations, controllers and garrisoned units; lose all Castles, resign, or vote-kick. Repeat all colors, shuffled/sparse lobbies and final-opponent elimination. Every defeated-owned object must disappear; surviving players and Gaia remain. |
+| ASC-048 | A creation pass can run after elimination but before XS clears active | Corrected. Color-gated trigger producers additionally require eliminated=0. XS Castle spawning and builder queuing also return immediately on elimination. Existing routes, spawn positions and rewards are unchanged. | Lose the last Castle as a Hero, builder pair or normal wave is due. No late reward should leave new defeated-owned units. |
+
+The eight occupancy variables (121–128) persist after defeat. The eight cleaned
+variables (129–136) start true for unused slots, reset on first participation, and
+become true only on owner-empty confirmation. No trigger-owner number is passed to
+an XS player API. See
+[`RELEASE_NOTES_v1.0.18.md`](../modes/evolution_alpha/RELEASE_NOTES_v1.0.18.md).
+
 ## Additional parser findings
 
-The v1.0.17 serialized candidate passes the strict structural audit with **0 errors and
+The v1.0.18 serialized candidate passes the strict structural audit with **0 errors and
 0 warnings**, with:
 
-- 3,655 uniquely named, non-empty triggers and a complete display order;
-- 3,195 initially enabled triggers and 3,646 conservatively reachable triggers;
-- 15,081 conditions and 14,752 effects;
+- 3,783 uniquely named, non-empty triggers and a complete display order;
+- 3,323 initially enabled triggers and 3,774 conservatively reachable triggers;
+- 16,873 conditions and 15,136 effects;
 - 956 unique object references, all on-map, with no dangling garrisons;
-- 121 unique variable ids and no dangling variable use;
+- 137 unique variable ids and no dangling variable use;
 - no dangling trigger or selected-object references;
 - no partial, inverted, or out-of-bounds trigger geometry;
 - no reachable looping trigger without a Timer condition;
 - no reachable unconditional remove, kill, victory, or defeat trigger.
 
-All 133 repository tests pass (73 Ascendants, 60 others). Repository Ruff checks and
-the full 616-line embedded XS build pass. Readback comparison confirms every terrain
-cell and all 956 placed objects are unchanged from v1.0.15. The installed
+All 138 repository tests pass (78 Ascendants, 60 others). Repository Ruff checks and
+the full 646-line embedded XS build pass. Readback comparison confirms every terrain
+cell and all 956 placed objects, plus every roster restriction, are unchanged from v1.0.17. The installed
 game scenario matches the SHA-256 above. None of these checks substitutes for the
 engine acceptance matrix below.
 
@@ -118,7 +134,7 @@ Run the same audit after every build:
 ```bash
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
-aoe2modes audit "dist/CBA Hero Ascendants v1.0.17.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero Ascendants v1.0.18.aoe2scenario" --strict
 ```
 
 The normal command fails only on structural errors; `--strict` also
@@ -157,7 +173,7 @@ cases are recorded in-game.
 | Marker removal | All eight colors | No Transport Ship is present; milestone heroes still spawn and route normally. |
 | Corner cleanup | All four outer corners | No static Palisade Wall or Saboteur remains. |
 | Goth Palisade removal | Goths after Elite Huskarl | Player-built Palisades receive no hidden scenario HP bonus; Anarchy/Barracks progression still works. |
-| Resignation cleanup | Full and sparse | Every unit and building owned by the resigned runtime player disappears; other colors remain intact. |
+| Defeat/resignation cleanup | All colors, full/sparse/shuffled | Leave buildings, foundations and garrisoned units. Lose all Castles, resign or vote-kick, including the last opponent. All defeated-owned objects disappear before victory; other owners and Gaia remain intact. |
 | Anti-Trebuchet parity | All eight colors | An enemy packed Trebuchet beside any Castle row is removed, including P4/P6/P7/P8; no friendly rear-route unit is touched. |
 
 For a failure, record the exact selected colors, runtime player numbers, civilizations,

@@ -161,6 +161,18 @@ latches which trigger-side player selector owns each Castle row. It deliberately
 3. **Victory ships disabled** and is armed by the one owner detector whose latch it can
    match, so seven of every eight candidates leave the tick loop at start-up.
 
+v1.0.18 additionally separates persistent occupancy (`coloroccupied`) from active
+state. The defeat resolver requires occupancy, not active=1. All elimination paths
+share an unrestricted owner-only purge, preceded by enabling deletion. There are
+64 one-second `Color Elimination Cleanup` retries and 64 `Color Cleanup Complete`
+confirmations. Confirmation requires fewer than one owned object; each team-victory
+candidate checks every opposing color's clean flag. Unused colors initialize clean;
+the first XS in-game observation resets an occupied color's flag.
+
+`_stop_eliminated_color_production` runs after gameplay generation and adds
+eliminated=0 to color-gated object producers. XS waves and builder queuing have the
+same early exit. The cached trigger owner remains separate from XS player IDs.
+
 ### 6. Spawning and the XS handoff
 
 `_replace_legacy_army_spawns` replaces the legacy per-color spawn loops, allocates the
@@ -224,7 +236,7 @@ it is telling you an assumption moved — fix the cause, do not relax the assert
 
 | Assertion | Catches |
 | --- | --- |
-| `_assert_variable_ids_are_contiguous` | A hole, duplicate or collision in the 0–120 id space. Ids are handed out by independent passes from separate bases, and a condition addresses a variable **by id, not by name** — so a collision rewires trigger logic without changing a single visible field |
+| `_assert_variable_ids_are_contiguous` | A hole, duplicate or collision in the 0–136 id space. Ids are handed out by independent passes from separate bases, and a condition addresses a variable **by id, not by name** — so a collision rewires trigger logic without changing a single visible field |
 | `_validate_army_spawn_geometry` | A color's four wave pads being unsafe, duplicated or assigned to the wrong Castle |
 | `_unique_trigger` | An inherited trigger renamed or duplicated upstream |
 | Exact family counts | e.g. exactly 40 legacy late-hero triggers, exactly two legacy rename triggers, exactly one Blacksmith condition per color |
