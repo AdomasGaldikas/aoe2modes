@@ -1,4 +1,7 @@
-# CBA Hero: Ascendants v1.0.1.0
+# CBA Hero: Ascendants v1.0.1.1
+
+v1.0.1.1 restores loading and unit spawning on DE update 185872 by using the renamed
+`xsUnsyncGetLocalPlayerId` API. See [hotfix notes](RELEASE_NOTES_v1.0.1.1.md).
 
 Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -22,7 +25,7 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.0.1.0 |
+| Metric | v1.0.1.1 |
 | --- | ---: |
 | Triggers | 3,903 (3,443 initially enabled) |
 | Conditions | 17,441 |
@@ -31,7 +34,7 @@ This file is the release summary. The reference documentation lives in `docs/`:
 | Runtime variables | 145 (ids 0–144) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero Ascendants v1.0.1.0.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero Ascendants v1.0.1.1.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 

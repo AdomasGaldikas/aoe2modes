@@ -2,7 +2,7 @@
 //
 // Every player's XS instance runs the same code on the same seed, so these stay in
 // sync across a multiplayer lobby as long as they are only called from rules that
-// every player runs. Never branch on xsGetLocalPlayerId() before calling them.
+// every player runs. Never branch on xsUnsyncGetLocalPlayerId() before calling them.
 
 // Inclusive on both ends. xsGetRandomNumberMax(n) yields 0..n-1.
 int randRange(int low = 0, int high = 0) {

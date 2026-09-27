@@ -2169,7 +2169,7 @@ void cbaQueueColorBuilders(int scenarioPlayer = 0) {{
 }}
 
 void cbaAnnounceLocalBuilderGoal() {{
-    int localPlayer = xsGetLocalPlayerId();
+    int localPlayer = xsUnsyncGetLocalPlayerId();
     if (localPlayer < 1 || xsGetPlayerInGame(localPlayer) == false) {{
         return;
     }}
@@ -5477,6 +5477,10 @@ def _configure_sparse_vote_kick(
 
 
 def build(ctx: BuildContext) -> None:
+    # The pinned checker predates the engine rename; keep validation enabled.
+    ctx.xm.xs_check.additional_args.extend([
+        "--extra-prelude-path", str(ctx.mode_dir / "xs-check-185872.xs"),
+    ])
     apply_scenario_source(ctx)
 
     _reset_unsafe_vote_kick(ctx)

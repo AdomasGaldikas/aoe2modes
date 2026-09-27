@@ -2629,7 +2629,10 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
     assert "pendingPairs + earnedPairs - previousEarnedPairs" in xs_source
     assert "xsArraySetInt(gCbaBuilderThresholdByCiv, 8, 4);" in xs_source
     assert 'xsArraySetString(gCbaNameByCiv, 8, "Persians");' in xs_source
-    assert "xsGetLocalPlayerId()" in xs_source
+    assert "xsUnsyncGetLocalPlayerId()" in xs_source
+    assert "xsGetLocalPlayerId(" not in xs_source
+    # The validator prelude must never override the engine function in-game.
+    assert "int xsUnsyncGetLocalPlayerId(" not in xs_source
     assert "xsGetPlayerCivilization(localPlayer)" in xs_source
     assert "first builder pair after" in xs_source
     assert "if (xsGetGameTime() >= 4)" in xs_source
