@@ -6164,7 +6164,7 @@ def test_evolution_alpha_readme_tracks_the_built_version(repo):
     """The mode README states the version mode.toml actually builds."""
     spec = registry.get("evolution_alpha", repo)
     readme = (repo.modes / "evolution_alpha" / "README.md").read_text(encoding="utf-8")
-    assert readme.splitlines()[0] == f"# CBA Hero: Ascendants v{spec.version}"
+    assert readme.splitlines()[0] == f"# {spec.name} v{spec.version}"
     assert f"v{spec.version}.aoe2scenario" in readme
 
 

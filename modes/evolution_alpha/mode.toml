@@ -1,7 +1,7 @@
 [mode]
 id = "evolution_alpha"
-name = "CBA Hero Ascendants"
-version = "1.0.1.1"
+name = "CBA Hero 4v4: RA"
+version = "1.0"
 description = "A complete CBA Hero arena with independent Castle-army and Hero spawn sliders, six hero tiers, free development, protected team routes, live K/D/R, center rewards, and team vote-kicks."
 authors = []
 tags = ["cba", "hero", "arena", "4v4"]
@@ -13,7 +13,7 @@ tags = ["cba", "hero", "arena", "4v4"]
 # so `aoe2modes verify`/`decompile` do not apply to this mode. The structural
 # check is `aoe2modes audit` on the built file — see docs/ascendants-development.md.
 version = "1.58"
-filename = "{name} v{version}"
+filename = "CBA Hero 4v4 RA v{version}"
 
 # Applied before build.py, then overridden by scenario/setup.py. Kept in sync so
 # `aoe2modes info` tells the truth about the mode.
