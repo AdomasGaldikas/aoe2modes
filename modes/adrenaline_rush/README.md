@@ -23,16 +23,26 @@ small local tweaks go into `build.py` after `generated.apply(ctx)`.
   which auto-spawns waves of that civ's (usually Elite) unique unit whenever the
   player's military unit count drops below a threshold. Civ choice is a real build
   decision here — it directly determines your unique-unit supply.
-- **Kill-count age-ups.** `accumulate_attribute(UNITS_KILLED)` thresholds (roughly
-  200–750 kills, varies per player) force the player into Castle Age and then
-  Imperial Age via `force_research_technology`, each with a chat announcement.
-- **Super Genghis Khan.** Past ~2500 kills, a single escalating hero ("Super Genghis
-  Khan", +25 attack, 300 HP, faster fire rate) respawns every 2 seconds at a fixed
-  per-player location — one big late-game payoff rather than a tiered hero ladder.
-- **Raze-count reward.** Destroying 1–5 enemy buildings renames/buffs a unit's attack
-  per raze — a building-destruction incentive with no equivalent in `evolution_alpha`.
-- **Vote-kick.** Chat-command based: typing `Delete Vote Kick <COLOR>` triggers a kick
-  vote for that player.
+- **Kill-count age-ups.** `accumulate_attribute(UNITS_KILLED)` thresholds force
+  `force_research_technology`: 200/250/300 kills (civ-dependent) for Castle Age,
+  450/500/600 kills (civ-dependent) for Imperial Age, each with a chat announcement.
+- **"SGK" Genghis Khan ladder.** At 2,501 kills a loop removes/recreates one Genghis
+  Khan every 2s at a fixed pad (+25 attack, HP set to 300). At 3,001 kills that loop
+  is deactivated and replaced by one that creates an *additional* Genghis Khan every
+  5s without removing earlier ones (+250 attack, HP 300, +10 range) — an accumulating
+  horde rather than a single escalating hero, announced with a HUD banner and sound.
+- **Raze-count reward.** A one-shot countdown chain (`5 razes` → `4 razes` → ... →
+  `1 raze`) tributes Gaia, spawns a decoration object and a Hawk, and decrements an
+  HP counter on a marker unit per raze — a building-destruction incentive with no
+  direct equivalent in `evolution_alpha` (which instead grants builder-pair Villagers
+  for razing).
+- **Vote-kick.** Each teammate has an Outpost object named
+  `Delete Vote Kick <COLOR>`; deleting a teammate's marker casts a vote. A
+  combinatorial native trigger per (target, voter, voter) triple (e.g.
+  `VoteKickP1-P2-P4`) fires the kick once two different teammates' markers are
+  both gone — the same two-of-three-teammates rule `evolution_alpha` uses,
+  just resolved with one native trigger per combination instead of through an
+  XS identity layer.
 - **HUD.** `display_instructions` banners announce milestones and hero spawns; kill
   counts are broadcast via color-coded `send_chat` messages. Hundreds of
   auto-retask-idle-villager triggers rebuild lost population automatically.
