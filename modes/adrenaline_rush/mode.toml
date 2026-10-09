@@ -1,0 +1,42 @@
+# Copy this folder (or run `aoe2modes new <id>`) to start a new mode.
+# Anything that is "just settings" belongs here; anything that is logic belongs in build.py.
+
+[mode]
+id = "adrenaline_rush"
+name = "CBA Hero King Zalabatta Adrenaline Rush"
+version = "1.58.0"
+description = "King Zalabatta's Adrenaline Rush — a CBA Hero 4v4 variant with per-civilization rush bonuses."
+authors = ["King Zalabatta (original)"]
+tags = ["cba", "hero", "4v4", "adrenaline-rush"]
+
+[scenario]
+# No `base`: this mode is built from code in generated/, starting from a blank
+# scenario. `reference` is the original it was decompiled from — `aoe2modes verify
+# adrenaline_rush` rebuilds and diffs against it.
+reference = "base.aoe2scenario"
+# The source file is already v1.58, so the rebuild targets the same version the
+# original used and `verify` reports zero version-only fields.
+version = "1.58"
+filename = "{name} v{version}"
+
+# Applied before build.py, then overridden by generated/setup.py. Kept in sync so
+# `aoe2modes info` tells the truth about the mode.
+[map]
+size = 144
+terrain = "GRASS_1"
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "FEUDAL_AGE"
+population_cap = 1000
+
+[players.resources]
+food = 99999
+wood = 99999
+gold = 99999
+stone = 99999
+
+[xs]
+include = []
+scripts = []
