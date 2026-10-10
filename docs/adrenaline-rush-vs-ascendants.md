@@ -23,10 +23,10 @@ uncertainty is called out explicitly rather than guessed at.
 | Starting age | Feudal | Feudal |
 | Population cap | 1000 | 251 (250 usable slots + 1 reserved for the protected War Penguin controller) |
 | Starting resources | 99,999 food/wood/gold/stone | zero — everything costs nothing instead |
-| Civilizations | Free choice; your civ **is** your army (see below) | Free choice; every unique unit/building banned regardless of civ |
-| Trigger / variable count | 11,619 triggers, 3 variables, 0 XS lines | 3,903 triggers, 145 XS variables, a full inline XS runtime |
+| Civilizations | Free choice; your civ **is** your army (see below) | Free choice; civ-specific automatic Castle armies, with hand-training restrictions |
+| Trigger / variable count | 11,619 triggers, 3 variables, 0 XS lines | 3,968 triggers (RA v1.1), 145 trigger variables, a full inline XS runtime |
 
-## Civilization-driven army (Adrenaline Rush only)
+## Civilization-driven armies (both modes)
 
 Every civilization in the game — including Chieftains, Three Kingdoms and Greece
 DLC civs — gets its own per-player trigger, e.g. `mong (p6)`, `tue (p6)`. The
@@ -46,12 +46,11 @@ native trigger detects which civilization a player picked. Firing it:
   one-shot move order on newly created waves, but implemented as a repeating
   `task_object` loop rather than a per-spawn pulse.
 
-Evolution Alpha deliberately removes this axis: it bans every civilization's
-unique unit and building outright (in both Elite and base form) so nobody can
-hand-train the unit their Castles already produce for free. Civ choice still
-matters for the free Feudal upgrade package and the Castle-army unique unit
-feed (6-15s interval, 31-92 population cap, scaled by population cost), but not
-for an exclusive tech/army unlock the way it does in Adrenaline Rush.
+Evolution Alpha also uses civilization-specific automatic Castle armies
+(`CIV_SPAWN_RULES` in `modes/evolution_alpha/build.py`). Its shared training ban
+prevents hand-training those free units; it does not remove the civilization's
+automatic army. Civ choice affects unit type, wave interval (6–15s), population
+ceiling, and free upgrades, including the retained Teuton Squires bonus.
 
 ## Kill-count progression
 
@@ -126,12 +125,12 @@ plumbing:
   activating the kick effect for the target. With 8 players in two 4-stacks,
   that's a combinatorial trigger per possible (target, voter, voter) triple per
   side.
-- **Evolution Alpha**: identical rule — two different occupied teammates must
-  delete the same target's marker, a side needs at least three live colors to
-  kick at all, closed slots can't vote — but resolved through the XS runtime's
-  owner-identity layer instead of one native trigger per combination, so it
-  degrades correctly in a shuffled or sparse lobby (see Identity section
-  below).
+- **Evolution Alpha**: two different occupied teammates must delete the same
+  target's marker; at least three live colors are required. Participation and
+  owner mappings are resolved at runtime, but vote-marker conditions still use
+  native player selectors. They have not been migrated to XS guards; sparse
+  native-condition exposure remains open as ASC-053. Do not treat the presence
+  of an XS runtime as proof of all shuffled-lobby vote behavior.
 
 ## HUD and presentation
 
@@ -171,9 +170,12 @@ treated as unverified in sparse or closed-slot lobbies until tested live.
 - **Wall limit / wipe**: Ascendants warns at 200 owned wall-class objects and
   wipes at 220, sparing protected front-row and University barriers. No
   equivalent found in Adrenaline Rush.
-- **Team routes**: Ascendants has guarded rear causeways connecting same-team
-  pairs with protected gates; the Adrenaline Rush decompile wasn't inspected
-  deeply enough to confirm or rule this out.
+- **Team routes**: Adrenaline Rush has post-defeat enemy kill zones in
+  `generated/triggers/part_012.py` (triggers 3184–3191). RA v1.1 borrows the
+  exclusion idea: its six allied links have eight-tile main sections and
+  one-second intruder-removal guards that also operate before endpoint defeat.
+  These guards use the intruder's resolved native selector and variable-only
+  conditions, without adding native player-condition exposure.
 - **Spawn-range control**: Ascendants' Sheep/War Penguin sliders let each
   player choose how far their Castle army and Heroes walk before stopping (six
   positions each, independently). Adrenaline Rush's spawners always walk to a

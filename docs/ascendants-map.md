@@ -85,7 +85,7 @@ Pass order inside `apply_v2_map`:
    with water; restore **only** the top and bottom corridors, never the side ones, or the
    enemy gets a shortcut.
 3. `_trim_corner_team_routes` — flood the empty outer aprons of the four team corners while
-   keeping the inner five-tile L routes that meet the side gates.
+   keeping eight-tile L sections that meet the existing narrow gate approaches.
 4. `_apply_exact_objects` — move ≈623 existing objects to their symmetric positions and add
    the 20 missing Stone Wall slots. **Existing reference ids are retained**, so Antidelete
    and every legacy selected-object trigger keeps working.

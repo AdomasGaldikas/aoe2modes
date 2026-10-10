@@ -221,7 +221,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 3_903
+    assert len(triggers) == 3_968
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 956
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -251,7 +251,7 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
         for x in range(144)
     )
     assert hashlib.sha256(terrain).hexdigest() == (
-        "6cd911471fc98a7694539d9beac7947697ad3b038ab243d9ae59c834daf0b45f"
+        "41b4abba810f9420492517855ed215c104e6b0176e82b0ee18b80218974fb22a"
     )
 
     source_milestone_shore = {
@@ -289,7 +289,9 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
         lambda x, y: (143 - x, 143 - y),
     )
     route_orbits = set()
-    for x1, y1, x2, y2 in ((65, 20, 78, 23), (65, 120, 78, 123)):
+    for x1, y1, x2, y2 in (
+        (65, 20, 78, 23), (65, 120, 78, 123), (66, 18, 77, 25), (66, 118, 77, 125),
+    ):
         for y in range(y1, y2 + 1):
             for x in range(x1, x2 + 1):
                 route_orbits.update(transform(x, y) for transform in transforms)
@@ -323,7 +325,9 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
                 asymmetrical.add((x, y))
     assert asymmetrical == route_orbits | entrance_accent_tiles
 
-    for x1, y1, x2, y2 in ((65, 20, 78, 23), (65, 120, 78, 123)):
+    for x1, y1, x2, y2 in (
+        (65, 20, 78, 23), (65, 120, 78, 123), (66, 18, 77, 25), (66, 118, 77, 125),
+    ):
         assert {
             evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
             for y in range(y1, y2 + 1)
@@ -395,17 +399,17 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
         } == {terrain_id}
 
 
-def test_evolution_alpha_trims_all_four_corner_team_routes(evolution_alpha):
+def test_evolution_alpha_widens_all_four_corner_team_routes(evolution_alpha):
     source_cut = {
-        *((x, y) for x in range(15, 38) for y in range(15, 19)),
-        *((x, y) for x in range(15, 19) for y in range(19, 38)),
+        *((x, 15) for x in range(15, 38)),
+        *((15, y) for y in range(16, 38)),
     }
     cut_tiles = {
         v2_cell_for_player(player, source_x, source_y)
         for player in PlayerId.all(exclude_gaia=True)
         for source_x, source_y in source_cut
     }
-    assert len(cut_tiles) == 672
+    assert len(cut_tiles) == 180
     assert {
         evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
         for x, y in cut_tiles
@@ -422,14 +426,102 @@ def test_evolution_alpha_trims_all_four_corner_team_routes(evolution_alpha):
         inner_route = {
             v2_cell_for_player(player, source_x, source_y)
             for source_x, source_y in (
-                *((x, 19) for x in range(19, 38)),
-                *((19, y) for y in range(19, 38)),
+                *((x, y) for x in range(16, 38) for y in range(16, 24)),
+                *((x, y) for x in range(16, 24) for y in range(24, 38)),
             )
         }
         assert {
             evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
             for x, y in inner_route
         } == {TerrainId.GRASS_2}
+
+
+def test_evolution_alpha_route_guards_use_resolved_intruders_after_ally_defeat(evolution_alpha):
+    """Exercise serialized guards with all 64 color/selector mappings.
+
+    This small evaluator covers the variable-only guard, not DE scheduling or
+    pathfinding. Protected endpoints are deliberately absent/inactive throughout.
+    """
+    tm = evolution_alpha.trigger_manager
+    ids = {variable.name: variable.variable_id for variable in tm.variables}
+    guards = [trigger for trigger in tm.triggers if trigger.name.startswith("Allied Route Guard ")]
+    assert len(guards) == 64
+    ready = next(variable.variable_id for variable in tm.variables if variable.name == "colorsidesready")
+    # Independent cell predicate for the three north-team links, including mouths.
+    top = {
+        (x, y) for x in range(144) for y in range(144)
+        if (16 <= x <= 43 and 16 <= y <= 23)
+        or (16 <= x <= 23 and 24 <= y <= 43)
+        or (100 <= x <= 127 and 16 <= y <= 23)
+        or (120 <= x <= 127 and 24 <= y <= 43)
+        or (65 <= x <= 78 and 20 <= y <= 23)
+        or (66 <= x <= 77 and 18 <= y <= 25)
+    }
+    bottom = {(x, 143 - y) for x, y in top}
+    assert top.isdisjoint(bottom)
+
+    for color in range(1, 9):
+        for selector in range(1, 9):
+            state = defaultdict(int, {
+                ready: 1, ids[f"p{color}coloractive"]: 1,
+                ids[f"p{color}worldplayer"]: selector,
+            })
+
+            def fires(trigger, state=state):
+                return all(
+                    state[condition.variable] == condition.quantity
+                    for condition in trigger.conditions
+                    if condition.condition_type == ConditionId.VARIABLE_VALUE
+                )
+
+            firing = [guard for guard in guards if fires(guard)]
+            assert len(firing) == 1
+            guard = firing[0]
+            assert guard.enabled and guard.looping
+            assert guard.name == f"Allied Route Guard P{color} W{selector}"
+            assert len(guard.conditions) == 4
+            assert all(
+                (condition.condition_type == ConditionId.TIMER and condition.timer == 1)
+                or (condition.condition_type == ConditionId.VARIABLE_VALUE
+                    and condition.comparison == Comparison.EQUAL)
+                for condition in guard.conditions
+            )
+            covered = set()
+            for effect in guard.effects:
+                assert effect.effect_type == EffectId.REMOVE_OBJECT
+                assert effect.source_player == selector
+                assert effect.object_list_unit_id == -1
+                assert effect.object_type == -1 and effect.object_group == -1
+                assert not effect.selected_object_ids
+                assert effect.max_units_affected == -1
+                covered.update(
+                    (x, y) for x in range(effect.area_x1, effect.area_x2 + 1)
+                    for y in range(effect.area_y1, effect.area_y2 + 1)
+                )
+            assert covered == (bottom if color <= 4 else top)
+            assert covered.isdisjoint(top if color <= 4 else bottom)
+            # Castle rows, technology buildings and controllers remain outside.
+            for units in evolution_alpha.unit_manager.units:
+                for unit in units:
+                    if unit.unit_const in {
+                        BuildingInfo.CASTLE.ID, BuildingInfo.UNIVERSITY.ID,
+                        UnitInfo.SHEEP.ID, UnitInfo.WAR_PENGUIN.ID,
+                    }:
+                        assert (int(unit.x), int(unit.y)) not in covered
+            state[ready] = 0
+            assert not any(fires(guard) for guard in guards)
+            state[ready] = 1
+            state[ids[f"p{color}coloractive"]] = 0
+            assert not any(fires(guard) for guard in guards)
+
+    labels = next(trigger for trigger in tm.triggers if trigger.name == "Allied Route Gate Labels")
+    assert labels.enabled and not labels.looping
+    assert set(labels.effects[0].selected_object_ids) == {
+        109743, 109744, 109745, 109746, 65500, 23621, 23076, 23205,
+        23618, 23624, 23615, 23627,
+    }
+    assert labels.effects[0].message == "Allied route - enemy units removed"
+    assert "even after a teammate is defeated" in evolution_alpha.message_manager.instructions
 
 
 def test_evolution_alpha_keeps_v2_objects_and_playable_gate_holes(evolution_alpha):
@@ -3547,6 +3639,24 @@ def test_evolution_alpha_has_no_unauthorized_wall_or_gate_destruction(evolution_
                 )
                 found["bounded_wall_cap"] += 1
                 continue
+            route_match = re.fullmatch(r"Allied Route Guard P([1-8]) W([1-8])", trigger.name)
+            if route_match:
+                color, selector = map(int, route_match.groups())
+                assert effect.source_player == selector
+                x1, y1, x2, y2 = effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2
+                assert 0 <= x1 <= x2 < 144 and 0 <= y1 <= y2 < 144
+                assert y1 >= 100 if color <= 4 else y2 <= 43
+                own_team = range(1, 5) if color <= 4 else range(5, 9)
+                # The selector resolves the intruder's color, whose entire team
+                # owns no permanent fortification within these enemy-route masks.
+                assert all(
+                    not (x1 <= int(unit.x) <= x2 and y1 <= int(unit.y) <= y2)
+                    for owner in own_team
+                    for unit in evolution_alpha.unit_manager.units[owner]
+                    if unit.unit_const in structural_types
+                )
+                found["bounded_enemy_route"] += 1
+                continue
             assert re.fullmatch(
                 r"(?:(?:Color Defeat Resolve|Color Runtime Defeated|Color Elimination Cleanup) "
                 r"S[1-8]|Vote Kick Resolve P[1-8]) W[1-8]",
@@ -3557,7 +3667,8 @@ def test_evolution_alpha_has_no_unauthorized_wall_or_gate_destruction(evolution_
     assert found["exact_breach"] == 64
     assert found["player_elimination"] == 256
     assert found["bounded_wall_cap"] > 64
-    assert set(found) == {"exact_breach", "player_elimination", "bounded_wall_cap"}
+    assert found["bounded_enemy_route"] == 384
+    assert set(found) == {"exact_breach", "player_elimination", "bounded_wall_cap", "bounded_enemy_route"}
 
 
 def test_evolution_alpha_uses_color_side_custom_victory(evolution_alpha):
@@ -5213,7 +5324,8 @@ def test_evolution_alpha_keeps_all_rear_technology_paths_dry(evolution_alpha):
 def test_evolution_alpha_messages_are_public_facing(evolution_alpha):
     messages = evolution_alpha.message_manager
     assert "Units spawn automatically" in messages.instructions
-    assert "eight equal mirrored fortified territories" in messages.instructions
+    assert "wider eight-tile sections" in messages.instructions
+    assert "Enemy units entering these routes are removed" in messages.instructions
     assert "Guarded rear team routes" in messages.instructions
     assert "Blue, Red, Green, and Yellow" in messages.instructions
     assert "Two occupied teammates must vote" in messages.instructions
@@ -5267,7 +5379,7 @@ def test_evolution_alpha_messages_are_public_facing(evolution_alpha):
     assert not any(
         forbidden_authorship.search(text or "") for text in serialized_labels
     )
-    assert messages.instructions.startswith("CBA HERO: ASCENDANTS")
+    assert messages.instructions.startswith("CBA HERO 4v4: RA")
     assert not any(forbidden_color_tag.search(text or "") for text in public_text)
     assert not any(
         legacy in (text or "")
@@ -6367,4 +6479,3 @@ def test_native_player_scoped_conditions_stay_a_declared_inventory(evolution_alp
         "OWN_OBJECTS": 128,  # wall cap warn/wipe
         "DESTROY_OBJECT": 96,  # wall breach
     }
-

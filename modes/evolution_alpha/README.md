@@ -1,14 +1,14 @@
-# CBA Hero 4v4: RA v1.0
+# CBA Hero 4v4: RA v1.1
 
-The first RA release is renamed from Ascendants v1.0.1.1, retaining its load fix.
+RA v1.1 widens the six allied routes, removes enemy intruders from those routes,
+and labels the access gates. Route protection survives the loss of a teammate.
+See [v1.1 notes](RELEASE_NOTES_v1.1.md) for scope and validation.
 
-v1.0.1.1 restores loading and unit spawning on DE update 185872 by using the renamed
-`xsUnsyncGetLocalPlayerId` API. See [hotfix notes](RELEASE_NOTES_v1.0.1.1.md).
-
-Ascendants is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
+RA is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
 center rewards, vote-kicks, and a compact K/D/R display. The maintained Python source is
-authoritative; v1.0.3 is the sole historical comparison baseline.
+authoritative. It retains the DE update 185872 load/spawn fix from
+[Ascendants v1.0.1.1](RELEASE_NOTES_v1.0.1.1.md).
 
 ## Start here
 
@@ -27,16 +27,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.0 |
+| Metric | v1.1 |
 | --- | ---: |
-| Triggers | 3,903 (3,443 initially enabled) |
-| Conditions | 17,441 |
-| Effects | 15,520 |
+| Triggers | 3,968 (3,508 initially enabled) |
+| Conditions | 17,698 |
+| Effects | 15,905 |
 | Units | 956 |
 | Runtime variables | 145 (ids 0–144) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero 4v4 RA v1.0.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero 4v4 RA v1.1.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -143,6 +143,14 @@ latch it can match, so seven of every eight candidates leave the tick loop at st
 
 ## Arena and cleanup
 
+Six allied links have eight-tile main sections; the original gate entrances remain
+narrow. The side gaps between opposing teams remain water. Gate labels and Objectives
+explain the rule: enemy units entering the team routes are removed on a one-second
+check, with no combat kill credit. Hostile foundations are removed too. Guards use
+the intruder's resolved owner, so they continue after a protected teammate loses their
+base or a slot starts closed. Attack through the central battlefield.
+
+
 All eight territories derive from one canonical sector and an eight-way transform.
 The scenario retains the corrected walls, oriented gates, buildable milestone shores,
 dry technology routes, Castle-relative spawn pads, protected allied routes, and
@@ -185,28 +193,20 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero Ascendants v1.0.18.aoe2scenario" --strict
+  "dist/CBA Hero 4v4 RA v1.1.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```
 
-v1.0.18 passes all 78 Ascendants-focused tests and all 60 remaining repository tests
-in two complementary runs: 138/138 total. The strict structural audit reports
-0 errors and 0 warnings, and repository Ruff checks pass.
-Parser tests pin all eight colors, all 96 slider selectors, all 704 army/Hero movement mappings,
-the complete ownership matrix, controller safety, isolated connected tracks, visible
-HOLD/OFF boundaries, unique spawn pads,
-mutually exclusive Hero bands, and the one-shot movement invariant.
-Wall checks cover all 64 exact-reference breaches, the owner-resolved warning/wipe
-pairs, protected-footprint exclusion, and closed-gate reachability after removal of
-the side walls. Each owner's wipe uses 49 rectangles covering the 20,368 map cells
-outside 368 protected barrier cells. All 956 placed objects, every terrain cell, and every roster restriction
-are unchanged from the pulled v1.0.17 update. Controller confinement and names
-are unchanged from v1.0.14. Two liveness tests walk the serialized victory subsystem as
-a state machine across six lobby shapes, closed slots both cleaned and left in place,
-and a split player identity, and prove a side that has lost its Castles always ends
-the match. The new cleanup model additionally checks remaining objects before victory
-and reproduces the defect on the old artifact.
+The RA v1.1 build passes XS lint and a strict structural audit with zero errors
+and zero warnings. Automated regression coverage includes the six allied links,
+eight-tile route sections, all 64 intruder owner mappings, gate labels, and guards
+that persist with inactive protected endpoints.
+
+The existing suite also checks Castle/Hero spawning, controller confinement,
+owner identity, wall-wipe exclusions, closed-gate reachability, elimination and
+victory. Historical test totals and geometry snapshots belong to their release
+notes; they are not live acceptance of this version.
 
 AoE2ScenarioParser cannot execute DE pathfinding, lobby compaction, or multiplayer
 scheduling. The remaining in-game acceptance cases are tracked in
@@ -216,4 +216,5 @@ scheduling. The remaining in-game acceptance cases are tracked in
 
 Older candidates are retained only as investigation history in `RELEASE_NOTES_v*.md`.
 They are not alternative repair targets. See
-[`RELEASE_NOTES_v1.0.18.md`](RELEASE_NOTES_v1.0.18.md) for the current change set.
+[`RELEASE_NOTES_v1.0.18.md`](RELEASE_NOTES_v1.0.18.md) for the historical wall/cleanup change set. Current changes are in
+[`RELEASE_NOTES_v1.1.md`](RELEASE_NOTES_v1.1.md).

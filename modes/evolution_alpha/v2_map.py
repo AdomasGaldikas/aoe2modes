@@ -55,22 +55,22 @@ TEAM_SIDE_GATES = {
     PlayerId.EIGHT: (109_746, 79.5, 122.0),
 }
 
-# A four-tile allied causeway connects each same-team pair.  Copying
-# P3's terrain into every sector filled these two routes with water; restoring
-# only the top/bottom corridors avoids opening an enemy route on either side.
+# Eight-tile allied causeways retain four-tile gate throats at either end.
+# Widen only the middle span so units cannot bypass the gates around their ends.
+# Only top/bottom are allies; the corresponding left/right water gaps stay closed.
 TEAM_ROUTE_RECTANGLES = (
     (65, 20, 78, 23),
     (65, 120, 78, 123),
+    (66, 18, 77, 25),
+    (66, 118, 77, 125),
 )
 
-# The four outer team corners inherited broad eight-tile land aprons. Keep the
-# inner five-tile L routes that meet the side gates and flood only the empty
-# outer apron. The source mask is symmetric across its diagonal, so its eight
-# map transforms produce the four identical team corners without one-off edits.
+# Keep eight-tile corner routes (16..23) and flood only the outermost apron.
+# The diagonal symmetry produces four identical corners under all eight transforms.
 SOURCE_CORNER_ROUTE_WATER_TILES = frozenset(
     {
-        *((x, y) for x in range(15, 38) for y in range(15, 19)),
-        *((x, y) for x in range(15, 19) for y in range(19, 38)),
+        *((x, 15) for x in range(15, 38)),
+        *((15, y) for y in range(16, 38)),
     }
 )
 
@@ -345,6 +345,18 @@ def _transformed_wall_rotation(
 
 
 def _restore_team_routes(ctx: BuildContext) -> None:
+    # Normalize the few inherited beach cells as well as restoring the width.
+    corner_cells = {
+        v2_cell_for_player(player, x, y)
+        for player in PlayerId.all(exclude_gaia=True)
+        for x in range(16, 38)
+        for y in range(16, 24)
+    }
+    for x, y in corner_cells:
+        tile = ctx.mm.get_tile(x=x, y=y)
+        tile.terrain_id = TerrainId.GRASS_2
+        tile.elevation = 1
+        tile.layer = -1
     for x1, y1, x2, y2 in TEAM_ROUTE_RECTANGLES:
         for y in range(y1, y2 + 1):
             for x in range(x1, x2 + 1):

@@ -59,6 +59,7 @@ from aoe2modes.lib.decompile import (
 
 from .runtime_conditions import configure_runtime_conditions
 from .scenario import apply as apply_scenario_source
+from .team_routes import protect_team_routes
 from .v2_map import apply_v2_map, v2_cell_for_player, v2_position_for_player
 
 PLAYERS = tuple(PlayerId.all(exclude_gaia=True))
@@ -595,7 +596,7 @@ REAR_CLIFF_PERIMETERS = (
 )
 
 PUBLIC_INSTRUCTIONS = (
-    "CBA HERO: ASCENDANTS\r\r"
+    "CBA HERO 4v4: RA\r\r"
     "HOW TO PLAY\r"
     "Units spawn automatically and march into the arena. Defeat enemy units to unlock "
     "stronger heroes. Protect your four Castles and destroy every enemy Castle to win.\r\r"
@@ -603,8 +604,9 @@ PUBLIC_INSTRUCTIONS = (
     "Blue, Red, Green, and Yellow face Teal, Purple, Gray, and Orange. Close any unused "
     "slots, but keep at least one occupied color on each side.\r\r"
     "TEAM ROUTES\r"
-    "The arena uses eight equal mirrored fortified territories. Guarded rear team routes and "
-    "each player's protected gate let allies reinforce one another.\r\r"
+    "Guarded rear team routes connect allies through wider eight-tile sections. "
+    "Gate entrances remain narrow. Enemy units entering these routes are removed, "
+    "even after a teammate is defeated. Use the central battlefield to attack.\r\r"
     "SPAWN CONTROLS\r"
     "Sheep = Castle army range. Penguin = Hero range. Move each along its own road: "
     "farther toward the arena sends new units farther. Snow is the end zone: Sheep on "
@@ -1037,9 +1039,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_902:
+    if len(ctx.tm.triggers) != 3_967:
         raise RuntimeError(
-            f"expected 3,902 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 3,967 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -4946,7 +4948,7 @@ def _rewrite_public_messages(ctx: BuildContext) -> None:
     messages = ctx.message_manager
     messages.instructions = PUBLIC_INSTRUCTIONS
     messages.history = (
-        "CBA Hero: Ascendants.\r"
+        f"{ctx.spec.name} v{ctx.spec.version}.\r"
         "Automatic armies earn stronger heroes through combat. Guard four Castles, support "
         "your allies through the protected team routes, and destroy every enemy Castle."
     )
@@ -4961,7 +4963,7 @@ def _rewrite_public_messages(ctx: BuildContext) -> None:
         "defenses."
     )
     messages.victory = (
-        "\rASCENDANT VICTORY\rYour team destroyed every enemy Castle."
+        "\rRA VICTORY\rYour team destroyed every enemy Castle."
     )
     messages.loss = (
         "\rDEFEAT\rYour Castles have fallen. Return to the map to watch the battle."
@@ -5532,6 +5534,7 @@ def build(ctx: BuildContext) -> None:
 
     v2_report = apply_v2_map(ctx)
     _remap_v2_trigger_geometry(ctx)
+    protect_team_routes(ctx, active_variables, world_variables, match_ready_variable)
     _configure_range_sliders(
         ctx,
         army_range_variables,

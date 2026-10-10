@@ -211,9 +211,12 @@ refuse manual deletion; the side switch stays deletable on purpose.
 
 ## Team routes
 
-Guarded rear causeways connect same-team pairs, and each player has a protected gate onto
-them, so allies can reinforce one another. The corresponding corridors on the enemy side
-are water. Rear gates open onto a dry three-tile path to your University and Blacksmith.
+Six guarded rear links connect same-team pairs. In RA v1.1 their main sections are
+eight tiles wide, with narrow gate approaches. Enemy units and foundations entering
+these links are removed on a one-second check, even after a friendly endpoint is
+eliminated or starts closed. The gate names and Objectives explain this rule.
+Attack through the central arena; the side gaps between opposing teams remain water.
+Rear gates also open onto a dry three-tile path to your University and Blacksmith.
 
 ## Vote kick
 
