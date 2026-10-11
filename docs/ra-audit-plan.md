@@ -20,9 +20,10 @@ Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 4. **Done — confirmed corrections and regressions.** Replaced area capture with
    exact-reference birth orders, suppressed empty/failed-wave pulses, corrected
    switch labels, and made the release audit strict. See the evidence below.
-5. **Validation done; delivery pending.** Build/XS lint, 150 repository tests,
+5. **Done — validation and delivery.** Build/XS lint, 150 repository tests,
    strict audit and map report passed. Clean v1.1 readback comparison passed.
-   Push and checkout synchronization are the final delivery steps.
+   Source commit `c44e026` was pushed to GitHub main. The local game candidate
+   was installed with its hash verified, and both checkouts were synchronized.
 
 ## Confirmed findings and fixes
 
@@ -79,3 +80,7 @@ Population tables remain wave-admission thresholds, checked before a wave, rathe
 than per-unit hard ceilings. A final four-Castle batch can exceed that threshold.
 Changing batch size or civilization balance is outside these confirmed corrections.
 The terrain and reward timings are preserved.
+
+The source delivery is [commit c44e026](https://github.com/AdomasGaldikas/aoe2modes/commit/c44e026).
+The audit goal is complete within the source/automated-validation scope above;
+the explicitly listed engine checks remain unverified.
