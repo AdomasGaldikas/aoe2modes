@@ -1,12 +1,17 @@
-# CBA Hero 4v4: RA v1.3
+# CBA Hero 4v4: RA v1.4
 
-RA v1.3 adds a one-use **Scorpion Backup** indicator to the combat HUD:
-**B: 1 = available, A = active, 0 = used**. Move the **Skorpion King** to its
-marked side island to call six Scorpions for 50 seconds. Its short description
-explains the action. The existing white King's live kill statistic remains.
-See [v1.3 notes](RELEASE_NOTES_v1.3.md) for validation and live acceptance gaps.
-The [v1.2 birth-order fixes](RELEASE_NOTES_v1.2.md) and
-[audit](../../docs/ra-audit-plan.md) remain part of this candidate.
+RA v1.4 silences recurring Hero creation cues, doubles the main allied route
+spans to 16 tiles, kills enemies entering opposing protected routes, and adds
+warning flames with owner-resolved per-player visibility requests. A start-of-match
+chooser offers 200 / 250 / 300 / 500 population, controlled by the lowest active
+occupied color (the host should take that color). It locks at 60 seconds, default 250.
+All automatic births use real population costs; complete builder and backup batches
+wait for enough room. Saxons, Varangians and Danes have automatic armies, builder
+thresholds and both base/Elite training bans. New balance values are provisional.
+
+Exact P1/P5, P2/P6, P3/P7 and P4/P8 civilization pairing still requires explicit lobby
+civilization choices. This release does not rewrite the engine's resolved Mirror
+civilizations. See [v1.4 notes](RELEASE_NOTES_v1.4.md) for validation and live gaps.
 
 RA is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -31,16 +36,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.3 |
+| Metric | v1.4 |
 | --- | ---: |
-| Triggers | 4,057 (3,517 initially enabled) |
-| Conditions | 19,178 |
-| Effects | 14,346 |
-| Units | 956 |
+| Triggers | 4,123 (3,583 initially enabled) |
+| Conditions | 19,500 |
+| Effects | 14,481 |
+| Units | 999 |
 | Runtime variables | 153 (ids 0–152) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero 4v4 RA v1.3.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero 4v4 RA v1.4.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -66,8 +71,9 @@ Each two-tile-wide track is surrounded by water, with a three-tile Deep Water ga
 between the tracks. This keeps each controller inside its own selector line without
 repeatedly overriding movement orders. The Signs leave one row clear for travel, and
 every dry track tile belongs to one of its controller's six levels. The protected
-Penguin's one real population slot is excluded from custom gameplay ceilings; the
-scenario cap is 251 to preserve 250 ordinary gameplay slots.
+Penguin's one real population slot is excluded from custom gameplay ceilings.
+The selected 200/250/300/500 cap also reserves the temporary population chooser's
+actual cost while it exists.
 
 The sliders latch color-local variables. XS passes only the reference returned by
 `xsCreateUnit` to `xsTaskUnits`, immediately after that birth, using the selected
@@ -79,13 +85,17 @@ longer contain movement effects.
 
 Army waves are created at transformed cell centres. The 32 decorative Hay Stack
 creates are removed: their two-by-two footprints had overlapped 16 wave pads and
-eight level-0 destinations despite separate anchor points. v1.3 requires DE update
+eight level-0 destinations despite separate anchor points. v1.4 requires DE update
 185872 or newer; its exact-reference task API still requires live DE acceptance.
 
 The exact lane rectangles, level variables, spawn pads, and destinations are recorded
 in [`../../docs/ascendants-control-map.md`](../../docs/ascendants-control-map.md).
 
 ## Hero production
+
+Recurring Hero births are silent, including the milestone tiers and the
+3,500/5,000-kill boost loops. Creation cues no longer interrupt players whose
+camera is elsewhere. Spawn timing, ownership and immediate orders stay the same.
 
 The Penguin controls all automatic Hero tiers:
 
@@ -151,10 +161,10 @@ latch it can match, so seven of every eight candidates leave the tick loop at st
 
 ## Arena and cleanup
 
-Six allied links have eight-tile main sections; the original gate entrances remain
+Six allied links have sixteen-tile main sections; the original gate entrances remain
 narrow. The side gaps between opposing teams remain water. Gate labels and Objectives
-explain the rule: enemy units entering the team routes are removed on a one-second
-check, with no combat kill credit. Hostile foundations are removed too. Guards use
+explain the rule: enemy units entering the team routes are killed on a one-second
+check. Hostile foundations are killed too. Guards use
 the intruder's resolved owner, so they continue after a protected teammate loses their
 base or a slot starts closed. Attack through the central battlefield.
 
@@ -201,14 +211,14 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero 4v4 RA v1.3.aoe2scenario" --strict
+  "dist/CBA Hero 4v4 RA v1.4.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```
 
-The RA v1.3 build passes XS lint and a strict structural audit with zero errors
+The RA v1.4 build passes XS lint and a strict structural audit with zero errors
 and zero warnings. Automated regression coverage includes the six allied links,
-eight-tile route sections, all 64 intruder owner mappings, gate labels, and guards
+sixteen-tile route sections, all 64 intruder owner mappings, gate labels, and guards
 that persist with inactive protected endpoints.
 
 The existing suite also checks Castle/Hero spawning, controller confinement,
@@ -225,4 +235,4 @@ scheduling. The remaining in-game acceptance cases are tracked in
 Older candidates are retained only as investigation history in `RELEASE_NOTES_v*.md`.
 They are not alternative repair targets. See
 [`RELEASE_NOTES_v1.0.18.md`](RELEASE_NOTES_v1.0.18.md) for the historical wall/cleanup change set. Current changes are in
-[`RELEASE_NOTES_v1.3.md`](RELEASE_NOTES_v1.3.md).
+[`RELEASE_NOTES_v1.4.md`](RELEASE_NOTES_v1.4.md).

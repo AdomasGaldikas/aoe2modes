@@ -76,7 +76,7 @@ def compiled_guards(xs):
     for name, body in guard_bodies(xs).items():
         lines.append(f"def {name}():")
         indent = 1
-        for token in re.split(r"([{};])", body):
+        for token in re.split(r'([{};])(?=(?:[^"]*"[^"]*")*[^"]*$)', body):
             token = token.strip()
             if not token or token == ";":
                 continue
@@ -147,11 +147,12 @@ def compiled_births(xs):
     This does not simulate pathfinding or DE's scheduling.
     """
     names = (r"cba(?:WorldPlayerForColor|OrderBirth|OrderArmyBirth|CreateHeroBirth|"
-             r"CreateBuilderBirth|CreateWave|BirthHero\d+|BirthBuilder\d+)")
+             r"CreateBuilderBirth|CreateWave|BirthHero\d+|BirthBuilder\d+|PopulationCost|PopulationUsed|"
+             r"HasPopulationRoom|PopulationColorActive|ClaimPopulationChooser|UpdatePopulationSetup|PopulationGate\d+)")
     lines = []
-    for match in re.finditer(r"(?:void|int) (" + names + r")\((.*?)\) \{", xs, re.S):
+    for match in re.finditer(r"(?:void|int|bool|float) (" + names + r")\((.*?)\) \{", xs, re.S):
         name, parameters = match.groups()
-        args = re.findall(r"(?:int|bool|vector) (\w+)\s*=", parameters)
+        args = re.findall(r"(?:int|bool|vector|float) (\w+)\s*=", parameters)
         lines.append(f"def {name}({', '.join(args)}):")
         start = match.end()
         depth, end = 1, start
@@ -159,8 +160,9 @@ def compiled_births(xs):
             depth += (xs[end] == "{") - (xs[end] == "}")
             end += 1
         body = re.sub(r"//[^\n]*", "", xs[start:end - 1])
+        lines.append("    global gCbaPopulationLimit, gCbaPopulationOwner, gCbaPopulationLocked")
         indent = 1
-        for token in re.split(r"([{};])", body):
+        for token in re.split(r'([{};])(?=(?:[^"]*"[^"]*")*[^"]*$)', body):
             token = " ".join(token.split())
             if not token or token == ";":
                 continue
@@ -183,19 +185,32 @@ def compiled_births(xs):
                 expression, statement = token[4:close - 1], token[close:].strip()
                 token = f"if {expression}:" + (f" {statement}" if statement else "")
             else:
-                token = re.sub(r"^(int|bool) ", "", token)
+                token = re.sub(r"^(int|bool|float|vector) ", "", token)
                 assert token.startswith((
                     "return", "worldPlayer =", "level =", "unitRef =", "created =",
+                    "owner =", "used =", "cost =", "candidate =", "position =", "x =", "y =",
+                    "reserve =", "room =", "previous =", "gCbaPopulation", "xsSetUnitProperty(",
+                    "xsRemoveUnit(", "xsDisplayInstructions(", "xsSetPlayerAttribute(", "xsChatData(",
+                    "cbaClaimPopulationChooser(",
                     "xsArraySetInt(", "xsTaskUnits(", "xsSetTriggerVariable(",
                     "cbaOrderBirth(", "cbaOrderArmyBirth(", "cbaCreateHeroBirth(", "cbaCreateBuilderBirth(",
                 )), token
+            token = token.replace(' + gCbaPopulationLimit,', ' + str(gCbaPopulationLimit),')
             lines.append("    " * indent + token)
         assert indent == 1
     return compile("\n".join(lines), "<emitted XS birth orders>", "exec")
 
 
 def birth_runtime(scenario, **api):
-    namespace = {"gCbaBirthOrderUnit": 70000, **api}
+    namespace = {
+        "gCbaBirthOrderUnit": 70000, "gCbaPopulationLimit": 250,
+        "gCbaPopulationOwner": 0, "gCbaPopulationLocked": False,
+        "cAttributePopulation": 11, "cPopulation": 21, "cAttributeUnitLimit": 32,
+        "xsGetObjectAttribute": lambda *args: -1,
+        "xsPlayerAttribute": lambda *args: 1, **api,
+    }
+    namespace.update({name: int(value) for name, value in
+                      re.findall(r"const int (CBA_UNIT_\w+) = (\d+);", xs_source(scenario))})
     exec(compiled_births(xs_source(scenario)), namespace)
     return namespace
 

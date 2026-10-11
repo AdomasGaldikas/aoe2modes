@@ -58,6 +58,7 @@ from aoe2modes.lib.decompile import (
 )
 
 from .birth_orders import configure_birth_orders, render_birth_orders
+from .population_setup import configure_population_setup
 from .runtime_conditions import configure_runtime_conditions
 from .scenario import apply as apply_scenario_source
 from .scorpion_backup import (
@@ -325,6 +326,9 @@ CIV_SPAWN_RULES = {
     57: (2587, 80, 8),
     58: (2571, 80, 10),
     59: (2584, 80, 8),
+    60: (2706, 80, 8),  # Saxons; verified against installed civilizations.json.
+    61: (2709, 80, 8),  # Varangians
+    62: (2712, 80, 8),  # Danes
 }
 # Civilization ID -> (public name, razings needed for the first builder pair).
 # After the first pair, the legacy CBA rule awards another pair for every razing.
@@ -388,6 +392,9 @@ CIV_BUILDER_RULES = {
     57: ("Muisca", 1),
     58: ("Mapuche", 1),
     59: ("Tupi", 1),
+    60: ("Saxons", 2),
+    61: ("Varangians", 2),
+    62: ("Danes", 2),
 }
 REAR_ENCLOSURES = (
     (
@@ -612,9 +619,14 @@ PUBLIC_INSTRUCTIONS = (
     "Blue, Red, Green, and Yellow face Teal, Purple, Gray, and Orange. Close any unused "
     "slots, but keep at least one occupied color on each side.\r\r"
     "TEAM ROUTES\r"
-    "Guarded rear team routes connect allies through wider eight-tile sections. "
-    "Gate entrances remain narrow. Enemy units entering these routes are removed, "
+    "Guarded rear team routes connect allies through wider sixteen-tile sections. "
+    "Gate entrances remain narrow. Enemy units entering these routes are killed, "
     "even after a teammate is defeated. Use the central battlefield to attack.\r\r"
+    "POPULATION SETUP\r"
+    "The host should take the lowest occupied color. Move its Population chooser on "
+    "the north island to 200, 250, 300, or 500 within the first 60 seconds. Default: 250. "
+    "This applies to armies, Heroes, builders, and backup; full builder pairs and six-Scorpion "
+    "backup wait for room. Lowering the limit stops new units until population falls.\r\r"
     "SPAWN CONTROLS\r"
     "Sheep = Castle army range. Penguin = Hero range. Move each along its own road: "
     "farther toward the arena sends new units farther. Snow is the end zone: Sheep on "
@@ -638,6 +650,10 @@ PUBLIC_INSTRUCTIONS = (
     "50 seconds. Each player can use this backup once.\r\r"
     "Resources stay "
     "at zero; available units, buildings, upgrades, and repairs are free.\r\r"
+    "MIRRORED CIVILIZATIONS\r"
+    "For exact pairs, select the same civilization explicitly for P1/P5, P2/P6, P3/P7, "
+    "and P4/P8 in the lobby. The game resolves Mirror before the scenario starts; "
+    "this map cannot reassign those engine choices.\r\r"
     "HERO MILESTONES\r"
     "200 Robin Hood | 400 Theodoric | 600 Charles Martel | 800 Subotai\r"
     "1000 Genghis Khan | 2000 Super Genghis | 3500 and 5000 spawn boosts"
@@ -1051,9 +1067,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 4_056:
+    if len(ctx.tm.triggers) != 4_122:
         raise RuntimeError(
-            f"expected 4,056 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 4,122 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1474,7 +1490,9 @@ def _unit_family(unit_id: int) -> set[int]:
         by_id.setdefault(member.ID, member.name)
         by_name.setdefault(member.name, member.ID)
 
-    family = {unit_id}
+    # Parser 0.8.4 predates these verified base/Elite pairs.
+    current_pairs = ({2705, 2706}, {2708, 2709}, {2711, 2712})
+    family = next((pair.copy() for pair in current_pairs if unit_id in pair), {unit_id})
     name = by_id.get(unit_id)
     if name is None:
         return family
@@ -2019,7 +2037,7 @@ def _configure_custom_team_victory(
         )
 
 
-def _render_color_spawn_xs(ctx: BuildContext) -> str:
+def _render_color_spawn_xs(ctx: BuildContext, population_xs: str = "") -> str:
     # The XS arrays are indexed by civilization id, so they must be sized from the
     # tables that fill them. These used to be a hardcoded 60 in five places: adding a
     # civilization to CIV_SPAWN_RULES would have written past the end of a size-60
@@ -2065,7 +2083,7 @@ def _render_color_spawn_xs(ctx: BuildContext) -> str:
             bound_refs.add(ref)
             coordinate_branches.extend((
                 f"        if (xsDoesUnitExist({ref}) && xsGetUnitHitpoints({ref}) > 0 && "
-                f"xsGetUnitOwner({ref}) == worldPlayer) {{",
+                f"xsGetUnitOwner({ref}) == worldPlayer && cbaHasPopulationRoom(worldPlayer, unitId, 1)) {{",
                 f"            unitRef = xsCreateUnit(unitId, worldPlayer, "
                 f"vector({x}, {y}, -1), false, false, false);",
                 f"            cbaOrderArmyBirth(scenarioPlayer, {slot}, unitRef);",
@@ -2115,6 +2133,7 @@ int cbaWorldPlayerForColor(int scenarioPlayer = 0) {{
     return(worldPlayer);
 }}
 
+{population_xs}
 {birth_orders_xs}
 
 void cbaCreateWave(int scenarioPlayer = 0, int worldPlayer = 0, int unitId = -1) {{
@@ -2451,8 +2470,9 @@ def _replace_legacy_army_spawns(
         _reset_trigger(trigger)
         trigger.name = f"Legacy Army Spawn Disabled #{original_id}"
         disabled += 1
-    if disabled != len(CIV_SPAWN_RULES) * len(PLAYERS):
-        raise RuntimeError(f"expected {len(CIV_SPAWN_RULES) * len(PLAYERS)} army loops, disabled {disabled}")
+    if disabled != 59 * len(PLAYERS):
+        # The historical source has 59 loops per color; newer civs are XS-only.
+        raise RuntimeError(f"expected {59 * len(PLAYERS)} legacy army loops, disabled {disabled}")
     for trigger in ctx.tm.triggers:
         trigger.effects = [
             effect
@@ -5615,6 +5635,9 @@ def build(ctx: BuildContext) -> None:
         eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE,
     )
     _stop_eliminated_color_production(ctx)
+    population_xs = configure_population_setup(
+        ctx, occupied_base=COLOR_OCCUPIED_VARIABLE_BASE, eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE,
+    )
     birth_wrappers = configure_birth_orders(
         ctx, identity_base=COLOR_XS_VARIABLE_BASE, identity_tag=XS_IDENTITY_TAG_BASE,
     )
@@ -5643,7 +5666,7 @@ def build(ctx: BuildContext) -> None:
         label="sparse-lobby runtime conditions",
     )
     _assert_variable_ids_are_contiguous(ctx)
-    ctx.add_xs(_render_color_spawn_xs(ctx), label="color-aware army spawning")
+    ctx.add_xs(_render_color_spawn_xs(ctx, population_xs), label="color-aware army spawning")
     ctx.add_xs(birth_wrappers, label="exact-reference Hero and builder births")
 
     ctx.log(

@@ -55,22 +55,22 @@ TEAM_SIDE_GATES = {
     PlayerId.EIGHT: (109_746, 79.5, 122.0),
 }
 
-# Eight-tile allied causeways retain four-tile gate throats at either end.
+# Sixteen-tile allied causeways retain four-tile gate throats at either end.
 # Widen only the middle span so units cannot bypass the gates around their ends.
 # Only top/bottom are allies; the corresponding left/right water gaps stay closed.
 TEAM_ROUTE_RECTANGLES = (
     (65, 20, 78, 23),
     (65, 120, 78, 123),
-    (66, 18, 77, 25),
-    (66, 118, 77, 125),
+    (66, 14, 77, 29),
+    (66, 114, 77, 129),
 )
 
-# Keep eight-tile corner routes (16..23) and flood only the outermost apron.
+# Keep sixteen-tile corner routes (8..23) and flood only the outermost apron.
 # The diagonal symmetry produces four identical corners under all eight transforms.
 SOURCE_CORNER_ROUTE_WATER_TILES = frozenset(
     {
-        *((x, 15) for x in range(15, 38)),
-        *((15, y) for y in range(16, 38)),
+        *((x, 7) for x in range(7, 38)),
+        *((7, y) for y in range(8, 38)),
     }
 )
 
@@ -349,8 +349,8 @@ def _restore_team_routes(ctx: BuildContext) -> None:
     corner_cells = {
         v2_cell_for_player(player, x, y)
         for player in PlayerId.all(exclude_gaia=True)
-        for x in range(16, 38)
-        for y in range(16, 24)
+        for x in range(8, 38)
+        for y in range(8, 24)
     }
     for x, y in corner_cells:
         tile = ctx.mm.get_tile(x=x, y=y)

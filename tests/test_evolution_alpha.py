@@ -229,8 +229,8 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 4_057
-    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 956
+    assert len(triggers) == 4_123
+    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 999
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
     assert len(names) == len(set(names))
@@ -259,7 +259,7 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
         for x in range(144)
     )
     assert hashlib.sha256(terrain).hexdigest() == (
-        "41b4abba810f9420492517855ed215c104e6b0176e82b0ee18b80218974fb22a"
+        "ff99432ab3d41ca4243e9d30f0c65e14ec387996c3f1d9b68075f003bd06b866"
     )
 
     source_milestone_shore = {
@@ -298,7 +298,7 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
     )
     route_orbits = set()
     for x1, y1, x2, y2 in (
-        (65, 20, 78, 23), (65, 120, 78, 123), (66, 18, 77, 25), (66, 118, 77, 125),
+        (65, 20, 78, 23), (65, 120, 78, 123), (66, 14, 77, 29), (66, 114, 77, 129),
     ):
         for y in range(y1, y2 + 1):
             for x in range(x1, x2 + 1):
@@ -331,10 +331,12 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
                 )
             if transformed_terrain != {tile_values}:
                 asymmetrical.add((x, y))
-    assert asymmetrical == route_orbits | entrance_accent_tiles
+    setup_orbit = {transform(x, y) for x in range(68, 76) for y in range(2, 8)
+                   for transform in transforms}
+    assert asymmetrical == route_orbits | entrance_accent_tiles | setup_orbit
 
     for x1, y1, x2, y2 in (
-        (65, 20, 78, 23), (65, 120, 78, 123), (66, 18, 77, 25), (66, 118, 77, 125),
+        (65, 20, 78, 23), (65, 120, 78, 123), (66, 14, 77, 29), (66, 114, 77, 129),
     ):
         assert {
             evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
@@ -409,15 +411,15 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
 
 def test_evolution_alpha_widens_all_four_corner_team_routes(evolution_alpha):
     source_cut = {
-        *((x, 15) for x in range(15, 38)),
-        *((15, y) for y in range(16, 38)),
+        *((x, 7) for x in range(7, 38)),
+        *((7, y) for y in range(8, 38)),
     }
     cut_tiles = {
         v2_cell_for_player(player, source_x, source_y)
         for player in PlayerId.all(exclude_gaia=True)
         for source_x, source_y in source_cut
     }
-    assert len(cut_tiles) == 180
+    assert len(cut_tiles) == 244
     assert {
         evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id
         for x, y in cut_tiles
@@ -434,8 +436,8 @@ def test_evolution_alpha_widens_all_four_corner_team_routes(evolution_alpha):
         inner_route = {
             v2_cell_for_player(player, source_x, source_y)
             for source_x, source_y in (
-                *((x, y) for x in range(16, 38) for y in range(16, 24)),
-                *((x, y) for x in range(16, 24) for y in range(24, 38)),
+                *((x, y) for x in range(8, 38) for y in range(8, 24)),
+                *((x, y) for x in range(8, 24) for y in range(24, 38)),
             )
         }
         assert {
@@ -458,12 +460,12 @@ def test_evolution_alpha_route_guards_use_resolved_intruders_after_ally_defeat(e
     # Independent cell predicate for the three north-team links, including mouths.
     top = {
         (x, y) for x in range(144) for y in range(144)
-        if (16 <= x <= 43 and 16 <= y <= 23)
-        or (16 <= x <= 23 and 24 <= y <= 43)
-        or (100 <= x <= 127 and 16 <= y <= 23)
-        or (120 <= x <= 127 and 24 <= y <= 43)
+        if (8 <= x <= 43 and 8 <= y <= 23)
+        or (8 <= x <= 23 and 24 <= y <= 43)
+        or (100 <= x <= 135 and 8 <= y <= 23)
+        or (120 <= x <= 135 and 24 <= y <= 43)
         or (65 <= x <= 78 and 20 <= y <= 23)
-        or (66 <= x <= 77 and 18 <= y <= 25)
+        or (66 <= x <= 77 and 14 <= y <= 29)
     }
     bottom = {(x, 143 - y) for x, y in top}
     assert top.isdisjoint(bottom)
@@ -496,7 +498,7 @@ def test_evolution_alpha_route_guards_use_resolved_intruders_after_ally_defeat(e
             )
             covered = set()
             for effect in guard.effects:
-                assert effect.effect_type == EffectId.REMOVE_OBJECT
+                assert effect.effect_type == EffectId.KILL_OBJECT
                 assert effect.source_player == selector
                 assert effect.object_list_unit_id == -1
                 assert effect.object_type == -1 and effect.object_group == -1
@@ -530,7 +532,7 @@ def test_evolution_alpha_route_guards_use_resolved_intruders_after_ally_defeat(e
     }
     assert switches == {65500, 23621, 23076, 23205, 23618, 23624, 23615, 23627}
     assert set(labels.effects[0].selected_object_ids) == {109743, 109744, 109745, 109746}
-    assert labels.effects[0].message == "Allied route - enemy units removed"
+    assert labels.effects[0].message == "Allied route - enemy units killed"
     assert set(labels.effects[1].selected_object_ids) == switches
     assert labels.effects[1].message == "Side-wall switch - DELETE opens walls"
     assert "even after a teammate is defeated" in evolution_alpha.message_manager.instructions
@@ -564,9 +566,9 @@ def test_evolution_alpha_keeps_v2_objects_and_playable_gate_holes(evolution_alph
     assert original_digest == (
         "46db5fdc5165b1ea1ca13082d7d9d2d05081d61ebc44e04e7cd4fb4a46fe631d"
     )
-    assert len(additions) == 140
+    assert len(additions) == 183
     assert additions_digest == (
-        "fdb8e4b15188e86c0d45725aff25842fd5201376525780579f874dfc6b06ae0b"
+        "ae8778e8b84dca5228d0369968806a0cc680f33e0c828a6c33650d28c99694ac"
     )
 
 
@@ -942,6 +944,7 @@ def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
         for unit in gaia_units
         if unit.unit_const == OtherInfo.SIGN.ID
     }
+    expected_signs |= {(x + 0.5, 3.5) for x in (68, 70, 72, 74)}
     assert actual_signs == expected_signs
 
     for player in PlayerId.all(exclude_gaia=True):
@@ -1583,7 +1586,7 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
     assert {
         evolution_alpha.player_manager.players[player].population_cap
         for player in PlayerId.all(exclude_gaia=True)
-    } == {251}
+    } == {501}
     assert not [
         trigger
         for trigger in evolution_alpha.trigger_manager.triggers
@@ -1824,14 +1827,16 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
 
     xs_trigger = next(trigger for trigger in trigger_manager.triggers if trigger.name == "XS SCRIPT")
     xs_source = xs_trigger.effects[0].message
-    assert "xsDisplayInstructions(" not in xs_source
+    hud_body = xs_source.split("void cbaUpdateCombatRow")[1].split("// Sole writer")[0]
+    assert "xsDisplayInstructions(" not in hud_body
     for color_tag in ("BLUE", "RED", "GREEN", "YELLOW", "AQUA", "PURPLE", "GREY", "ORANGE"):
         assert f"<{color_tag}>" not in xs_source
     assert "cAttributeKills" in xs_source
     assert "cAttributeKilledByOthers" in xs_source
     assert "cAttributeRazings" in xs_source
     assert "xsTriggerVariable(137 + scenarioPlayer - 1) - 1000" in xs_source
-    assert "return(xsTriggerVariable(" not in xs_source
+    identity_body = xs_source.split("int cbaWorldPlayerForColor")[1].split("\n}\n", 1)[0]
+    assert "return(xsTriggerVariable(" not in identity_body
     assert "40 + scenarioPlayer - 1" not in xs_source
     assert xs_source.count("cbaWorldPlayerForColor(scenarioPlayer)") == 5
     assert "xsSetTriggerVariable(variableBase" not in xs_source
@@ -2587,7 +2592,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
         for world_player in range(1, 9):
             reward = rewards[f"Builder Reward S{color} W{world_player}"]
             assert reward.enabled and reward.looping
-            assert len(reward.conditions) == 8
+            assert len(reward.conditions) == 9
 
             variable_conditions = {
                 (
@@ -2718,8 +2723,9 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
     assert "xsGetPlayerCivilization(localPlayer)" in xs_source
     assert "first builder pair after" in xs_source
     assert "if (xsGetGameTime() >= 4)" in xs_source
-    # Two mutually exclusive builder messages; no diagnostic-chat requirement.
-    assert xs_source.count("xsChatData(") == 2
+    # Two mutually exclusive builder messages, plus one exceptional chooser cleanup report.
+    assert xs_source.count("xsChatData(") == 3
+    assert xs_source.count('xsChatData("[CBA] Population choice is locked;') == 1
     assert "Unsupported civilization (id " in xs_source
     assert "xsDisableSelf();" in xs_source
     assert xs_source.count("cbaQueueColorBuilders(") == 9
@@ -2794,12 +2800,15 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 1,
                 1,
                 1,
+                2,  # Saxons
+                2,  # Varangians
+                2,  # Danes
             ),
             start=1,
         )
     )
     assert thresholds == expected_thresholds
-    assert Counter(thresholds.values()) == {1: 17, 2: 28, 3: 11, 4: 3}
+    assert Counter(thresholds.values()) == {1: 17, 2: 31, 3: 11, 4: 3}
     assert {civilization for civilization, threshold in thresholds.items() if threshold == 4} == {
         8,
         17,
@@ -3616,7 +3625,9 @@ def test_evolution_alpha_has_no_unauthorized_wall_or_gate_destruction(evolution_
                 continue
             if effect.object_type >= 0 and effect.object_type != ObjectType.BUILDING:
                 continue
-            assert effect.effect_type == EffectId.REMOVE_OBJECT, (trigger.name, effect.effect_type)
+            expected = (EffectId.KILL_OBJECT if trigger.name.startswith("Allied Route Guard ")
+                        else EffectId.REMOVE_OBJECT)
+            assert effect.effect_type == expected, (trigger.name, effect.effect_type)
             cap_match = re.fullmatch(r"Wall Cap Wipe S([1-8]) W([1-8])", trigger.name)
             if cap_match:
                 assert effect.source_player == int(cap_match.group(2))
@@ -4359,7 +4370,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
         in xs_source
     )
     assert xs_source.count("81 + scenarioPlayer - 1") == 1
-    assert xs_source.count("xsArraySetInt(gCbaUnitByCiv") == 59
+    assert xs_source.count("xsArraySetInt(gCbaUnitByCiv") == 62
     assert xs_source.count("cbaSpawnColor(") == 9  # declaration plus all eight colors
     assert "vector(22.5, 95.5, -1)" in xs_source
     assert "vector(22.5, 84.5, -1)" in xs_source
@@ -4696,12 +4707,10 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                         True,
                     ),
                 }
-                assert any(
-                    condition.condition_type == ConditionId.OWN_FEWER_OBJECTS
-                    and condition.source_player == world_player
-                    and condition.quantity == 251
-                    for condition in trigger.conditions
-                )
+                assert not any(c.condition_type == ConditionId.OWN_FEWER_OBJECTS
+                               for c in trigger.conditions)
+                assert any(c.condition_type == ConditionId.SCRIPT_CALL
+                           and c.xs_function.startswith("cbaPopulationGate") for c in trigger.conditions)
                 variable_conditions = {
                     (condition.variable, condition.quantity, condition.comparison)
                     for condition in trigger.conditions
@@ -4882,12 +4891,9 @@ def test_evolution_alpha_late_heroes_arm_one_shot_route_orders(evolution_alpha):
                 for condition in trigger.conditions
                 if condition.condition_type == ConditionId.OWN_FEWER_OBJECTS
             ]
-            assert len(own_fewer) == 1
-            assert (
-                own_fewer[0].source_player,
-                own_fewer[0].object_type,
-                own_fewer[0].quantity,
-            ) == (world_player, ObjectType.MILITARY, 301)
+            assert own_fewer == []
+            assert any(c.condition_type == ConditionId.SCRIPT_CALL
+                       and c.xs_function.startswith("cbaPopulationGate") for c in trigger.conditions)
             creates = [
                 effect
                 for effect in logical_effects(evolution_alpha, trigger)
@@ -5188,8 +5194,8 @@ def test_evolution_alpha_keeps_all_rear_technology_paths_dry(evolution_alpha):
 def test_evolution_alpha_messages_are_public_facing(evolution_alpha):
     messages = evolution_alpha.message_manager
     assert "Units spawn automatically" in messages.instructions
-    assert "wider eight-tile sections" in messages.instructions
-    assert "Enemy units entering these routes are removed" in messages.instructions
+    assert "wider sixteen-tile sections" in messages.instructions
+    assert "Enemy units entering these routes are killed" in messages.instructions
     assert "Guarded rear team routes" in messages.instructions
     assert "Blue, Red, Green, and Yellow" in messages.instructions
     assert "Two occupied teammates must vote" in messages.instructions
@@ -5983,7 +5989,7 @@ def test_evolution_alpha_identity_refuses_unstamped_or_out_of_range_tokens(evolu
 
 def test_evolution_alpha_identity_uses_only_shared_resource_tokens(evolution_alpha):
     xs = next(t for t in evolution_alpha.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
-    resolver = xs.split("int cbaWorldPlayerForColor", 1)[1].split("void cbaCreateWave", 1)[0]
+    resolver = xs.split("int cbaWorldPlayerForColor", 1)[1].split("\n}\n", 1)[0]
     assert "xsTriggerVariable(137 + scenarioPlayer - 1) - 1000" in resolver
     assert "xsGetWorldPlayerId" not in resolver and "xsGetUnitOwner" not in resolver
     assert "cbaIdentityDiagnostic" not in xs
@@ -6298,6 +6304,7 @@ def test_sparse_lobby_sweep_left_no_native_castle_defeat_or_token_conditions(evo
         for trigger in evolution_alpha.trigger_manager.triggers
         for condition in trigger.conditions
         if condition.condition_type == ConditionId.SCRIPT_CALL
+        and condition.xs_function.startswith("cbaRuntimeCondition")
     ]
     assert len(hosts) == 976
     assert sum(1 for trigger in hosts if trigger.looping) == 712
@@ -6322,7 +6329,7 @@ def test_native_player_scoped_conditions_stay_a_declared_inventory(evolution_alp
         "ACCUMULATE_ATTRIBUTE": 1123,  # Hero milestone/boost kill thresholds
         "OBJECTS_IN_AREA": 776,  # hero pads, vote markers, center rewards, age gates
         "RESEARCH_TECHNOLOGY": 736,  # Goth restrictions and civilization age-ups
-        "OWN_FEWER_OBJECTS": 640,  # hero caps and Color Cleanup Complete
+        "OWN_FEWER_OBJECTS": 64,  # Color Cleanup Complete; Hero caps now use actual XS costs
         "OWN_OBJECTS": 128,  # wall cap warn/wipe
         "DESTROY_OBJECT": 96,  # wall breach
     }
@@ -6365,6 +6372,8 @@ def test_birth_wrappers_only_order_the_returned_unit_and_use_xs_owners(evolution
     assert len(calls) == 704 and len({name for _, name in calls}) == 704
     for _trigger, name in calls:
         family, color, unit, x, y, disable_sound = descriptors[name]
+        if family == "Hero":
+            assert disable_sound, "Recurring Hero births must not play a global creation cue"
         for xs_owner in range(1, 9):
             variables.update({136 + color: 1000 + xs_owner, 120 + color: 1,
                               47 + color: 0, 112 + color: 3})
@@ -6423,7 +6432,11 @@ def test_scorpion_backup_state_and_hud_follow_serialized_lifetime(evolution_alph
         for owner in range(1, 9):
             # HUD setup arriving after activation must show A immediately, never 2.
             for occupied_at, defeated_at in ((0, None), (20, None), (0, 25)):
-                variables = {31 + color: 1, 39 + color: owner}
+                variables = {31 + color: 1, 39 + color: owner, 136 + color: 1000 + owner}
+                runtime = birth_runtime(
+                    evolution_alpha, xsTriggerVariable=lambda var, values=variables: values.get(var, 0),
+                    xsDoesUnitExist=lambda ref: False,
+                )
                 enabled = {t.trigger_id: bool(t.enabled) for t in subsystem}
                 started = {t.trigger_id: 0 for t in subsystem}
                 created, removed = [], []
@@ -6451,6 +6464,8 @@ def test_scorpion_backup_state_and_hud_follow_serialized_lifetime(evolution_alph
                                 # Select the right King and move onto its real activation rectangle.
                                 target = by_name[f"King Island S{color} W{owner}"].conditions[0]
                                 match = condition.unit_object == target.unit_object and now >= 10
+                            elif kind == ConditionId.SCRIPT_CALL:
+                                match = runtime[condition.xs_function]()
                             elif kind == ConditionId.PLAYER_DEFEATED:
                                 assert condition.source_player == PlayerId.GAIA
                                 match = False  # Objective rows remain displayed without firing.
@@ -6496,7 +6511,7 @@ def test_scorpion_backup_state_and_hud_follow_serialized_lifetime(evolution_alph
                     assert snapshots[27][1] == {f"Combat HUD Live P{color}"}
                 assert created == [(10, owner, UnitInfo.SCORPION.ID)] * 6
                 assert removed == [(60, owner, UnitInfo.SCORPION.ID)]
-                # Unoccupied colors stay hidden and unused. No XS tokens were supplied.
+                # Unoccupied colors stay hidden and unused; the active color supplied its XS token.
                 assert all(snapshots[75][0][144 + other] == 1
                            for other in range(1, 9) if other != color)
                 active_row = by_name[f"Combat HUD Backup Active P{color}"]
@@ -6531,3 +6546,188 @@ def test_scorpion_backup_labels_target_activation_king_not_kill_counter(evolutio
     instructions = evolution_alpha.message_manager.instructions
     assert "B = Scorpion Backup: 1 available, A active, 0 used." in instructions
     assert "Move your Skorpion King" in instructions
+
+
+def test_population_setup_claims_lowest_active_color_and_locks(evolution_alpha):
+    """Execute the shipped selector with independently numbered native/XS owners."""
+    source = embedded_xs(evolution_alpha)
+    ref = int(re.search(r"xsSetUnitOwner\((\d+), candidate", source)[1])
+    variables = defaultdict(int, {123: 1, 128: 1, 139: 0, 144: 1008})  # P3 and P8 occupied.
+    clock, position = [3], [(70.5, 4.5, 1)]
+    alive, owner = [True], [0]
+    resources = defaultdict(float, {(7, 11): 151, (8, 11): 101, (7, 32): 10})
+    properties, claims, instructions = [], [], []
+    allow_claim = [True]
+
+    def transfer(reference, player, flash):
+        assert reference == ref and flash is False
+        claims.append(player)
+        if not allow_claim[0]:
+            return False
+        if owner[0] != player:
+            resources[player, 11] += 1
+            owner[0] = player
+        return True
+
+    def remove(reference):
+        assert reference == ref
+        if alive[0] and owner[0]:
+            resources[owner[0], 11] -= 1
+        alive[0] = False
+        return True
+
+    runtime = birth_runtime(
+        evolution_alpha, xsTriggerVariable=lambda var: variables[var],
+        xsGetGameTime=lambda: clock[0], xsDoesUnitExist=lambda reference: reference == ref and alive[0],
+        xsGetUnitOwner=lambda reference: owner[0], xsGetUnitPosition=lambda reference: position[0],
+        xsVectorGetX=lambda vector: vector[0], xsVectorGetY=lambda vector: vector[1],
+        xsSetUnitOwner=transfer,
+        xsSetUnitProperty=lambda *args: properties.append(args) or True,
+        xsRemoveUnit=remove, xsPlayerAttribute=lambda player, resource: resources[player, resource],
+        xsSetPlayerAttribute=lambda player, resource, value: resources.__setitem__((player, resource), value),
+        xsDisplayInstructions=lambda *args: instructions.append(args), xsChatData=lambda message: None,
+        cPanelTop=0,
+    )
+    update = runtime["cbaUpdatePopulationSetup"]
+    update()
+    assert not claims  # Before four seconds.
+    clock[0] = 4
+    update()
+    assert not claims and runtime["gCbaPopulationOwner"] == 0  # P3's token pending, do not skip to P8.
+    variables[139] = 1007  # P3 selector is 3, XS API owner is 7.
+    allow_claim[0] = False
+    update()
+    assert runtime["gCbaPopulationOwner"] == 0
+    allow_claim[0] = True
+    update()
+    assert runtime["gCbaPopulationOwner"] == 7 and claims == [7, 7]
+    assert {args[1:] for args in properties} == {(7, 0.0), (8, 0.0), (9, 0.0)}
+    assert instructions[0][-1] == 7  # Owner-only setup instructions.
+    for limit, x in ((200, 68.5), (250, 70.5), (300, 72.5), (500, 74.5)):
+        position[0] = x, 4.5, 1
+        update()
+        assert runtime["gCbaPopulationLimit"] == limit
+        assert 501 + resources[7, 32] == limit + 2  # Penguin + temporary chooser.
+        assert 501 + resources[8, 32] == limit + 1
+        assert resources[7, 4] == limit - 150 and resources[8, 4] == limit - 100
+    # An overfull army is not killed when lowering the limit; headroom becomes zero.
+    resources[7, 11] = 402
+    position[0] = 68.5, 4.5, 1
+    update()
+    assert resources[7, 4] == 0 and runtime["gCbaPopulationLimit"] == 200
+    clock[0] = 60
+    position[0] = 74.5, 4.5, 1
+    update()
+    assert runtime["gCbaPopulationLocked"] and runtime["gCbaPopulationLimit"] == 200
+    assert not alive[0] and resources[7, 32] == -300  # Only the Penguin reserve remains.
+    clock[0] = 90
+    update()
+    assert runtime["gCbaPopulationLimit"] == 200 and claims == [7, 7]
+
+
+def test_population_budget_defers_whole_rewards_and_bounds_births(evolution_alpha):
+    variables = defaultdict(int, {137: 1007, 121: 1, 113: 1})
+    used, costs = [250.0], defaultdict(lambda: 1.0, {83: 0.5, 293: 1.0})
+    creates, orders, selected = [], [], {}
+    castles = {u.reference_id for u in evolution_alpha.unit_manager.units[1]
+               if u.unit_const == BuildingInfo.CASTLE.ID}
+
+    def create(unit, owner, position, *flags):
+        reference = 99000 + len(creates)
+        creates.append((unit, owner, position, flags))
+        used[0] += costs[unit]
+        return reference
+
+    runtime = birth_runtime(
+        evolution_alpha, xsTriggerVariable=lambda var: variables[var],
+        xsPlayerAttribute=lambda *args: used[0] + 1,
+        xsGetObjectAttribute=lambda owner, unit, attr: -costs[unit],
+        xsDoesUnitExist=lambda ref: ref in castles or ref >= 99000,
+        xsGetUnitHitpoints=lambda ref: 1000, xsGetUnitOwner=lambda ref: 7,
+        xsCreateUnit=create, xsArraySetInt=lambda array, slot, ref: selected.__setitem__(slot, ref),
+        xsSetTriggerVariable=lambda var, value: variables.__setitem__(var, value),
+        xsTaskUnits=lambda *args: orders.append(args),
+        xsVectorSet=lambda x, y, z: (x, y, z), vector=lambda x, y, z: (x, y, z),
+    )
+    by_name = {t.name: t for t in evolution_alpha.trigger_manager.triggers}
+    builder = by_name["Builder Reward S1 W1"]
+    gate_name = next(
+        c.xs_function for c in builder.conditions
+        if c.condition_type == ConditionId.SCRIPT_CALL and c.xs_function.startswith("cbaPopulationGate")
+    )
+    pending = variables[0] = 3
+    used[0] = 248.75  # Each builder fits separately; their combined 1.5 cost does not.
+    assert not runtime[gate_name]() and variables[0] == pending
+    used[0] = 248.5
+    assert runtime[gate_name]()
+    # Backup also waits for the complete six-unit budget before consuming the King.
+    backup = by_name["King Island S1 W1"]
+    backup_gate = next(c.xs_function for c in backup.conditions
+                       if c.condition_type == ConditionId.SCRIPT_CALL)
+    used[0] = 245
+    assert not runtime[backup_gate]()
+    used[0] = 244
+    assert runtime[backup_gate]()
+    for limit in (200, 250, 300, 500):
+        runtime["gCbaPopulationLimit"] = limit
+        used[0] = limit - 2
+        creates.clear()
+        orders.clear()
+        runtime["cbaCreateWave"](1, 7, 530)
+        assert len(creates) == len(orders) == 2 and used[0] == limit
+        runtime["cbaCreateHeroBirth"](1, 200, 1, 1, False)
+        assert len(creates) == 2
+        used[0] = limit - 0.5
+        runtime["cbaCreateBuilderBirth"](1, 83, 1, 1, False)
+        assert len(creates) == 3 and used[0] == limit  # Fractional costs preserved.
+        assert not runtime["cbaHasPopulationRoom"](-1, 530, 1)
+        assert not runtime["cbaHasPopulationRoom"](7, 530, 0)
+    # Native player cap agrees with runtime ceilings; no old Hero count gates remain.
+    for trigger in by_name.values():
+        if trigger.name.startswith(("Hero Milestone ", "Hero Boost ", "Builder Reward ", "King Island S")):
+            assert any(c.condition_type == ConditionId.SCRIPT_CALL
+                       and c.xs_function.startswith("cbaPopulationGate") for c in trigger.conditions)
+            assert not any(c.condition_type == ConditionId.OWN_FEWER_OBJECTS for c in trigger.conditions)
+
+
+def test_current_civilizations_have_spawns_rewards_and_complete_training_bans(evolution_alpha):
+    module = ascendants_build_module()
+    source = embedded_xs(evolution_alpha)
+    expected = {60: ("Saxons", 2705, 2706), 61: ("Varangians", 2708, 2709), 62: ("Danes", 2711, 2712)}
+    assert set(module.CIV_SPAWN_RULES) == set(module.CIV_BUILDER_RULES) == set(range(1, 63))
+    assert 'xsArrayCreateInt(63, -1, "cbaUnitByCiv")' in source
+    for civ, (name, basic, elite) in expected.items():
+        assert module.CIV_SPAWN_RULES[civ] == (elite, 80, 8)
+        assert module.CIV_BUILDER_RULES[civ] == (name, 2)
+        assert f"xsArraySetInt(gCbaUnitByCiv, {civ}, {elite});" in source
+        assert f"xsArraySetInt(gCbaBuilderThresholdByCiv, {civ}, 2);" in source
+        for player in evolution_alpha.player_manager.players[1:9]:
+            assert {basic, elite} <= set(player.disabled_units)
+
+
+def test_hazard_visibility_uses_only_opposing_route_markers(evolution_alpha):
+    from AoE2ScenarioParser.datasets.trigger_lists import VisibilityState
+
+    units = {u.reference_id: u for group in evolution_alpha.unit_manager.units for u in group}
+    triggers = [t for t in evolution_alpha.trigger_manager.triggers
+                if t.name.startswith("Route Hazard Visibility ")]
+    assert len(triggers) == 64
+    for trigger in triggers:
+        match = re.fullmatch(r"Route Hazard Visibility P([1-8]) W([1-8])", trigger.name)
+        color, owner = map(int, match.groups())
+        bindings = {(c.variable, c.quantity) for c in trigger.conditions
+                    if c.condition_type == ConditionId.VARIABLE_VALUE}
+        assert bindings == {
+            (31 + color, 1), (39 + color, owner),
+        }
+        assert len(trigger.effects) == 2
+        for effect in trigger.effects:
+            assert effect.effect_type == EffectId.CHANGE_OBJECT_VISIBILITY
+            assert effect.source_player == 0 and effect.target_player == owner
+            assert len(effect.selected_object_ids) == 19
+            for ref in effect.selected_object_ids:
+                unit = units[ref]
+                enemy = (color <= 4) != (unit.y < 72)
+                assert unit.unit_const == OtherInfo.BONFIRE.ID
+                expected_state = VisibilityState.VISIBLE if enemy else VisibilityState.INVISIBLE
+                assert effect.visibility_state == expected_state

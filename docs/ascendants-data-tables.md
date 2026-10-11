@@ -116,6 +116,9 @@ the XS renderer raises on a symmetric difference.
 | 57 | Muisca | Elite Temple Guard (2587) | 80 | 8 | 1 |
 | 58 | Mapuche | Elite Bolas Rider (2571) | 80 | 10 | 1 |
 | 59 | Tupi | Elite Ibirapema Warrior (2584) | 80 | 8 | 1 |
+| 60 | Saxons | Elite Hearth Troop (2706) | 80 | 8 | 2 |
+| 61 | Varangians | Elite Jarl (2709) | 80 | 8 | 2 |
+| 62 | Danes | Elite Jomsviking (2712) | 80 | 8 | 2 |
 
 Ranges: caps 31–92, intervals 6–15 seconds, builder thresholds 1–4. Unit names come from
 the pinned dataset; the id in brackets is authoritative.

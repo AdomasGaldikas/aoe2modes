@@ -116,10 +116,15 @@ No task, stop, freeze, kill, damage, replacement, ownership-change, or ordinary 
 effect selects either controller; full-map defeat, resignation, and vote-kick cleanup
 remain intentionally able to remove an eliminated player's objects.
 
-War Penguin is a military-class one-population object. The scenario hard cap is 251
-so the controller does not take one of the intended 250 gameplay slots. XS subtracts
-the one permanent Penguin from civilization army-cap checks, and Hero object-count
-ceilings are raised by one for the same reason.
+War Penguin is a military-class one-population object. RA v1.4 declares a 501
+engine ceiling and adjusts it to the selected 200/250/300/500 limit plus controller
+reserves. XS subtracts the permanent Penguin from actual gameplay population and
+legacy civilization army-cap checks. Hero production uses actual population costs.
+
+The population chooser lives on the isolated north island x=68..75, y=2..7.
+Its four two-tile pads start at (68,4), (70,4), (72,4) and (74,4). The lowest
+active occupied color owns it; the host should take that color. Selection locks
+at 60 seconds and the chooser is removed. It defaults to 250 if unused.
 
 ## Castle-wave creation and destinations
 

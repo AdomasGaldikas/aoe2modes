@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero 4v4: RA v1.3**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero 4v4: RA v1.4**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero 4v4 RA v1.3.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero 4v4 RA v1.4.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +33,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA v1.3.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA v1.4.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -94,9 +94,11 @@ Tests execute serialized guard bodies with mocked APIs, including missing, dead
 and wrong-owner Castles; they are not an engine emulator.
 
 The sweep covers three condition classes and no more; the build now refuses to emit an
-artifact where one of them returned to the native domain. The remaining 3,499
+artifact where one of them returned to the native domain. The remaining 2,923
 player-scoped conditions — hero tiers, age gates, center rewards, vote markers, wall
 caps and the `Color Cleanup Complete` victory gate — still resolve owners natively.
+RA v1.4 replaces 576 integer Hero count gates with real population-budget checks;
+this targeted capacity change does not widen the identity-condition sweep.
 Whether that matters depends on a root cause nobody has isolated yet, so it is tracked
 as an open item (ASC-053) rather than patched on inference. The next person to reproduce
 the sparse lobby should carry a probe that reports one inverted and one non-inverted

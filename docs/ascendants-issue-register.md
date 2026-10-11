@@ -1,8 +1,8 @@
-# CBA Hero 4v4: RA v1.3 issue register
+# CBA Hero 4v4: RA v1.4 issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **RA v1.3** is the current source-validated candidate. The historical
+repair targets. **RA v1.4** is the current source-validated candidate. The historical
 v1.0.20 failed live sparse-lobby acceptance; v1.0.1.0 initialized P1/P3/P5/P8
 and displayed only participating rows.
 Broader engine acceptance remains separate from automated checks.
@@ -15,7 +15,7 @@ The failed v1.0.19 candidate was 161,657 bytes with SHA-256
 `ec4c03df92588582e5c5984e1befdd9d18b289b4553c9a4b86503a098c3991a0`;
 142 tests and the warning-free strict audit passed, but did not catch the live failure.
 See v1.0.1.0 release notes for the validated detection path and
-[v1.3 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.3.md) for the current candidate.
+[v1.4 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.4.md) for the current candidate.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
@@ -48,7 +48,7 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-023 | Raze-reward builders could have later orders overwritten when they returned across their creation pads. | Guarded in v1.0.10 | All 64 builder movers require and consume one of eight builder-creation pulses. Each reward arms the pulse after creating the pair, and only the resolved runtime owner can consume it once. | Earn a pair for every color orientation, let it auto-park, then move both villagers back across both spawn pads; they must obey the player. |
 | ASC-024 | Obsolete wooden walls and Saboteurs were visible in the outer map corners. | Resolved statically in v1.0.11 | Exactly 56 submerged static Palisade Walls and eight static Saboteurs are removed after assertions pin their types, counts, water terrain, and corner locations. Their 64 object references are absent from all conditions/effects. | Reveal all four corners and confirm no Palisade Wall or Saboteur remains. |
 | ASC-025 | The hidden Goth Palisade HP mechanic is unnecessary and must not remain. | Resolved statically in v1.0.12 | The mechanic required Elite Huskarl plus 12 Palisade Walls in a fixed row, then added 2,750 HP. All eight imported triggers and 64 color/player replacements are absent. Tests reject every serialized Palisade condition/effect while preserving the separate Goth Anarchy/Barracks family. | As Goths, research Elite Huskarl and build Palisades near the Castle lane; they must retain ordinary game HP and receive no scenario bonus. |
-| ASC-026 | Spawn controls should be simple and independent: one Sheep for Castle armies and one Penguin for Hero OFF/ON plus distance. | Implemented in v1.0.13; clarified in v1.0.14 | Every color has exactly one Sheep and one War Penguin on separate water-isolated tracks, each with six detection bands. Snow is exactly L0 Castle HOLD / Hero OFF; L1–L5 progress toward battle. Controllers and four per-color Signs have short role-specific names. Both controllers are owner-resolved, undeletable, and untargetable, and Penguins cannot attack. The 251 hard cap plus custom-cap compensation preserves 250 gameplay slots. Mutually exclusive kill bands prevent stale Hero tiers after OFF. | Check visibility and movement on every orientation; leave Penguin at L0 across a milestone, then enable it and confirm only the current tier begins spawning. |
+| ASC-026 | Spawn controls should be simple and independent: one Sheep for Castle armies and one Penguin for Hero OFF/ON plus distance. | Implemented in v1.0.13; clarified in v1.0.14 | Every color has exactly one Sheep and one War Penguin on separate water-isolated tracks, each with six detection bands. Snow is exactly L0 Castle HOLD / Hero OFF; L1–L5 progress toward battle. Controllers and four per-color Signs have short role-specific names. Both controllers are owner-resolved, undeletable, and untargetable, and Penguins cannot attack. RA v1.4 replaces the fixed cap with 200/250/300/500 gameplay slots plus controller reserves. Mutually exclusive kill bands prevent stale Hero tiers after OFF. | Check visibility and movement on every orientation; leave Penguin at L0 across a milestone, then enable it and confirm only the current tier begins spawning. |
 | ASC-027 | Decorative Castle Hay markers could block army creation or L0 holding cells. | Resolved statically in v1.0.13 | Footprint-aware validation found that the 32 two-by-two Hay Stack creates covered 16 of 32 launch pads and eight L0 destinations even though their anchors were distinct. All 32 Hay creation triggers are retired; tests reject any surviving Hay create and the path audit checks every pad/destination footprint. | Confirm all four Castle waves appear and clear L0 without displacement for every color, especially during sustained spawning. |
 | ASC-028 | Sheep and Penguin could leave their own trigger line; HOLD/OFF endpoints and controller names were unclear. | Guarded in v1.0.14 | Each canonical track is 9×2, separated by three rows of Deep Water without beach bridges. Each controller's selectors partition only its own dry track. Snow covers exactly L0; the road begins at L1. Four per-color endpoint Signs leave a row clear, and controller names are `Army range - snow = HOLD` / `Hero range - snow = OFF`. Connectivity checks prove every level reachable without leaving the selector union; no recurring task/stop/freeze correction is added. | For every color, order both controllers beyond every track edge and across the water gap. They must remain on their own track and still reach all levels. Check that Snow means HOLD/OFF, the first road tile changes to L1, and all signs/names are readable. HOLD must keep producing Castle waves; OFF must pause new Heroes only. |
 | ASC-029 | Side-wall deletion must not open a path around the front gates or remove the rear University boundary. | Corrected and guarded in v1.0.15 | v1.0.14 wrongly preserved the long side walls. The 64 `Wall Breach` mappings now remove the exact short shoulders plus 30 long side-wall references per color: 44 walls for P1/P2/P7/P8, 48 for P3/P4/P5/P6. The three front gates and complete front wall row remain, with two new end posts per color closing the bypass. The rear University wall/gate, joins, and teammate access gates remain protected. The switch at canonical `(23.0,43.5)` is separate from the University gate at `(14.5,54.0)`. | Delete the switch for every color: short and long side walls disappear; the front and University barriers remain. With other gates shut, test both front ends and the rear University route for bypasses. Repeat with sparse and shuffled owners; other players' fortifications must remain intact. |
@@ -146,15 +146,15 @@ Castle survival mask, including missing, dead and wrong-owner objects.
 
 **Open. No live failure attributed to it yet; recorded because the v1.0.1.0 diagnosis
 predicts one.** v1.0.1.0 replaced Castle, defeat and identity-token conditions with XS
-guards after native selectors did not recognize P5/P8 live. The other 3,499
-player-scoped conditions in the artifact were left native:
+guards after native selectors did not recognize P5/P8 live. RA v1.4 removes 576 integer Hero count gates in favor of actual population costs.
+The other 2,923 player-scoped conditions in the current artifact remain native:
 
 | Condition | Count | Systems | Direction if the diagnosis holds |
 | --- | ---: | --- | --- |
 | `Accumulate Attribute` | 1,123 | Hero milestone and boost kill thresholds | Fails closed — high colors never reach a hero tier |
 | `Objects in Area` | 776 | Hero pads (inverted), vote markers (inverted), center rewards, Blacksmith/Town Center age gates, Goth Barracks ban | Mixed — rewards and upgrades never arrive; pad and vote checks read "clear" and fire early |
 | `Research Technology` | 736 | Goth restrictions, civilization age-ups | Mixed |
-| `Own Fewer Objects` | 640 | Hero caps, `Color Cleanup Complete` | Fails open — the empty-owner gate that authorizes victory |
+| `Own Fewer Objects` | 64 | `Color Cleanup Complete` | Fails open — the empty-owner gate that authorizes victory |
 | `Own Objects` | 128 | Wall cap warn/wipe | Fails closed |
 | `Destroy Object` | 96 | Wall breach | Fails closed |
 
@@ -245,7 +245,7 @@ cases are recorded in-game.
 | Yard gate switch | All eight colors, full/sparse/shuffled | Deleting the side/rear switch removes the short shoulders and long side walls, but not the front gates/posts, University walls/gate, or teammate access gates. With other gates shut, no front-arena or University bypass opens. |
 | Wall-limit warning/wipe | All eight colors, full/sparse/shuffled | At 200 owned WALL-class objects, warn once; at 220, wipe that owner's walls outside protected permanent barrier footprints. Include preplaced walls in the count. Front and University barriers, teammate access gates, and other owners' walls survive. Repeat after side-wall deletion. |
 | Permanent wall safety | All eight colors, full/sparse/shuffled | Permanent walls/gates reject manual deletion; the switch remains deletable. Any legacy manual-delete protection on side walls must not prevent scripted side-wall removal. Defeat/resignation cleanup still removes all of the eliminated player's objects, including protected barriers. |
-| Controller population | Any color near the hard cap | The Penguin occupies the reserved 251st slot; normal gameplay still reaches 250 slots and custom army/Hero ceilings behave as before. |
+| Controller population | Any color near the hard cap | For all four selected limits, the Penguin and temporary chooser occupy reserved slots; real gameplay population reaches the chosen limit. Check manual training, Goths, fractional-cost troops and lowering the limit below current usage. |
 | Castle launch pads | All eight colors | All four waves appear at their exact pads and clear L0; no Hay Stack is created or displaces a unit. |
 | Milestone shore | All eight colors | Buildings can be placed on the repaired strip; hero spawns and nearby water remain clear. |
 | Marker removal | All eight colors | No Transport Ship is present; milestone heroes still spawn and route normally. |
@@ -274,3 +274,14 @@ Pre-latch resignation remains a startup acceptance question. The detector waits
 three seconds and tests assume an owner is observed before departure. A probe must
 separate an already-resigned participant from a closed slot with leftover Castles
 before changing admission. No DE failure from this timing is claimed here.
+
+## RA v1.4 acceptance additions
+
+| Feature | Source check | Remaining live check |
+| --- | --- | --- |
+| Population chooser | Lowest active occupied color waits for its XS identity; all four pads, transfer failure, headroom and 60-second lock replayed. | Host takes the lowest color, locates and moves the chooser. It cannot be deleted or attacked. Test manual training and automatic births at each cap in sparse/shuffled lobbies. |
+| Complete rewards | Actual combined costs gate builder pairs and six-Scorpion backup. | Near-cap rewards defer without consuming the King or pending pair; engine birth failures need observation. |
+| Wider hazardous routes | Sixteen-tile spans, existing throats, dry markers, clear centerlines and 64 kill/visibility owner mappings checked. | Allied armies traverse every link; opposing intruders die. Flames are visible only on the opposing side. Native visibility may render differently. |
+| Silent Heroes | Every recurring Hero birth uses sound=false. | No global Hero creation cue in a fresh match. |
+| Latest civilizations | Installed Saxon/Varangian/Dane ids and both unit forms checked; spawn/builder tables cover 1–62. | Armies, builders, age-ups and training bans work with each civilization; balance remains provisional. |
+| Exact Mirror pairs | Explicit paired lobby choices documented. | Requested automatic P1/P5, P2/P6, P3/P7, P4/P8 Mirror pairing remains unresolved; no supported scenario API was found to reassign actual civilizations. |

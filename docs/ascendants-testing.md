@@ -262,7 +262,7 @@ correct**, not that it plays correctly. In particular these can only be settled 
 - **whether a native player-scoped condition sees a high color at all.** This is the
   ASC-049 failure, and no layer here can reproduce it: the tests execute the emitted XS
   guards against mocked APIs, so they prove the guards are correct, not that the native
-  conditions they replaced were wrong. 3,499 conditions still resolve owners natively
+  conditions they replaced were wrong. 2,923 conditions still resolve owners natively
   (ASC-053) and no layer here can tell whether they work.
 
 Those cases live in [`ascendants-issue-register.md`](ascendants-issue-register.md), whose

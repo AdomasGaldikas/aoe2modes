@@ -40,7 +40,9 @@ def configure_birth_orders(ctx, *, identity_base, identity_tag):
                     trigger.effects.append(effect)
                     continue
                 family = "Hero" if hero else "Builder"
-                sound = "false" if effect.disable_sound == 1 else "true"
+                # Recurring Hero births otherwise play a global creation cue,
+                # even while the player's camera is elsewhere on the map.
+                sound = "false" if hero or effect.disable_sound == 1 else "true"
                 ctx_fn = f"cbaBirth{family}{converted}"
                 wrappers.append(
                     f"void {ctx_fn}() {{ cbaCreate{family}Birth({color}, "
@@ -111,11 +113,12 @@ int level = xsTriggerVariable({army_range_base} + scenarioPlayer - 1);
 {branches(dict(enumerate(army_destinations)), slot=True)}
 }}
 
-void cbaCreateHeroBirth(int scenarioPlayer = 0, int unitId = -1, int x = 0, int y = 0, bool sound = true) {{
+void cbaCreateHeroBirth(int scenarioPlayer = 0, int unitId = -1, int x = 0, int y = 0, bool sound = false) {{
     if (xsTriggerVariable({eliminated_base} + scenarioPlayer - 1) == 1) return;
     if (xsTriggerVariable({occupied_base} + scenarioPlayer - 1) != 1) return;
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
     if (worldPlayer < 1) return;
+    if (cbaHasPopulationRoom(worldPlayer, unitId, 1) == false) return;
     int level = xsTriggerVariable({hero_range_base} + scenarioPlayer - 1);
     if (level < 1 || level > 5) return;
     int unitRef = xsCreateUnit(unitId, worldPlayer, xsVectorSet(0.5 + x, 0.5 + y, -1), false, sound, false);
@@ -128,6 +131,7 @@ void cbaCreateBuilderBirth(int scenarioPlayer = 0, int unitId = -1,
     if (xsTriggerVariable({occupied_base} + scenarioPlayer - 1) != 1) return;
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
     if (worldPlayer < 1) return;
+    if (cbaHasPopulationRoom(worldPlayer, unitId, 1) == false) return;
     int unitRef = xsCreateUnit(unitId, worldPlayer, xsVectorSet(0.5 + x, 0.5 + y, -1), false, sound, false);
 {chr(10).join(builder_lines)}
 }}

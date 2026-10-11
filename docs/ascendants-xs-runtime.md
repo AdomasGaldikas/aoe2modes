@@ -29,8 +29,8 @@ reports no XS for this mode, which is accurate about the *files* and misleading 
 
 The reason is that the script is mostly **data**, and that data is Python:
 
-- `CIV_SPAWN_RULES` — 59 rows of (unique unit, military population cap, spawn interval).
-- `CIV_BUILDER_RULES` — 59 rows of (public civilization name, razing threshold).
+- `CIV_SPAWN_RULES` — 62 rows of (unique unit, military population cap, spawn interval).
+- `CIV_BUILDER_RULES` — 62 rows of (public civilization name, razing threshold).
 - `SPAWN_WORLD_POSITIONS` — 8 colors × 4 wave pads, each derived from one canonical row
   through the eight-way map transform.
 - Every trigger-variable base id.
@@ -109,7 +109,7 @@ them on looping triggers, collapsed into a deduplicated set of `cbaRuntimeCondit
 functions. The build fails if any condition of those three classes survives with a
 1–8 selector, so a geometry change cannot silently reinstate the native path.
 
-Every other player-scoped condition still resolves its owner natively — 3,499 of them,
+Every other player-scoped condition still resolves its owner natively — 2,923 of them,
 listed in ASC-053. If the sparse-lobby diagnosis is right, those systems carry the same
 exposure, and their failure directions differ: a non-inverted check fails closed (a
 reward or upgrade never arrives), an inverted check fails open (a vote registers, or a
@@ -267,3 +267,23 @@ and tells the reader to update `CIV_SPAWN_RULES` and rebuild.
   trigger-side.
 - **Verify with** `pytest -q tests/test_evolution_alpha.py -k "xs or identity or writer"`
   and a full build, which runs `xs-check` over the rendered script.
+
+## RA v1.4 population setup
+
+`population_setup.py` emits a shared 200/250/300/500 choice, default 250 and
+locked at 60 seconds. The lowest active occupied color receives the chooser
+after its independent XS token arrives. Hosts must take that color. All selection
+and ownership changes run synchronized; instructions alone target its owner.
+
+Each active player starts with a declared engine ceiling of 501. Resource 32
+adds `selected + reserved - 501`, replacing civilization population bonuses.
+Resource 4 is refreshed to actual free housing headroom. One Penguin slot is
+reserved permanently; the chooser's actual population cost is reserved only
+while it exists for its controller owner. Lowering the limit never removes troops.
+
+Castle, Hero and builder births check actual per-type population costs. Complete
+builder pairs and six-Scorpion backup use 704 emitted batch gates before native
+reward consumption. Fractional costs remain floats; 576 old integer Hero count
+gates are removed. Per-birth checks also prevent four-Castle waves overflowing
+the shared budget. Engine resource semantics and setup-property API behavior
+remain live acceptance cases.
