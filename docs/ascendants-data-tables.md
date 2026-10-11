@@ -137,21 +137,30 @@ trigger order.
 
 ## Hero milestones
 
-`HERO_MILESTONES` pairs a kill threshold with a hero unit;
-`HERO_MILESTONE_UPPER_BOUNDS` closes each band so exactly one tier is ever live.
+`HERO_MILESTONES` and `HERO_MILESTONE_UPPER_BOUNDS` identify the six inherited
+templates. `hero_progression.py` inserts the extra tiers declared in `mode.toml`
+and closes all bands after insertion so exactly one tier is live.
 
 | Kills | Hero | Band upper bound |
 | ---: | --- | ---: |
+| 100 | Archer of the Eyes | 200 |
 | 200 | Robin Hood | 400 |
 | 400 | Theodoric the Goth | 600 |
-| 600 | Charles Martel | 800 |
+| 600 | Charles Martel | 700 |
+| 700 | Harald Hardrada | 800 |
 | 800 | Subotai | 1,000 |
-| 1,000 | Genghis Khan | 2,000 |
-| 2,000 | Genghis Khan (Super) | 3,500 |
+| 1,000 | Genghis Khan | 1,500 |
+| 1,500 | Faster Genghis | 2,000 |
+| 2,000 | Genghis Khan (Super) | 2,501 |
+| 2,501 | Rapid Super Genghis | 3,001 |
+| 3,001 | SGK250 | 3,500 |
+| 3,500 | Faster SGK250 | 5,000 |
+| 5,000 | Dual SGK250 | None |
 
 Above 3,500 the late-hero boost loops take over (`_configure_sparse_late_hero_boosts`):
-one boosted Genghis loop in the 3,500–4,999 band, two from 5,000. Those loops are also
-gated on Penguin level ≥ 1 and on an object ceiling that excludes the controller Penguin.
+one SGK250 loop in the 3,500–4,999 band, two from 5,000. The extension retains
+SGK250's +250 attack/+300 HP/range 10 in those tiers. All loops require Penguin
+level ≥ 1, actual population room, occupancy, no elimination and a valid XS token.
 
 Milestone Heroes are created at `HERO_MILESTONE_SPAWN_TILES` — canonical `(16, 38)`,
 transformed per color — with the two late-Genghis pads at `(15, 38)` and `(17, 38)`.
@@ -246,13 +255,14 @@ derived ban is what keeps itself current.
 
 ## Adding or changing a hero tier
 
-1. Add the `(kills, hero_id)` pair to `HERO_MILESTONES` and the closing bound to
-   `HERO_MILESTONE_UPPER_BOUNDS`. **Bands must stay mutually exclusive and contiguous** —
+1. Declare an extra tier in `mode.toml` under `hero_progression.extra_tiers`.
+   Do not add entries to `HERO_MILESTONES`: those identify existing source templates.
+   **Bands must stay mutually exclusive and contiguous** —
    overlapping bands let a lower tier burst-spawn when the Penguin returns from OFF, which
    is the exact bug the band structure exists to prevent.
-2. If the new tier sits above 3,500, it belongs in `_configure_sparse_late_hero_boosts`
-   instead, and needs the Penguin-level gate and the object ceiling that excludes the
-   controller.
+2. Added boosted tiers use the guarded 3,500 template; ordinary heroes use the
+   1,000 template. A tier beyond 5,000 needs an explicit closing band for both
+   inherited 5,000 loops. Update the migration counts and independent boundary test.
 3. The tier must arm the Hero pulse after creating its unit, or the new Hero receives no
    route order at all.
 4. Update the table in [`ascendants-gameplay.md`](ascendants-gameplay.md) and the public

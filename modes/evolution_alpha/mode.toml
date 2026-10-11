@@ -36,3 +36,41 @@ population_cap = 501
 [xs]
 include = []
 scripts = []
+
+# Additional Adrenaline Rush heroes/levels, without its fire-rate multiplier.
+# Existing RA unlocks keep their thresholds; the two extra heroes fit between them.
+[[hero_progression.extra_tiers]]
+kills = 100
+hero = "ARCHER_OF_THE_EYES"
+interval = 5
+
+[[hero_progression.extra_tiers]]
+kills = 700
+hero = "HARALD_HARDRADA"
+interval = 3
+
+[[hero_progression.extra_tiers]]
+kills = 1500
+hero = "GENGHIS_KHAN"
+interval = 3
+
+[[hero_progression.extra_tiers]]
+kills = 2501
+hero = "GENGHIS_KHAN"
+interval = 2
+attack_bonus = 25
+hp_bonus = 300
+
+[[hero_progression.extra_tiers]]
+kills = 3001
+hero = "GENGHIS_KHAN"
+interval = 5
+attack_bonus = 250
+hp_bonus = 300
+range = 10
+
+# Later 3500/5000 tiers retain SGK250 strength and improve production speed.
+[hero_progression.late_stats]
+attack_bonus = 250
+hp_bonus = 300
+range = 10

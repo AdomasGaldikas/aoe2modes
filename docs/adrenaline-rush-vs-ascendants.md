@@ -62,27 +62,42 @@ quantities across per-player trigger copies):
 | --- | --- | --- |
 | Castle Age | 200 / 250 / 300 kills (civ-dependent) | `force_research_technology(CASTLE_AGE)` + chat ("200 Kills - Castle Age") |
 | Imperial Age | 450 / 500 / 600 kills (civ-dependent) | `force_research_technology(IMPERIAL_AGE)` + color-coded chat ("<RED>600 Kills - Imperial Age") |
-| "SGK" (Super Genghis Khan), tier 1 | 2,501 kills | Loop every 2s: remove the previous Genghis Khan at a fixed pad, create a fresh one, +25 attack, HP set to 300 |
-| "SGK250", tier 2 | 3,001 kills | Deactivates tier 1; loop every 5s creating **additional** Genghis Khans (no removal of earlier ones) with +250 attack, HP 300, +10 range — an accumulating horde rather than one persistent hero. HUD banner + sound: `<BLUE> p1 SUPER GK 250 UNLEASHED !!!` |
+| "SGK" (Super Genghis Khan), tier 1 | 2,501 kills | Loop every 2s: remove the previous Genghis Khan at a fixed pad, create a fresh one, +25 attack and +300 HP; also divides the unit type's reload time by 5 |
+| "SGK250", tier 2 | 3,001 kills | Deactivates tier 1; loop every 5s creating **additional** Genghis Khans with +250 attack, +300 HP and range set to 10. The original uses a broad buff area and sets unit-type line of sight to 11. HUD banner + sound: `<BLUE> p1 SUPER GK 250 UNLEASHED !!!` |
 
-Both milestone tiers found in the data are a flat two-stage ladder (2501 /
-3001), not the eight-band structure a first read of the trigger names
-("2501:", "3001:") might suggest — those numbers are kill thresholds, not an
-index into a longer series.
+Those two SGK additions sit on top of the inherited hero ladder. A second source
+inspection found the previously omitted early roster in `part_004.py`: Archer of
+the Eyes at 200, Robin Hood at 400, Charles Martel at 600, Harald Hardrada at 800,
+Genghis at 1000 and Super Genghis at 2000. `part_012.py` also adds a 1500-kill
+Genghis loop every 3 seconds. The legacy 3500/5000 loops in `part_007.py` disable
+the newer SGK spawners; copying that activation graph would lose SGK250 strength.
 
 **Evolution Alpha** uses a wider, explicitly tiered ladder gated by mutually
 exclusive kill *bands*, controlled by the War Penguin slider (0 = off):
 
 | Kills | Hero | Active band |
 | ---: | --- | --- |
+| 100 | Archer of the Eyes | 100-199 |
 | 200 | Robin Hood | 200-399 |
 | 400 | Theodoric the Goth | 400-599 |
-| 600 | Charles Martel | 600-799 |
+| 600 | Charles Martel | 600-699 |
+| 700 | Harald Hardrada | 700-799 |
 | 800 | Subotai | 800-999 |
-| 1,000 | Genghis Khan | 1,000-1,999 |
-| 2,000 | Super Genghis | 2,000-3,499 |
-| 3,500 | boosted Genghis loop | 3,500-4,999 |
-| 5,000 | two boosted Genghis loops | 5,000+ |
+| 1,000 | Genghis Khan | 1,000-1,499 |
+| 1,500 | faster Genghis, every 3s | 1,500-1,999 |
+| 2,000 | Super Genghis | 2,000-2,500 |
+| 2,501 | rapid Super Genghis, every 2s | 2,501-3,000 |
+| 3,001 | SGK250, every 5s | 3,001-3,499 |
+| 3,500 | SGK250, every 3s | 3,500-4,999 |
+| 5,000 | dual SGK250, every 3s and 4s | 5,000+ |
+
+RA v1.4 imports the missing heroes and levels, keeping existing RA unlocks
+(Archer is inserted at 100, Harald at 700). All newborn SGK250 and later heroes
+receive +250 attack/+300 HP/range 10; later tiers improve throughput without
+reverting those stats. Buffs are restricted to an empty single spawn tile and
+birth orders address the newly returned reference. The reload-time multiplier,
+global line-of-sight mutation and old activation chains are not imported. A
+separate future adrenaline mode can add that mechanic explicitly.
 
 Ascendants' bands are mutually exclusive and resumable (parking the Penguin on
 OFF and moving it back resumes only the currently-earned tier, no catch-up
@@ -197,7 +212,7 @@ treated as unverified in sparse or closed-slot lobbies until tested live.
 
 - Different reward philosophies: Adrenaline Rush rewards kills with civ-flavored
   unit spam and a two-stage escalating Genghis Khan horde; Ascendants rewards
-  kills with a curated eight-tier hero ladder, decoupled from civ, with a pause
+  kills with a thirteen-tier hero ladder, decoupled from civ, with a pause
   switch.
 - Civ identity is the single biggest mechanical split — your civilization
   determines your entire auto-fed army in Adrenaline Rush, while Ascendants

@@ -63,7 +63,7 @@ def configure_birth_orders(ctx, *, identity_base, identity_tag):
         # It no longer selects or gives orders to units on a later game tick.
         if changed:
             trigger.effect_order = list(range(len(trigger.effects)))
-    if converted != 704 or retired != 1984:
+    if converted != 1024 or retired != 1984:
         raise RuntimeError(f"birth-order migration drift: creates={converted}, area tasks={retired}")
     return "\n".join(wrappers)
 

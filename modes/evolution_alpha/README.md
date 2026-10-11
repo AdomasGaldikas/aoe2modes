@@ -9,6 +9,12 @@ All automatic births use real population costs; complete builder and backup batc
 wait for enough room. Saxons, Varangians and Danes have automatic armies, builder
 thresholds and both base/Elite training bans. New balance values are provisional.
 
+The v1.4 update also adds Archer of the Eyes, Harald Hardrada and the missing
+1,500/2,501/3,001-kill levels from Adrenaline Rush, for thirteen exclusive tiers.
+The adrenaline fire-rate multiplier is reserved for a future variant. Population
+gates use separate arithmetic and literal returns after DE rejected their earlier
+compound return expression during load.
+
 Exact P1/P5, P2/P6, P3/P7 and P4/P8 civilization pairing still requires explicit lobby
 civilization choices. This release does not rewrite the engine's resolved Mirror
 civilizations. See [v1.4 notes](RELEASE_NOTES_v1.4.md) for validation and live gaps.
@@ -38,9 +44,9 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 | Metric | v1.4 |
 | --- | ---: |
-| Triggers | 4,123 (3,583 initially enabled) |
-| Conditions | 19,500 |
-| Effects | 14,481 |
+| Triggers | 4,443 (3,903 initially enabled) |
+| Conditions | 22,828 |
+| Effects | 15,633 |
 | Units | 999 |
 | Runtime variables | 153 (ids 0–152) |
 | Scenario format | DE v1.58 |
@@ -95,20 +101,29 @@ in [`../../docs/ascendants-control-map.md`](../../docs/ascendants-control-map.md
 
 Recurring Hero births are silent, including the milestone tiers and the
 3,500/5,000-kill boost loops. Creation cues no longer interrupt players whose
-camera is elsewhere. Spawn timing, ownership and immediate orders stay the same.
+camera is elsewhere. All added tiers use the same ownership and immediate orders.
 
 The Penguin controls all automatic Hero tiers:
 
 | Kills | Unit | Active band |
 | ---: | --- | --- |
+| 100 | Archer of the Eyes | 100–199 |
 | 200 | Robin Hood | 200–399 |
 | 400 | Theodoric the Goth | 400–599 |
-| 600 | Charles Martel | 600–799 |
+| 600 | Charles Martel | 600–699 |
+| 700 | Harald Hardrada | 700–799 |
 | 800 | Subotai | 800–999 |
-| 1,000 | Genghis Khan | 1,000–1,999 |
-| 2,000 | Super Genghis | 2,000–3,499 |
-| 3,500 | boosted Genghis loop | 3,500–4,999 |
-| 5,000 | two boosted Genghis loops | 5,000+ |
+| 1,000 | Genghis Khan | 1,000–1,499 |
+| 1,500 | Faster Genghis, every 3s | 1,500–1,999 |
+| 2,000 | Super Genghis | 2,000–2,500 |
+| 2,501 | Rapid Super Genghis, every 2s | 2,501–3,000 |
+| 3,001 | SGK250, every 5s | 3,001–3,499 |
+| 3,500 | SGK250, every 3s | 3,500–4,999 |
+| 5,000 | Dual SGK250, every 3s and 4s | 5,000+ |
+
+SGK250 and later tiers get +250 attack, +300 HP and range set to 10 on each
+newborn. The 2,501 tier has +25 attack and +300 HP. No adrenaline fire-rate
+or global Genghis stat changes are imported. Later levels preserve strength.
 
 These bands are mutually exclusive. Leaving the Penguin at Hero OFF pauses production;
 moving it forward later starts only the tier appropriate to the current kill count, so

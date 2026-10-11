@@ -126,14 +126,25 @@ on OFF.
 
 | Kills | Hero | Active band |
 | ---: | --- | --- |
+| 100 | Archer of the Eyes | 100–199 |
 | 200 | Robin Hood | 200–399 |
 | 400 | Theodoric the Goth | 400–599 |
-| 600 | Charles Martel | 600–799 |
+| 600 | Charles Martel | 600–699 |
+| 700 | Harald Hardrada | 700–799 |
 | 800 | Subotai | 800–999 |
-| 1,000 | Genghis Khan | 1,000–1,999 |
-| 2,000 | Super Genghis | 2,000–3,499 |
-| 3,500 | boosted Genghis loop | 3,500–4,999 |
-| 5,000 | two boosted Genghis loops | 5,000+ |
+| 1,000 | Genghis Khan | 1,000–1,499 |
+| 1,500 | Faster Genghis (every 3s) | 1,500–1,999 |
+| 2,000 | Super Genghis | 2,000–2,500 |
+| 2,501 | Rapid Super Genghis (every 2s) | 2,501–3,000 |
+| 3,001 | SGK250 (every 5s) | 3,001–3,499 |
+| 3,500 | Faster SGK250 (every 3s) | 3,500–4,999 |
+| 5,000 | Two SGK250 loops (every 3s and 4s) | 5,000+ |
+
+SGK250 adds 250 attack and 300 HP to each newborn and sets its range to 10.
+Later tiers retain that strength. The roster and additional levels are adapted
+from Adrenaline Rush, with Archer/Harald inserted around RA's existing unlocks.
+There is no adrenaline fire-rate multiplier. Existing heroes keep their stats
+and manual orders; no unit-type-wide stat change is applied.
 
 The bands are **mutually exclusive**: only the tier matching your current kill count is
 ever live. This matters when you use the OFF switch — parking the Penguin on snow pauses

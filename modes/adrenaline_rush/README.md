@@ -27,10 +27,17 @@ small local tweaks go into `build.py` after `generated.apply(ctx)`.
   `force_research_technology`: 200/250/300 kills (civ-dependent) for Castle Age,
   450/500/600 kills (civ-dependent) for Imperial Age, each with a chat announcement.
 - **"SGK" Genghis Khan ladder.** At 2,501 kills a loop removes/recreates one Genghis
-  Khan every 2s at a fixed pad (+25 attack, HP set to 300). At 3,001 kills that loop
+  Khan every 2s at a fixed pad (+25 attack, +300 HP), with a global x5 fire-rate
+  change. At 3,001 kills that loop
   is deactivated and replaced by one that creates an *additional* Genghis Khan every
-  5s without removing earlier ones (+250 attack, HP 300, +10 range) — an accumulating
+  5s without removing earlier ones (+250 attack, +300 HP, range set to 10) — an accumulating
   horde rather than a single escalating hero, announced with a HUD banner and sound.
+- **Early roster and extra production level.** Archer of the Eyes at 200, Robin
+  Hood at 400, Charles Martel at 600, Harald Hardrada at 800, Genghis Khan at 1000,
+  faster Genghis at 1500 (3s) and Super Genghis at 2000. The inherited 3500/5000
+  loops can override the newer SGK250 branch. RA v1.4 imports the missing roster
+  and levels as exclusive bands, preserving stronger stats in the later tiers
+  and omitting adrenaline's global fire-rate change.
 - **Raze-count reward.** A one-shot countdown chain (`5 razes` → `4 razes` → ... →
   `1 raze`) tributes Gaia, spawns a decoration object and a Hawk, and decrements an
   HP counter on a marker unit per raze — a building-destruction incentive with no

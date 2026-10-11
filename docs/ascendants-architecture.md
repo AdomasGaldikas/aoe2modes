@@ -262,7 +262,7 @@ it is telling you an assumption moved — fix the cause, do not relax the assert
 ## v1.2 exact-reference birth pass
 
 `configure_birth_orders` runs after geometry, Hero/builder and elimination passes,
-before compaction. It converts 704 Hero/builder create effects to zero-argument XS
+before compaction. It converts 1,024 Hero/builder create effects to zero-argument XS
 calls, gates those producers on a valid ownership token, and removes 1,984 task
 effects from the old army/Hero/builder movers. Those movers retain their variable
 resets for compatibility. Generated wrapper definitions are appended after their

@@ -58,6 +58,7 @@ from aoe2modes.lib.decompile import (
 )
 
 from .birth_orders import configure_birth_orders, render_birth_orders
+from .hero_progression import configure_extra_hero_tiers
 from .population_setup import configure_population_setup
 from .runtime_conditions import configure_runtime_conditions
 from .scenario import apply as apply_scenario_source
@@ -655,8 +656,10 @@ PUBLIC_INSTRUCTIONS = (
     "and P4/P8 in the lobby. The game resolves Mirror before the scenario starts; "
     "this map cannot reassign those engine choices.\r\r"
     "HERO MILESTONES\r"
-    "200 Robin Hood | 400 Theodoric | 600 Charles Martel | 800 Subotai\r"
-    "1000 Genghis Khan | 2000 Super Genghis | 3500 and 5000 spawn boosts"
+    "100 Archer of the Eyes | 200 Robin Hood | 400 Theodoric | 600 Charles Martel\r"
+    "700 Harald Hardrada | 800 Subotai | 1000 Genghis | 1500 faster Genghis\r"
+    "2000 Super Genghis | 2501 rapid Super Genghis | 3001 SGK250\r"
+    "3500 faster SGK250 | 5000 dual SGK250. No adrenaline fire-rate multiplier."
 )
 
 WHITE_KING_KILL_COUNTERS = {
@@ -1067,9 +1070,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 4_122:
+    if len(ctx.tm.triggers) != 4_442:
         raise RuntimeError(
-            f"expected 4,122 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 4,442 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -5009,7 +5012,7 @@ def _rewrite_public_messages(ctx: BuildContext) -> None:
         "your allies through the protected team routes, and destroy every enemy Castle."
     )
     messages.hints = (
-        "Defeat enemy units to ascend through six hero tiers. Protect all four Castles, "
+        "Defeat enemy units to ascend through thirteen hero tiers. Protect all four Castles, "
         "move the Sheep to set Castle-army travel, move the Penguin to control Hero "
         "production and travel, and use the rear gates to reinforce your allies."
     )
@@ -5622,6 +5625,7 @@ def build(ctx: BuildContext) -> None:
         hero_move_pending_variables,
         hero_range_variables,
     )
+    configure_extra_hero_tiers(ctx)
     _configure_sparse_vote_kick(
         ctx,
         active_variables,

@@ -63,9 +63,20 @@ def configure_population_setup(ctx, *, occupied_base, eliminated_base):
         costs = " + ".join(
             f"cbaPopulationCost(owner, {e.object_list_unit_id})" for e in creates
         )
-        checks = f"owner > 0 && cbaPopulationUsed(owner) + {costs} <= gCbaPopulationLimit"
+        # DE rejected the compound bool/float return in cbaPopulationGate0
+        # even though xs-check accepted it. Separate the arithmetic and owner
+        # guard, and return literals after the comparison.
         gates.append(
-            f"bool {name}() {{ int owner = cbaWorldPlayerForColor({color}); return({checks}); }}"
+            f"bool {name}() {{\n"
+            f"    int owner = cbaWorldPlayerForColor({color});\n"
+            "    if (owner < 1) return(false);\n"
+            f"    float cost = {costs};\n"
+            "    float used = cbaPopulationUsed(owner);\n"
+            "    float room = gCbaPopulationLimit;\n"
+            "    room = room - used;\n"
+            "    if (cost > room) return(false);\n"
+            "    return(true);\n"
+            "}"
         )
         trigger.new_condition.script_call(xs_function=name)
     ref = chooser.reference_id
@@ -132,8 +143,12 @@ float cbaPopulationUsed(int worldPlayer = 0) {{
 
 bool cbaHasPopulationRoom(int worldPlayer = 0, int unitId = -1, int count = 1) {{
     if (worldPlayer < 1 || unitId < 0 || count < 1) return(false);
-    return(cbaPopulationUsed(worldPlayer) + cbaPopulationCost(worldPlayer, unitId) * count
-        <= gCbaPopulationLimit);
+    float cost = cbaPopulationCost(worldPlayer, unitId) * count;
+    float used = cbaPopulationUsed(worldPlayer);
+    float room = gCbaPopulationLimit;
+    room = room - used;
+    if (cost > room) return(false);
+    return(true);
 }}
 
 bool cbaPopulationColorActive(int scenarioPlayer = 0) {{
