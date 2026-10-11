@@ -18,7 +18,6 @@ from AoE2ScenarioParser.datasets.players import PlayerId
 from AoE2ScenarioParser.datasets.techs import TechInfo
 from AoE2ScenarioParser.datasets.terrains import TerrainId
 from AoE2ScenarioParser.datasets.trigger_lists import (
-    ActionType,
     Attribute,
     Comparison,
     DiplomacyState,
@@ -35,7 +34,16 @@ from aoe2modes import registry
 from aoe2modes.builder import build_mode
 from aoe2modes.lib import mapview
 from aoe2modes.lib.audit import audit_scenario
-from ascendants_runtime import guard_runtime, logical_conditions
+from ascendants_runtime import (
+    birth_destination,
+    birth_runtime,
+    guard_runtime,
+    logical_conditions,
+    logical_effects,
+)
+from ascendants_runtime import (
+    xs_source as embedded_xs,
+)
 
 
 def v2_cell_for_player(player, source_x, source_y):
@@ -516,11 +524,15 @@ def test_evolution_alpha_route_guards_use_resolved_intruders_after_ally_defeat(e
 
     labels = next(trigger for trigger in tm.triggers if trigger.name == "Allied Route Gate Labels")
     assert labels.enabled and not labels.looping
-    assert set(labels.effects[0].selected_object_ids) == {
-        109743, 109744, 109745, 109746, 65500, 23621, 23076, 23205,
-        23618, 23624, 23615, 23627,
+    switches = {
+        condition.unit_object for trigger in tm.triggers if "Wall Breach" in trigger.name
+        for condition in trigger.conditions if condition.condition_type == ConditionId.DESTROY_OBJECT
     }
+    assert switches == {65500, 23621, 23076, 23205, 23618, 23624, 23615, 23627}
+    assert set(labels.effects[0].selected_object_ids) == {109743, 109744, 109745, 109746}
     assert labels.effects[0].message == "Allied route - enemy units removed"
+    assert set(labels.effects[1].selected_object_ids) == switches
+    assert labels.effects[1].message == "Side-wall switch - DELETE opens walls"
     assert "even after a teammate is defeated" in evolution_alpha.message_manager.instructions
 
 
@@ -1819,7 +1831,7 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
     assert "xsTriggerVariable(137 + scenarioPlayer - 1) - 1000" in xs_source
     assert "return(xsTriggerVariable(" not in xs_source
     assert "40 + scenarioPlayer - 1" not in xs_source
-    assert xs_source.count("cbaWorldPlayerForColor(scenarioPlayer)") == 3
+    assert xs_source.count("cbaWorldPlayerForColor(scenarioPlayer)") == 5
     assert "xsSetTriggerVariable(variableBase" not in xs_source
     for player in range(1, 9):
         assert f"cbaUpdateCombatRow({player})" in xs_source
@@ -2571,7 +2583,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
         for world_player in range(1, 9):
             reward = rewards[f"Builder Reward S{color} W{world_player}"]
             assert reward.enabled and reward.looping
-            assert len(reward.conditions) == 6
+            assert len(reward.conditions) == 8
 
             variable_conditions = {
                 (
@@ -2587,6 +2599,8 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 (31 + color, Comparison.EQUAL, 1),
                 (39 + color, Comparison.EQUAL, world_player),
                 (47 + color, Comparison.EQUAL, 0),
+                (136 + color, Comparison.LARGER_OR_EQUAL, 1001),
+                (136 + color, Comparison.LESS, 1009),
             } == variable_conditions
 
             castle = next(
@@ -2609,7 +2623,7 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                     effect.location_x,
                     effect.location_y,
                 )
-                for effect in reward.effects
+                for effect in logical_effects(evolution_alpha, reward)
                 if effect.effect_type == EffectId.CREATE_OBJECT
             }
             assert builders == {
@@ -2666,37 +2680,9 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 (31 + color, 1, Comparison.EQUAL),
                 (39 + color, world_player, Comparison.EQUAL),
             }
-            tasks = {
-                (
-                    effect.object_list_unit_id,
-                    effect.source_player,
-                    effect.area_x1,
-                    effect.area_y1,
-                    effect.area_x2,
-                    effect.area_y2,
-                    effect.location_x,
-                    effect.location_y,
-                )
-                for effect in mover.effects
-                if effect.effect_type == EffectId.TASK_OBJECT
-            }
-            assert all(
-                effect.action_type == ActionType.MOVE
-                for effect in mover.effects
-                if effect.effect_type == EffectId.TASK_OBJECT
-            )
-            assert tasks == {
-                (
-                    unit_id,
-                    world_player,
-                    spawn[0] - 1,
-                    spawn[1] - 1,
-                    spawn[0] + 1,
-                    spawn[1] + 1,
-                    *destinations[unit_id],
-                )
-                for unit_id, spawn in spawns.items()
-            }
+            assert not any(e.effect_type == EffectId.TASK_OBJECT for e in mover.effects)
+            for unit_id, destination in destinations.items():
+                assert birth_destination(evolution_alpha, "Builder", color, unit_id=unit_id) == destination
             movement_resets = [
                 effect
                 for effect in mover.effects
@@ -4281,20 +4267,13 @@ def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_
         assert set(mapping) == set(range(1, 9))
         assert set(mapping.values()) == set(range(1, 9))
         for color, trigger_player in mapping.items():
-            spawn_areas = {
-                (x, y, x, y)
-                for x, y in (
-                    v2_cell_for_player(color, x, y)
-                    for x, y in ((22, 48), (22, 52), (22, 55), (22, 59))
-                )
-            }
             hero_x, hero_y = v2_cell_for_player(color, 16, 38)
             milestone = by_name[
                 f"Hero Milestone S{color} W{trigger_player} K200"
             ]
             milestone_create = next(
                 effect
-                for effect in milestone.effects
+                for effect in logical_effects(evolution_alpha, milestone)
                 if effect.effect_type == EffectId.CREATE_OBJECT
             )
             assert (
@@ -4315,25 +4294,10 @@ def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_
                 normal = by_name[
                     f"Army Range L{level} S{color} W{trigger_player}"
                 ]
-                normal_tasks = [
-                    effect
-                    for effect in normal.effects
-                    if effect.effect_type == EffectId.TASK_OBJECT
-                ]
-                assert len(normal_tasks) == 4
-                assert {effect.source_player for effect in normal_tasks} == {
-                    trigger_player
-                }
-                assert {
-                    (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2)
-                    for effect in normal_tasks
-                } == spawn_areas
-                assert [
-                    (effect.location_x, effect.location_y)
-                    for effect in normal_tasks
-                ] == [
-                    v2_cell_for_player(color, *destination)
-                    for destination in source_destinations
+                assert not any(e.effect_type == EffectId.TASK_OBJECT for e in normal.effects)
+                assert [birth_destination(evolution_alpha, "Army", color, level, slot)
+                        for slot in range(4)] == [
+                    v2_cell_for_player(color, *destination) for destination in source_destinations
                 ]
                 assert {
                     (condition.variable, condition.quantity)
@@ -4356,19 +4320,8 @@ def test_evolution_alpha_keeps_xs_spawn_and_trigger_routes_in_separate_identity_
                 hero = by_name[
                     f"Hero Range L{level} S{color} W{trigger_player}"
                 ]
-                hero_task = next(
-                    effect
-                    for effect in hero.effects
-                    if effect.effect_type == EffectId.TASK_OBJECT
-                )
-                assert hero_task.source_player == trigger_player
-                assert (
-                    hero_task.area_x1,
-                    hero_task.area_y1,
-                    hero_task.area_x2,
-                    hero_task.area_y2,
-                ) == (hero_x - 1, hero_y - 1, hero_x + 1, hero_y + 1)
-                assert (hero_task.location_x, hero_task.location_y) == (
+                assert not any(e.effect_type == EffectId.TASK_OBJECT for e in hero.effects)
+                assert birth_destination(evolution_alpha, "Hero", color, level) == (
                     v2_cell_for_player(color, *source_destination)
                 )
                 assert {
@@ -4433,19 +4386,10 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
         owner.area_y2,
     ) == castle_row_areas(evolution_alpha)[5]
 
-    tasks = [effect for effect in teal_for_compacted_p2.effects if effect.effect_type == EffectId.TASK_OBJECT]
-    assert len(tasks) == 4
-    assert {effect.source_player for effect in tasks} == {PlayerId.TWO}
-    assert {effect.action_type for effect in tasks} == {ActionType.MOVE}
-    assert {
-        (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2)
-        for effect in tasks
-    } == {
-        (22, 95, 22, 95),
-        (22, 91, 22, 91),
-        (22, 88, 22, 88),
-        (22, 84, 22, 84),
-    }
+    assert not any(e.effect_type == EffectId.TASK_OBJECT for e in teal_for_compacted_p2.effects)
+    assert [birth_destination(evolution_alpha, "Army", 5, 3, slot) for slot in range(4)] == [
+        v2_cell_for_player(5, *point) for point in ((34, 51), (34, 52), (34, 54), (34, 54))
+    ]
 
     source_spawn_points = ((22, 48), (22, 52), (22, 55), (22, 59))
     spawn_points = {
@@ -4594,41 +4538,10 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
         for world_player in range(1, 9):
             for level, destinations in enumerate(source_destinations):
                 movement = movements[level, scenario_player, world_player]
-                tasks = [
-                    effect
-                    for effect in movement.effects
-                    if effect.effect_type == EffectId.TASK_OBJECT
-                ]
-                assert len(tasks) == 4
-                assert {effect.source_player for effect in tasks} == {world_player}
-                assert {effect.action_type for effect in tasks} == {
-                    ActionType.MOVE
-                }
-                assert [
-                    (effect.area_x1, effect.area_y1, effect.area_x2, effect.area_y2)
-                    for effect in tasks
-                ] == [
-                    (x, y, x, y)
-                    for x, y in expected_spawns
-                ]
-                hold_destinations = [
-                    v2_cell_for_player(scenario_player, *destination)
-                    for destination in source_destinations[0]
-                ]
-                assert all(
-                    not (
-                        task.area_x1 <= hold_x <= task.area_x2
-                        and task.area_y1 <= hold_y <= task.area_y2
-                    )
-                    for task in tasks
-                    for hold_x, hold_y in hold_destinations
-                )
-                assert [
-                    (effect.location_x, effect.location_y)
-                    for effect in tasks
-                ] == [
-                    v2_cell_for_player(scenario_player, *destination)
-                    for destination in destinations
+                assert not any(e.effect_type == EffectId.TASK_OBJECT for e in movement.effects)
+                assert [birth_destination(evolution_alpha, "Army", scenario_player, level, slot)
+                        for slot in range(4)] == [
+                    v2_cell_for_player(scenario_player, *destination) for destination in destinations
                 ]
                 assert {
                     (condition.variable, condition.quantity)
@@ -4665,7 +4578,6 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
 
 def test_evolution_alpha_closest_heroes_share_the_castle_front_line(evolution_alpha):
     """Read actual orders and footprints, across all 64 color/owner mappings."""
-    by_name = {trigger.name: trigger for trigger in evolution_alpha.trigger_manager.triggers}
     water = {int(terrain) for terrain in TerrainId.water_terrains()}
     blocked = {
         cell
@@ -4685,21 +4597,9 @@ def test_evolution_alpha_closest_heroes_share_the_castle_front_line(evolution_al
         }
         # Identify the Castle row's normal from placed buildings, not a color table.
         normal_axis = 0 if len({castle.x for castle in castles}) == 1 else 1
-        for owner in range(1, 9):
-            orders = [
-                effect for effect in by_name[f"Hero Range L1 S{color} W{owner}"].effects
-                if effect.effect_type == EffectId.TASK_OBJECT
-            ]
-            assert len(orders) == 1
-            order = orders[0]
-            target = (order.location_x, order.location_y)
-            assert order.source_player == owner
-            hold = [
-                (effect.location_x, effect.location_y)
-                for effect in by_name[f"Army Range L0 S{color} W{owner}"].effects
-                if effect.effect_type == EffectId.TASK_OBJECT
-            ]
-            assert len(hold) == 4
+        for _owner in range(1, 9):
+            target = birth_destination(evolution_alpha, "Hero", color, 1)
+            hold = [birth_destination(evolution_alpha, "Army", color, 0, slot) for slot in range(4)]
             assert {point[normal_axis] for point in hold} == {target[normal_axis]}
             assert min(abs(x - target[0]) + abs(y - target[1]) for x, y in castle_cells) == 1
             assert target not in blocked
@@ -4812,7 +4712,7 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
 
                 creates = [
                     effect
-                    for effect in trigger.effects
+                    for effect in logical_effects(evolution_alpha, trigger)
                     if effect.effect_type == EffectId.CREATE_OBJECT
                 ]
                 assert len(creates) == 1
@@ -4873,7 +4773,6 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
     assert not any(trigger.name.startswith("Hero Orders ") for trigger in triggers)
     for level, source_destination in canonical_orders.items():
         for color in range(1, 9):
-            spawn_x, spawn_y = v2_cell_for_player(color, 16, 38)
             destination = v2_cell_for_player(color, *source_destination)
             for world_player in range(1, 9):
                 trigger = order_triggers[level, color, world_player]
@@ -4899,22 +4798,8 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                     (112 + color, level, Comparison.EQUAL),
                     (96 + color, 1, Comparison.EQUAL),
                 }
-                tasks = [
-                    effect
-                    for effect in trigger.effects
-                    if effect.effect_type == EffectId.TASK_OBJECT
-                ]
-                assert len(tasks) == 1
-                task = tasks[0]
-                assert task.source_player == world_player
-                assert (
-                    task.area_x1,
-                    task.area_y1,
-                    task.area_x2,
-                    task.area_y2,
-                ) == (spawn_x - 1, spawn_y - 1, spawn_x + 1, spawn_y + 1)
-                assert (task.location_x, task.location_y) == destination
-                assert task.action_type == ActionType.MOVE
+                assert not any(e.effect_type == EffectId.TASK_OBJECT for e in trigger.effects)
+                assert birth_destination(evolution_alpha, "Hero", color, level) == destination
                 movement_resets = [
                     effect
                     for effect in trigger.effects
@@ -4985,6 +4870,8 @@ def test_evolution_alpha_late_heroes_arm_one_shot_route_orders(evolution_alpha):
                 (39 + color, world_player, Comparison.EQUAL),
                 (112 + color, 1, Comparison.LARGER_OR_EQUAL),
                 (47 + color, 0, Comparison.EQUAL),
+                (136 + color, 1001, Comparison.LARGER_OR_EQUAL),
+                (136 + color, 1009, Comparison.LESS),
             }
             own_fewer = [
                 condition
@@ -4999,7 +4886,7 @@ def test_evolution_alpha_late_heroes_arm_one_shot_route_orders(evolution_alpha):
             ) == (world_player, ObjectType.MILITARY, 301)
             creates = [
                 effect
-                for effect in trigger.effects
+                for effect in logical_effects(evolution_alpha, trigger)
                 if effect.effect_type == EffectId.CREATE_OBJECT
             ]
             assert len(creates) == 1
@@ -5040,7 +4927,7 @@ def test_evolution_alpha_late_heroes_arm_one_shot_route_orders(evolution_alpha):
     live_hero_creates = [
         (trigger, effect)
         for trigger in evolution_alpha.trigger_manager.triggers
-        for effect in trigger.effects
+        for effect in logical_effects(evolution_alpha, trigger)
         if effect.effect_type == EffectId.CREATE_OBJECT
         and effect.object_list_unit_id in hero_ids
     ]
@@ -5084,34 +4971,7 @@ def test_evolution_alpha_all_looping_move_orders_consume_one_spawn_pulse(
             for effect in trigger.effects
         )
     ]
-    assert len(move_loops) == 768
-
-    for trigger in move_loops:
-        armed_variables = {
-            condition.variable
-            for condition in trigger.conditions
-            if condition.condition_type == ConditionId.VARIABLE_VALUE
-            and condition.quantity == 1
-            and condition.comparison == Comparison.EQUAL
-        }
-        consumed_variables = {
-            effect.variable
-            for effect in trigger.effects
-            if effect.effect_type == EffectId.CHANGE_VARIABLE
-            and effect.operation == Operation.SET
-            and effect.quantity == 0
-        }
-        assert len(armed_variables & consumed_variables) == 1, trigger.name
-        assert any(
-            condition.condition_type == ConditionId.TIMER
-            and condition.timer == 1
-            for condition in trigger.conditions
-        ), trigger.name
-        assert all(
-            effect.action_type == ActionType.MOVE
-            for effect in trigger.effects
-            if effect.effect_type == EffectId.TASK_OBJECT
-        ), trigger.name
+    assert move_loops == []
 
 
 def test_evolution_alpha_removes_blocking_castle_hay_markers(evolution_alpha):
@@ -5942,7 +5802,7 @@ def test_evolution_alpha_cannot_produce_after_elimination(evolution_alpha):
         if not any(e.effect_type in {
             EffectId.CREATE_OBJECT, EffectId.CREATE_GARRISONED_OBJECT,
             EffectId.TRAIN_UNIT, EffectId.PLACE_FOUNDATION,
-        } for e in trigger.effects):
+        } for e in logical_effects(evolution_alpha, trigger)):
             continue
         active = [
             c for c in trigger.conditions if c.condition_type == ConditionId.VARIABLE_VALUE
@@ -5987,12 +5847,7 @@ def test_evolution_alpha_color_active_has_exactly_one_writer(evolution_alpha):
     }
     assert len(readers) > 100
 
-    xs_source = next(
-        effect.message
-        for trigger in evolution_alpha.trigger_manager.triggers
-        for effect in trigger.effects
-        if effect.effect_type == EffectId.SCRIPT_CALL and effect.message
-    )
+    xs_source = embedded_xs(evolution_alpha)
     assert "void cbaUpdateColorRuntime(int scenarioPlayer = 0)" in xs_source
     runtime = xs_source.split("void cbaUpdateColorRuntime", 1)[1].split("void main", 1)[0]
     assert "xsTriggerVariable(121 + scenarioPlayer - 1) == 1" in runtime
@@ -6208,12 +6063,7 @@ def test_evolution_alpha_xs_addresses_trigger_variables_through_named_bases(
     using the interpolated base and one using ``scenarioPlayer - 1``. They agreed only
     because that base happens to be zero.
     """
-    xs_source = next(
-        effect.message
-        for trigger in evolution_alpha.trigger_manager.triggers
-        for effect in trigger.effects
-        if effect.effect_type == EffectId.SCRIPT_CALL and effect.message
-    )
+    xs_source = embedded_xs(evolution_alpha)
     accesses = re.findall(
         r"xs(?:Set)?TriggerVariable\(\s*([^,)]+)",
         xs_source,
@@ -6368,47 +6218,28 @@ def test_full_tech_tree_is_embedded_in_scenario(evolution_alpha):
 
 def test_each_castle_controls_only_its_own_wave_spawn(evolution_alpha):
     """Run the emitted wave function through every combination of surviving Castles."""
-    from ascendants_runtime import xs_source
+    states, created, orders, pulses, selected = {}, [], [], [], {}
 
-    body = xs_source(evolution_alpha).split("void cbaCreateWave", 1)[1].split("void cbaSpawnColor", 1)[0]
-    body = body[body.index("{") + 1:body.rindex("}")]
-    lines = ["def wave(scenarioPlayer, worldPlayer, unitId):"]
-    indent = 1
-    for token in re.split(r"([{};])", body):
-        token = " ".join(token.split())
-        if not token or token == ";":
-            continue
-        if token == "{":
-            indent += 1
-            continue
-        if token == "}":
-            indent -= 1
-            continue
-        token = token.replace("&&", "and").replace("false", "False")
-        if token.startswith("else if ("):
-            token = f"elif {token[9:-1]}:"
-        elif token.startswith("if ("):
-            token = f"if {token[4:-1]}:"
-        else:
-            assert token.startswith(("xsCreateUnit(", "xsSetTriggerVariable(")), token
-        lines.append("    " * indent + token)
-    assert indent == 1
-    states, created = {}, []
-    namespace = {
-        "xsDoesUnitExist": lambda ref: states[ref][0],
-        "xsGetUnitHitpoints": lambda ref: states[ref][1],
-        "xsGetUnitOwner": lambda ref: states[ref][2],
-        "xsCreateUnit": lambda unit, owner, position, *args: created.append((owner, position)),
-        "xsSetTriggerVariable": lambda *args: None,
-        "vector": lambda x, y, z: (x, y),
-    }
-    exec("\n".join(lines), namespace)
+    def create(unit, owner, position, *args):
+        created.append((owner, position))
+        return 90000 + len(created)
+
+    namespace = birth_runtime(
+        evolution_alpha,
+        xsDoesUnitExist=lambda ref: states.get(ref, (True,))[0],
+        xsGetUnitHitpoints=lambda ref: states[ref][1],
+        xsGetUnitOwner=lambda ref: states[ref][2],
+        xsCreateUnit=create, xsSetTriggerVariable=lambda *args: pulses.append(args),
+        xsTriggerVariable=lambda var: 0,
+        xsArraySetInt=lambda array, index, ref: selected.update({index: ref}),
+        xsTaskUnits=lambda *args: orders.append((selected[0], args)), vector=lambda x, y, z: (x, y),
+    )
     for color in range(1, 9):
         castles = [u for u in evolution_alpha.unit_manager.units[color]
                    if u.unit_const == BuildingInfo.CASTLE.ID]
         states.update({u.reference_id: (True, 100, 17) for u in castles})
         created.clear()
-        namespace["wave"](color, 17, 239)
+        namespace["cbaCreateWave"](color, 17, 239)
         assert len(created) == 4
         positions = [p for _, p in created]
         castle_for_position = {p: min(castles, key=lambda u: (u.x-p[0])**2 + (u.y-p[1])**2).reference_id
@@ -6420,8 +6251,20 @@ def test_each_castle_controls_only_its_own_wave_spawn(evolution_alpha):
                 states.update({u.reference_id: (True, 100, 17) if u.reference_id in alive else invalid
                                for u in castles})
                 created.clear()
-                namespace["wave"](color, 17, 239)
+                pulses.clear()
+                orders.clear()
+                namespace["cbaCreateWave"](color, 17, 239)
                 assert created == [(17, p) for p in positions if castle_for_position[p] in alive]
+                assert [ref for ref, _ in orders] == list(range(90001, 90001 + len(alive)))
+                assert pulses == ([(80 + color, 1)] if alive else [])
+        # The Castle can survive while DE refuses creation. No false birth pulse.
+        namespace["xsCreateUnit"] = lambda *args: -1
+        states.update({u.reference_id: (True, 100, 17) for u in castles})
+        pulses.clear()
+        orders.clear()
+        namespace["cbaCreateWave"](color, 17, 239)
+        assert pulses == orders == []
+        namespace["xsCreateUnit"] = create
 
 
 def test_sparse_lobby_sweep_left_no_native_castle_defeat_or_token_conditions(evolution_alpha):
@@ -6479,3 +6322,84 @@ def test_native_player_scoped_conditions_stay_a_declared_inventory(evolution_alp
         "OWN_OBJECTS": 128,  # wall cap warn/wipe
         "DESTROY_OBJECT": 96,  # wall breach
     }
+
+
+
+def test_birth_wrappers_only_order_the_returned_unit_and_use_xs_owners(evolution_alpha):
+    """Execute every serialized birth effect; old pad occupants are never selected."""
+    from ascendants_runtime import birth_descriptors
+
+    variables, selected, creates, tasks = defaultdict(int), {}, [], []
+    next_ref = 200000
+    refuse_creation = False
+
+    def create(unit, owner, location, foundation, sound, collision):
+        nonlocal next_ref
+        creates.append((unit, owner, location, foundation, sound, collision))
+        next_ref += 1
+        return -1 if refuse_creation else next_ref
+
+    def task(array, action, destination, target, shift, formation, unload, patrol):
+        tasks.append((selected[0], action, destination, target, shift, formation, unload, patrol))
+
+    runtime = birth_runtime(
+        evolution_alpha, xsTriggerVariable=lambda var: variables[var],
+        xsCreateUnit=create,
+        # Old unit IDs also exist; the order must still contain only the new ID.
+        xsDoesUnitExist=lambda ref: ref >= 0,
+        xsArraySetInt=lambda array, index, ref: selected.update({index: ref}),
+        xsTaskUnits=task, xsVectorSet=lambda x, y, z: (x, y), vector=lambda x, y, z: (x, y),
+    )
+    descriptors = birth_descriptors(evolution_alpha)
+    assert len(descriptors) == 704
+    seen = Counter()
+    calls = []
+    for trigger in evolution_alpha.trigger_manager.triggers:
+        for effect in trigger.effects:
+            if effect.effect_type == EffectId.SCRIPT_CALL and effect.message in descriptors:
+                calls.append((trigger, effect.message))
+    assert len(calls) == 704 and len({name for _, name in calls}) == 704
+    for _trigger, name in calls:
+        family, color, unit, x, y, disable_sound = descriptors[name]
+        for xs_owner in range(1, 9):
+            variables.update({136 + color: 1000 + xs_owner, 120 + color: 1,
+                              47 + color: 0, 112 + color: 3})
+            creates.clear()
+            tasks.clear()
+            selected[0] = 77777  # A returning unit parked on this spawn pad.
+            runtime[name]()
+            assert creates == [(unit, xs_owner, (x + 0.5, y + 0.5), False, not disable_sound, False)]
+            assert len(tasks) == 1
+            assert tasks[0][0] == next_ref != 77777
+            assert tasks[0][1] == 1 and tasks[0][3:] == (-1, False, False, False, 0)
+            assert tuple(map(int, tasks[0][2])) == birth_destination(
+                evolution_alpha, family, color, 3, unit_id=unit,
+            )
+            seen[family] += 1
+        # Missing/delayed/invalid identity, unused color and elimination all block births.
+        for variable, value in ((136 + color, 0), (136 + color, 1000),
+                                (136 + color, 1009), (120 + color, 0), (47 + color, 1)):
+            original = variables[variable]
+            variables[variable] = value
+            creates.clear()
+            tasks.clear()
+            runtime[name]()
+            assert creates == tasks == []
+            variables[variable] = original
+        if family == "Hero":
+            for level in (0, 6):
+                variables[112 + color] = level
+                creates.clear()
+                tasks.clear()
+                runtime[name]()
+                assert creates == tasks == []
+            variables[112 + color] = 3
+        refuse_creation = True
+        creates.clear()
+        tasks.clear()
+        runtime[name]()
+        assert len(creates) == 1 and tasks == []
+        refuse_creation = False
+    assert seen == {"Hero": 576 * 8, "Builder": 128 * 8}
+    assert "xsTaskUnits" in embedded_xs(evolution_alpha)
+    assert "void xsTaskUnits" not in embedded_xs(evolution_alpha)  # Validator stub must never ship.

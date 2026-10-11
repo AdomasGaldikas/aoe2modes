@@ -35,7 +35,7 @@ test:
 check-ascendants:
 	$(PY) -m pytest tests/test_decompile.py tests/test_evolution_alpha.py
 	$(PY) -m aoe2modes build evolution_alpha
-	$(PY) -m aoe2modes audit "dist/$(shell $(PY) -m aoe2modes info evolution_alpha --output-name).aoe2scenario"
+	$(PY) -m aoe2modes audit "dist/$(shell $(PY) -m aoe2modes info evolution_alpha --output-name).aoe2scenario" --strict
 	$(PY) -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 
 lint:

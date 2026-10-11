@@ -6,7 +6,8 @@ authoritative color-active bit — lives in one XS script. This document describ
 script, how it reaches the trigger graph, and the one identity rule that everything else
 depends on.
 
-Source: `modes/evolution_alpha/build.py::_render_color_spawn_xs`.
+Source: `modes/evolution_alpha/build.py::_render_color_spawn_xs` and
+`modes/evolution_alpha/birth_orders.py`.
 Trigger-side counterpart: [`ascendants-architecture.md`](ascendants-architecture.md).
 
 ## Ascendants generates its XS; it does not bundle it
@@ -149,6 +150,7 @@ All XS globals are arrays created in `main()`:
 
 | Array | Indexed by | Holds |
 | --- | --- | --- |
+| `gCbaBirthOrderUnit` | single element | Reference for the immediate newborn order |
 | `gCbaNextSpawnByColor` | scenario color (size 9) | Game time of that color's next wave |
 | `gCbaUnitByCiv` | civilization id | Unique unit id to spawn |
 | `gCbaCapByCiv` | civilization id | Military population cap |
@@ -184,15 +186,25 @@ civilization it:
 2. on first sight, schedules the first wave at `now + interval` and returns — so nobody
    gets a wave at t=0;
 3. once due, checks `cAttributeMilitaryPopulation - 1` against the cap;
-4. calls `cbaCreateWave`, which creates one unit at each of that color's four pads and
-   **arms the army move pulse**;
+4. calls `cbaCreateWave`, which checks each pad's bound Castle, creates only for
+   surviving owned Castles, and immediately orders each returned unit reference;
+   it arms a bookkeeping pulse only when at least one creation succeeds;
 5. schedules the next wave.
 
 Two details matter. The `- 1` excludes the permanent War Penguin, which is a
 military-class one-population object every live color owns — subtracting it here avoids
 depending on a post-load unit-data mutation that is unreliable after object naming. And
-units are created at **cell centres** (`x + 0.5, y + 0.5`), which is what lets each route
-trigger capture its exact creation cell instead of an ambiguous integer boundary.
+units are created at **cell centres**. Dynamic XS coordinates use `0.5 + x` and
+`0.5 + y`: XS chooses arithmetic result types from the first operand. Movement uses
+a one-element integer array passed to `xsTaskUnits` with Move action 1.
+
+Hero and builder trigger effects call zero-argument wrappers defined after the birth
+helpers in the embedded bundle. The 704 wrappers retain their original unit IDs,
+color-local coordinates and sound settings. Creators additionally wait for token
+1001–1008. The 1,984 former area-based task effects are removed, so an older unit
+on the pad cannot join a new birth's order. Neither helper orders a failed creation.
+The validator-only declaration for the new DE API is never embedded.
+See [DE update 185872](https://www.ageofempires.com/news/age-of-empires-ii-definitive-edition-update-185872/).
 
 An unmapped civilization returns early and silently. That silence is covered by
 `cbaBuilderRewardInfo` below.

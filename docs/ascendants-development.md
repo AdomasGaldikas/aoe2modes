@@ -1,12 +1,12 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero: Ascendants v1.0.1.0**. Engine acceptance is
+`modes/evolution_alpha` builds **CBA Hero 4v4: RA v1.2**. Engine acceptance is
 still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero Ascendants v1.0.1.0.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero 4v4 RA v1.2.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +33,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero Ascendants v1.0.1.0.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA v1.2.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 
@@ -46,7 +46,7 @@ quietly wrong scenario. `aoe2modes audit` then checks the serialized output for 
 references, invalid coordinates, unreachable or unpaced loops, and immediate
 unconditional victory/defeat. See the current release notes for validation results;
 mocked engine reads and structural checks do not establish native lobby behavior.
-Repository Ruff checks and the 624-line embedded XS build also pass.
+Run repository Ruff checks and the embedded XS build for each candidate.
 
 The structural audit cannot see whether a match can be *won*: a permanent deadlock is
 made of individually well-formed triggers. Two liveness tests cover that separately —

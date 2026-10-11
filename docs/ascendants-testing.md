@@ -137,11 +137,18 @@ not a DE garrison or scheduler simulation.
   start reaches every level of its own track and nothing outside it.
 - `uses_independent_sheep_and_penguin_range_sliders` — all 96 slider selectors and the
   704 army/Hero movement mappings.
-- `all_looping_move_orders_consume_one_spawn_pulse` — the one-shot invariant: no looping
-  move order exists that is not gated on a creation pulse it then resets.
+- `all_looping_move_orders_consume_one_spawn_pulse` — no reachable looping native
+  task effect remains. Legacy pulse-reset triggers do not order units.
 - `closest_heroes_share_the_castle_front_line`, `hero_off_discards_a_pending_route`,
   `late_heroes_arm_one_shot_route_orders`,
   `returned_units_are_not_deleted_or_rebuffed_by_rewards`.
+
+`test_birth_wrappers_only_order_the_returned_unit_and_use_xs_owners` executes all
+704 serialized wrappers against independently numbered XS owners, parked old units,
+invalid/delayed tokens, elimination, unused colors, Hero OFF and failed creation.
+Range and geometry tests execute emitted XS to read actual destinations. The Castle
+survival-mask test additionally verifies a failed/empty wave has no movement pulse.
+These mocks do not validate the new engine API or its array-copy timing.
 
 ### Geometry and symmetry
 

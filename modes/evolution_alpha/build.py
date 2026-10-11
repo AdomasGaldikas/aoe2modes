@@ -57,6 +57,7 @@ from aoe2modes.lib.decompile import (
     safe_get,
 )
 
+from .birth_orders import configure_birth_orders, render_birth_orders
 from .runtime_conditions import configure_runtime_conditions
 from .scenario import apply as apply_scenario_source
 from .team_routes import protect_team_routes
@@ -2045,7 +2046,7 @@ def _render_color_spawn_xs(ctx: BuildContext) -> str:
         coordinate_branches.append(f"    {prefix} (scenarioPlayer == {int(scenario_player)}) {{")
         castles = [u for u in ctx.um.units[scenario_player] if u.unit_const == BuildingInfo.CASTLE.ID]
         bound_refs = set()
-        for x, y in points:
+        for slot, (x, y) in enumerate(points):
             castle = min(castles, key=lambda u: (u.x - x) ** 2 + (u.y - y) ** 2)
             ref = castle.reference_id
             if ref in bound_refs:
@@ -2054,7 +2055,10 @@ def _render_color_spawn_xs(ctx: BuildContext) -> str:
             coordinate_branches.extend((
                 f"        if (xsDoesUnitExist({ref}) && xsGetUnitHitpoints({ref}) > 0 && "
                 f"xsGetUnitOwner({ref}) == worldPlayer) {{",
-                f"            xsCreateUnit(unitId, worldPlayer, vector({x}, {y}, -1), false, false, false);",
+                f"            unitRef = xsCreateUnit(unitId, worldPlayer, "
+                f"vector({x}, {y}, -1), false, false, false);",
+                f"            cbaOrderArmyBirth(scenarioPlayer, {slot}, unitRef);",
+                "            if (unitRef >= 0) created = true;",
                 "        }",
             ))
         if len(bound_refs) != 4:
@@ -2070,6 +2074,14 @@ def _render_color_spawn_xs(ctx: BuildContext) -> str:
     score_neutral_lines = "\n".join(
         f"    xsSetPlayerAttribute(worldPlayer, {int(attribute)}, 0);"
         for attribute in SCORE_NEUTRAL_ATTRIBUTES
+    )
+    birth_orders_xs = render_birth_orders(
+        players=PLAYERS, transform=v2_cell_for_player,
+        army_destinations=SOURCE_ARMY_RANGE_DESTINATIONS,
+        hero_destinations=SOURCE_HERO_RANGE_DESTINATIONS,
+        builder_destinations=BUILDER_DESTINATION_POINTS,
+        army_range_base=ARMY_RANGE_VARIABLE_BASE, hero_range_base=HERO_RANGE_VARIABLE_BASE,
+        eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE, occupied_base=COLOR_OCCUPIED_VARIABLE_BASE,
     )
     identity_base = COLOR_XS_VARIABLE_BASE
     return f"""// Sparse-lobby color-aware army spawning.
@@ -2092,8 +2104,13 @@ int cbaWorldPlayerForColor(int scenarioPlayer = 0) {{
     return(worldPlayer);
 }}
 
+{birth_orders_xs}
+
 void cbaCreateWave(int scenarioPlayer = 0, int worldPlayer = 0, int unitId = -1) {{
+    int unitRef = -1;
+    bool created = false;
 {chr(10).join(coordinate_branches)}
+    if (created == false) return;
     xsSetTriggerVariable(
         {ARMY_MOVE_PENDING_VARIABLE_BASE} + scenarioPlayer - 1,
         1
@@ -2241,6 +2258,7 @@ void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
 }}
 
 void main() {{
+    gCbaBirthOrderUnit = xsArrayCreateInt(1, -1, "cbaBirthOrderUnit");
     for (scenarioPlayer = 1; <= 8) {{
         xsSetTriggerVariable({COLOR_CLEANED_VARIABLE_BASE} + scenarioPlayer - 1, 1);
     }}
@@ -5575,6 +5593,9 @@ def build(ctx: BuildContext) -> None:
     )
     _finalize_occupied_slot_gates(ctx)
     _stop_eliminated_color_production(ctx)
+    birth_wrappers = configure_birth_orders(
+        ctx, identity_base=COLOR_XS_VARIABLE_BASE, identity_tag=XS_IDENTITY_TAG_BASE,
+    )
     _retire_obsolete_public_loops(ctx)
     _neutralize_fixed_color_tags(ctx)
     _sanitize_serialized_labels(ctx)
@@ -5601,6 +5622,7 @@ def build(ctx: BuildContext) -> None:
     )
     _assert_variable_ids_are_contiguous(ctx)
     ctx.add_xs(_render_color_spawn_xs(ctx), label="color-aware army spawning")
+    ctx.add_xs(birth_wrappers, label="exact-reference Hero and builder births")
 
     ctx.log(
         f"rebuilt from source — {len(ctx.tm.triggers)} triggers, "

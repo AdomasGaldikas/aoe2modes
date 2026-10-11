@@ -126,9 +126,9 @@ ceilings are raised by one for the same reason.
 The canonical P3 Castle row is x=19 at y=48,52,56,60. Its four wave pads are
 `(22,48)`, `(22,52)`, `(22,55)`, and `(22,59)`. All other colors use the transform
 above. XS creates units at the centres of those cells—canonical
-`(22.5,48.5)`, `(22.5,52.5)`, `(22.5,55.5)`, and `(22.5,59.5)`—and each route
-captures only its exact creation cell. Level 0 therefore moves each new wave one tile
-Castle-ward without allowing a later pulse to reclaim the held wave; levels 1–5 form
+`(22.5,48.5)`, `(22.5,52.5)`, `(22.5,55.5)`, and `(22.5,59.5)`—and each immediate order
+addresses only the reference returned by `xsCreateUnit`. Level 0 therefore moves each new wave one tile
+Castle-ward without selecting any older wave; levels 1–5 form
 a monotonic route toward the central battle. The 32 old two-by-two Hay Stack creation
 markers are removed because their footprints overlapped pads and L0 destinations.
 
@@ -141,15 +141,15 @@ markers are removed because their footprints overlapped pads and L0 destinations
 | 4 | `(38,52)`, `(38,52)`, `(38,54)`, `(38,54)` |
 | 5 | `(43,53)`, `(43,53)`, `(43,54)`, `(43,54)` |
 
-There are 384 mappings: six levels × eight colors × eight possible runtime owners.
-Each requires the exact active color, owner, Sheep level, and one-shot wave pulse. It
-issues four Move effects and resets the pulse last.
+The 384 legacy owner/level triggers now only reset bookkeeping pulses. The emitted
+XS resolves the current Sheep level and gives each surviving Castle's newly created
+unit its own immediate order. It does not scan a pad or wait for a movement tick.
 
 ## Hero creation and destinations
 
 The canonical milestone Hero pad is `(16,38)`; the two additional late-Genghis pads
-are `(15,38)` and `(17,38)`. The Hero mover watches the three-by-three area around the
-middle pad, so one pulse routes whichever current tier has just spawned.
+are `(15,38)` and `(17,38)`. Each Hero creation wrapper orders only its returned
+reference, using the current Penguin level and the independent XS owner token.
 
 | Penguin level | Production | Canonical destination |
 | ---: | --- | --- |
@@ -160,13 +160,13 @@ middle pad, so one pulse routes whichever current tier has just spawned.
 | 4 | ON | `(38,53)` |
 | 5 | ON | `(43,53)` |
 
-There are 320 Hero movement mappings: five active levels × eight colors × eight
-possible runtime owners. Each consumes one Hero pulse after issuing its Move order.
+The 320 legacy Hero movement triggers retain their pulse resets but no task effects.
+The emitted XS has five destinations per color and orders the newborn immediately.
 
 L1 is adjacent to the placed Castle footprints for every color and stays on the
 Army HOLD line. The other four active levels are unchanged. OFF also clears any
-pending Hero order. Creation pulses are not per-unit identity tracking: a returning
-unit sharing a capture pad during a later birth may still be retasked (ASC-037).
+pending Hero pulse. v1.2 removes the capture-pad collision described by ASC-037
+from the source; exact-reference API behavior remains a live acceptance item.
 
 Hero spawning itself requires Penguin level 1 or greater and exactly one current kill
 band: 200–399, 400–599, 600–799, 800–999, 1,000–1,999, 2,000–3,499,

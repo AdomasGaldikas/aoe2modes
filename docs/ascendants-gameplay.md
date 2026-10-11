@@ -115,9 +115,9 @@ Both animals start at level 3.
 - Each newly created group receives exactly **one** automatic move order. After that the
   unit is yours: manual orders you give later are not overridden, including orders that
   walk back across a spawn pad.
-- Known limitation: an *older* unit standing on a spawn pad at the exact moment a new
-  group is born there can still be caught by that group's move order. The system protects
-  orders between births, not unit identity during one.
+- v1.2 addresses each movement order to the ID returned by creation, including
+  Hero and builder rewards. Older pad occupants are not selected. This source
+  correction still needs a new live DE match to confirm engine execution.
 
 ## Heroes
 

@@ -39,8 +39,15 @@ def protect_team_routes(
     labels.new_condition.timer(timer=1)
     labels.new_effect.change_object_name(
         source_player=-1,
-        selected_object_ids=list(_ACCESS_GATES),
+        selected_object_ids=list(_ACCESS_GATES[:4]),
         message="Allied route - enemy units removed",
+    )
+    # The eight corner entrances are also the intentionally deletable wall
+    # switches. A generic route label concealed that gameplay action in v1.1.
+    labels.new_effect.change_object_name(
+        source_player=-1,
+        selected_object_ids=list(_ACCESS_GATES[4:]),
+        message="Side-wall switch - DELETE opens walls",
     )
     for color in PlayerId.all(exclude_gaia=True):
         enemy_routes = _BOTTOM_ROUTES if int(color) <= 4 else _TOP_ROUTES

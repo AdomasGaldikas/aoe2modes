@@ -257,3 +257,14 @@ it is telling you an assumption moved — fix the cause, do not relax the assert
 - **Touching player identity?** Read the identity rule in
   [`ascendants-xs-runtime.md`](ascendants-xs-runtime.md) first.
 - **Then run** the commands in [`ascendants-testing.md`](ascendants-testing.md).
+
+
+## v1.2 exact-reference birth pass
+
+`configure_birth_orders` runs after geometry, Hero/builder and elimination passes,
+before compaction. It converts 704 Hero/builder create effects to zero-argument XS
+calls, gates those producers on a valid ownership token, and removes 1,984 task
+effects from the old army/Hero/builder movers. Those movers retain their variable
+resets for compatibility. Generated wrapper definitions are appended after their
+helpers so XS declaration ordering remains valid. Castle waves use the same order
+helper directly. No trigger-selector value is passed to an XS player API.

@@ -1,9 +1,10 @@
-# Ascendants v1.0.1.0 issue register
+# CBA Hero 4v4: RA v1.2 issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **v1.0.1.0** is the current correction. v1.0.20 also failed live sparse-lobby
-acceptance; v1.0.1.0 initialized P1/P3/P5/P8 and displayed only participating rows.
+repair targets. **RA v1.2** is the current source-validated candidate. The historical
+v1.0.20 failed live sparse-lobby acceptance; v1.0.1.0 initialized P1/P3/P5/P8
+and displayed only participating rows.
 Broader engine acceptance remains separate from automated checks.
 
 The baseline file is 99,694 bytes with SHA-256
@@ -13,7 +14,8 @@ The failed v1.0.18 candidate was 161,074 bytes with SHA-256
 The failed v1.0.19 candidate was 161,657 bytes with SHA-256
 `ec4c03df92588582e5c5984e1befdd9d18b289b4553c9a4b86503a098c3991a0`;
 142 tests and the warning-free strict audit passed, but did not catch the live failure.
-See v1.0.1.0 release notes for the current detection path and live validation.
+See v1.0.1.0 release notes for the validated detection path and
+[v1.2 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.2.md) for the current candidate.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
@@ -62,7 +64,7 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-034 | OFF retains a pending Hero move | OFF clears pending movement and production level. ON alone cannot restore the pulse. | OFF just after birth, then ON. |
 | ASC-035 | Goth Imperial/Barracks race | Both Anarchy activation and removal require Imperial Age to be unresearched; all 128 triggers checked. | Research Imperial with Barracks present. |
 | ASC-036 | Combat can delete vote Outposts | All 24 markers protected against attacks, initially and across owner mappings. Owner Delete remains available. | Attack markers, then intentionally delete to vote. |
-| ASC-037 | New birth can retask an older unit on its capture pad | **Open.** One-shot pulses prevent retasking between births, not while another birth occurs. This qualifies ASC-015/019/022/023 and historical claims of complete manual-order safety. Experimental per-unit tracking is not shipped without engine validation. | Return/park old army, Hero, and builder units on pads while new units spawn. |
+| ASC-037 | New birth can retask an older unit on its capture pad | **Source corrected in RA v1.2; live acceptance pending.** Births use the exact returned creation reference and `xsTaskUnits`; 1,984 area tasks are removed. Serialized tests cover all 704 Hero/builder wrappers, independent XS owners, old pad occupants and failed creation. This qualifies historical claims for ASC-015/019/022/023. The new engine API has not been validated live. | Return/park old army, Hero, and builder units on pads while new units spawn. |
 | ASC-038 | Closest Heroes must be directly in front of Castles | All 64 L1 mappings target canonical `(21,54)`, on the Army HOLD line. Actual Castle footprints and bounded tile connectivity checked for all eight orientations. OFF and L2–L5 unchanged. | First Penguin ON position at every tier, all eight colors; confirm units gather just in front of their own Castles. |
 
 The 50-second Scorpion reward cleanup is intentional and unchanged. Both ordinary
@@ -255,3 +257,20 @@ cases are recorded in-game.
 For a failure, record the exact selected colors, runtime player numbers, civilizations,
 game time, action, observed result, and expected result. That is enough to turn most
 engine reports into a focused parser-backed regression test.
+
+
+## RA v1.2 audit additions
+
+See [audit plan and evidence](ra-audit-plan.md) for the inspected subsystems,
+field-by-field preservation check and engine acceptance boundaries.
+
+| ID | Finding | Source status | Required game check |
+| --- | --- | --- | --- |
+| ASC-054 | Eight Delete switches mislabeled as generic allied-route gates | Corrected: labels distinguish four permanent gates from eight wall-breach switches. References independently checked against breach conditions. | Inspect switch labels and delete each color's switch; permanent barriers remain. |
+| ASC-055 | Empty or failed wave arms a movement pulse | Corrected: at least one successful creation is required. Every Castle survival mask, wrong/dead/missing owner reference and all-create-failure case covered. | Raze every Castle as a wave is due; confirm no late movement/production. |
+| ASC-056 | Release audit accepts warnings | Corrected: `make check-ascendants` includes `--strict`. Candidate has zero errors/warnings. | None; tooling. |
+
+Pre-latch resignation remains a startup acceptance question. The detector waits
+three seconds and tests assume an owner is observed before departure. A probe must
+separate an already-resigned participant from a closed slot with leftover Castles
+before changing admission. No DE failure from this timing is claimed here.

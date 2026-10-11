@@ -1,8 +1,10 @@
-# CBA Hero 4v4: RA v1.1
+# CBA Hero 4v4: RA v1.2
 
-RA v1.1 widens the six allied routes, removes enemy intruders from those routes,
-and labels the access gates. Route protection survives the loss of a teammate.
-See [v1.1 notes](RELEASE_NOTES_v1.1.md) for scope and validation.
+RA v1.2 orders each new army, Hero and builder by its creation reference, preserves
+older units' manual orders during new births, and distinguishes deletable side-wall
+switches from permanent allied gates. It also suppresses movement pulses when no
+unit is created. See [v1.2 notes](RELEASE_NOTES_v1.2.md) and the
+[audit](../../docs/ra-audit-plan.md) for evidence and live-game acceptance gaps.
 
 RA is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
@@ -27,16 +29,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.1 |
+| Metric | v1.2 |
 | --- | ---: |
 | Triggers | 3,968 (3,508 initially enabled) |
-| Conditions | 17,698 |
-| Effects | 15,905 |
+| Conditions | 18,978 |
+| Effects | 13,922 |
 | Units | 956 |
 | Runtime variables | 145 (ids 0–144) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero 4v4 RA v1.1.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero 4v4 RA v1.2.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -65,14 +67,18 @@ every dry track tile belongs to one of its controller's six levels. The protecte
 Penguin's one real population slot is excluded from custom gameplay ceilings; the
 scenario cap is 251 to preserve 250 ordinary gameplay slots.
 
-The sliders latch color-local variables; they do not continuously order existing
-units. A creation pulse is armed only after a Castle wave, Hero, or builder pair is
-created. Exactly one owner-correct movement trigger consumes that pulse. Returning units keep orders between births; an old unit sharing the capture pad
-during a later birth can still be retasked (open issue ASC-037).
+The sliders latch color-local variables. XS passes only the reference returned by
+`xsCreateUnit` to `xsTaskUnits`, immediately after that birth, using the selected
+range's destination. An older unit returning to the pad is never added to that order.
+Hero and builder effects use zero-argument wrappers in the embedded XS bundle and
+wait for a valid XS ownership token. Native selector numbers are not passed to XS
+player APIs. Legacy pulse/reset variables remain as bookkeeping; their triggers no
+longer contain movement effects.
 
-Army waves are created at transformed cell centres and selected only on that exact
-cell. The 32 decorative Hay Stack creates are removed: their two-by-two footprints had
-overlapped 16 wave pads and eight level-0 destinations despite separate anchor points.
+Army waves are created at transformed cell centres. The 32 decorative Hay Stack
+creates are removed: their two-by-two footprints had overlapped 16 wave pads and
+eight level-0 destinations despite separate anchor points. v1.2 requires DE update
+185872 or newer; its exact-reference task API still requires live DE acceptance.
 
 The exact lane rectangles, level variables, spawn pads, and destinations are recorded
 in [`../../docs/ascendants-control-map.md`](../../docs/ascendants-control-map.md).
@@ -193,12 +199,12 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero 4v4 RA v1.1.aoe2scenario" --strict
+  "dist/CBA Hero 4v4 RA v1.2.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```
 
-The RA v1.1 build passes XS lint and a strict structural audit with zero errors
+The RA v1.2 build passes XS lint and a strict structural audit with zero errors
 and zero warnings. Automated regression coverage includes the six allied links,
 eight-tile route sections, all 64 intruder owner mappings, gate labels, and guards
 that persist with inactive protected endpoints.
@@ -217,4 +223,4 @@ scheduling. The remaining in-game acceptance cases are tracked in
 Older candidates are retained only as investigation history in `RELEASE_NOTES_v*.md`.
 They are not alternative repair targets. See
 [`RELEASE_NOTES_v1.0.18.md`](RELEASE_NOTES_v1.0.18.md) for the historical wall/cleanup change set. Current changes are in
-[`RELEASE_NOTES_v1.1.md`](RELEASE_NOTES_v1.1.md).
+[`RELEASE_NOTES_v1.2.md`](RELEASE_NOTES_v1.2.md).
