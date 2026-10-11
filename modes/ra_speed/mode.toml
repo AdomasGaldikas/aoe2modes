@@ -1,0 +1,45 @@
+[mode]
+id = "ra_speed"
+name = "CBA Hero 4v4: RA Speed"
+version = "0.1.0"
+description = "Normal RA map and rules with a bounded teammate-loss Speed Rush: 2x movement and 3x fire rate for five minutes after the fifteen-minute warm-up."
+authors = []
+tags = ["cba", "hero", "arena", "4v4", "speed"]
+
+[scenario]
+# Ascendants is code-defined: no `base` and no `reference`. The Python under
+# scenario/ plus build.py IS the scenario, and dist/*.aoe2scenario is its build
+# product. There is nothing to decompile from and nothing to verify back against,
+# so `aoe2modes verify`/`decompile` do not apply to this mode. The structural
+# check is `aoe2modes audit` on the built file — see docs/ascendants-development.md.
+version = "1.58"
+filename = "CBA Hero 4v4 RA Speed v{version}"
+
+# Applied before build.py, then overridden by scenario/setup.py. Kept in sync so
+# `aoe2modes info` tells the truth about the mode.
+[map]
+size = 144
+terrain = "GRASS_1"
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "FEUDAL_AGE"
+# Runtime selection is 200/250/300/500; one Penguin slot is reserved above the chosen limit.
+population_cap = 501
+
+# Empty on purpose, and `aoe2modes info` will show no XS for this mode. Ascendants
+# does not bundle .xs files from disk: build.py generates its whole XS runtime inline
+# (`_render_color_spawn_xs`) and hands it to the builder via ctx.add_xs, because the
+# civ/spawn tables that drive it are Python data. The build still lints it with
+# xs-check like any other mode.
+[xs]
+include = []
+scripts = []
+
+
+[speed_rush]
+delay_seconds = 900
+duration_seconds = 300
+movement_multiplier = 2.0
+fire_rate_multiplier = 3.0

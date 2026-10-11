@@ -1,12 +1,13 @@
 # Ascendants development
 
-`modes/evolution_alpha` builds **CBA Hero 4v4: RA v1.4**. Engine acceptance is
-still a separate step from anything described here.
+`modes/evolution_alpha` builds the **CBA Hero 4v4: RA v1.5 candidate**. Its current
+to-do list and release gates are in [ra-audit-plan.md](ra-audit-plan.md).
+Engine acceptance is still a separate step from anything described here.
 
 ## Ascendants is code-defined
 
 **The Python is the scenario.** There is no `scenario.base` and no
-`scenario.reference`, and `dist/CBA Hero 4v4 RA v1.4.aoe2scenario` is a build
+`scenario.reference`, and `dist/CBA Hero 4v4 RA v1.5.aoe2scenario` is a build
 product, not an input. `aoe2modes verify` and `aoe2modes decompile` do not apply to
 this mode — `decompile --mode evolution_alpha` refuses to run because the mode has no
 binary base or reference.
@@ -33,7 +34,7 @@ v1.0.9 removed the reference, the stale binary, and the claim.
 .venv/bin/pytest -q tests/test_evolution_alpha.py
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA v1.4.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA v1.5.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha --html dist/ascendants-map.html
 ```
 

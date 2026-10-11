@@ -1,4 +1,10 @@
-# CBA Hero 4v4: RA v1.4
+# CBA Hero 4v4: RA v1.5
+
+This is an unpublished candidate. The HUD headings now use lowercase letters and
+normal row-sized text. Lobby population selection and fresh-game load, spawning,
+and HUD alignment checks remain on the [current to-do list](../../docs/ra-audit-plan.md).
+The v1.4 behavior described below is the starting point, not a claim those outstanding
+requests have been completed.
 
 RA v1.4 silences recurring Hero creation cues, doubles the main allied route
 spans to 16 tiles, kills enemies entering opposing protected routes, and adds
@@ -42,7 +48,7 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.4 |
+| Metric | v1.5 candidate |
 | --- | ---: |
 | Triggers | 4,443 (3,903 initially enabled) |
 | Conditions | 22,828 |
@@ -51,7 +57,7 @@ This file is the release summary. The reference documentation lives in `docs/`:
 | Runtime variables | 153 (ids 0–152) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero 4v4 RA v1.4.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero 4v4 RA v1.5.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -226,7 +232,7 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero 4v4 RA v1.4.aoe2scenario" --strict
+  "dist/CBA Hero 4v4 RA v1.5.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```

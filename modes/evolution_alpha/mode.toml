@@ -1,8 +1,8 @@
 [mode]
 id = "evolution_alpha"
 name = "CBA Hero 4v4: RA"
-version = "1.4"
-description = "A complete CBA Hero arena with independent Castle-army and Hero spawn sliders, six hero tiers, free development, protected team routes, live K/D/R and compact one-use Scorpion Backup status, center rewards, and team vote-kicks."
+version = "1.5"
+description = "A complete CBA Hero arena with independent Castle-army and Hero spawn sliders, thirteen Hero tiers, free development, protected team routes, live K/D/R and compact one-use Scorpion Backup status, center rewards, and team vote-kicks."
 authors = []
 tags = ["cba", "hero", "arena", "4v4"]
 

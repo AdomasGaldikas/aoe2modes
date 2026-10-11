@@ -48,3 +48,12 @@ clean:
 	rm -rf dist
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
 	rm -rf .pytest_cache .ruff_cache
+
+# Normal and Speed candidates share gameplay code; validate both before publishing.
+.PHONY: check-ra-speed
+check-ra-speed:
+	$(PY) -m pytest tests/test_evolution_alpha.py tests/test_ra_speed.py
+	$(PY) -m ruff check modes/evolution_alpha modes/ra_speed tests/test_ra_speed.py tests/test_evolution_alpha.py
+	$(PY) -m aoe2modes build evolution_alpha ra_speed
+	$(PY) -m aoe2modes audit "dist/$(shell $(PY) -m aoe2modes info evolution_alpha --output-name).aoe2scenario" --strict
+	$(PY) -m aoe2modes audit "dist/$(shell $(PY) -m aoe2modes info ra_speed --output-name).aoe2scenario" --strict

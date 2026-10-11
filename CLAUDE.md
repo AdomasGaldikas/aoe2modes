@@ -32,6 +32,16 @@ Setup lives in the `Makefile`; the CLI is `aoe2modes` (module: `python -m aoe2mo
 
 Python 3.11+ is required (uses `tomllib`).
 
+## RA release checks
+
+For `evolution_alpha` and its independent `ra_speed` variant, give changed release
+artifacts a new version unless the user explicitly requests otherwise. Run tests, Ruff, a build with embedded XS
+validation, and a strict audit of the written scenario before publishing. Fix
+failed checks before release. For reported game loading, startup, spawning, or
+HUD problems, also verify a fresh DE match; automated checks alone do not count
+as live acceptance. Keep unfinished checks in `docs/ra-audit-plan.md`, and do not
+publish the candidate while the reported failures remain unresolved.
+
 ## Architecture: how a build actually happens
 
 The pipeline is defined in `src/aoe2modes/builder.py::build_mode`. Reading that function top-to-bottom is the fastest way to understand the whole system:

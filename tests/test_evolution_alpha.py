@@ -1799,8 +1799,8 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
     assert header.enabled
     assert header.display_on_screen
     assert not header.display_as_objective
-    assert header.header
-    assert header.short_description == "P# | K | D | R | B"
+    assert not header.header
+    assert header.short_description == "p# | k | d | r | b"
     assert header.description_order == 19
 
     divider = next(
@@ -1818,10 +1818,11 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
         )
         assert not live.enabled
         assert live.display_on_screen and not live.display_as_objective
+        assert not live.header
         expected_order = 19 - player if player <= 4 else 18 - player
         assert live.description_order == expected_order
         assert live.short_description == (
-            f"P{player} | <p{player}k> | <p{player}d> | <p{player}r> | <p{player}backup>"
+            f"p{player} | <p{player}k> | <p{player}d> | <p{player}r> | <p{player}backup>"
         )
         assert len(live.conditions) == 1
         assert live.conditions[0].condition_type == ConditionId.PLAYER_DEFEATED
@@ -6529,8 +6530,9 @@ def test_scorpion_backup_state_and_hud_follow_serialized_lifetime(evolution_alph
                            for other in range(1, 9) if other != color)
                 active_row = by_name[f"Combat HUD Backup Active P{color}"]
                 assert active_row.short_description == (
-                    f"P{color} | <p{color}k> | <p{color}d> | <p{color}r> | A"
+                    f"p{color} | <p{color}k> | <p{color}d> | <p{color}r> | A"
                 )
+                assert not active_row.header
                 assert active_row.description_order == by_name[f"Combat HUD Live P{color}"].description_order
 
 

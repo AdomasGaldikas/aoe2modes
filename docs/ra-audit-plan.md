@@ -6,6 +6,58 @@ Goal: audit the maintained RA source and serialized scenario, fix confirmed logi
 and map-design defects, validate the changes, and push a reproducible candidate.
 Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
+## Current to-do list
+
+- [x] Use lowercase `p# | k | d | r | b` HUD headings at the same text size as
+  player rows, instead of the large bold objective-header style. Numeric and active
+  rows now explicitly disable header styling and use matching lowercase `p#` tags.
+- [ ] Check heading and player-row column alignment in a fresh DE match, including
+  multi-digit kills/deaths/razings and backup states `1`, `A`, and `0`. The native
+  objectives font has proportional widths; lowercase text alone does not guarantee
+  fixed-width columns.
+- [ ] Replace the north-island in-game population chooser with a lobby selection
+  that applies the same limit to every player. Verify how custom scenarios can
+  consume the lobby setting before choosing an implementation.
+- [ ] Resolve the reported load/startup and missing-spawn failures in a fresh
+  match; verify occupied-player HUD rows appear as well as the headings.
+- [ ] Finish and validate the v1.5 candidate. Run tests, lint, embedded XS validation,
+  and strict serialized audit before publishing; also complete fresh-game acceptance
+  for the reported load/spawn/UI problems. An active match with human players must
+  not be interrupted for testing.
+
+The completed v1.2 audit below is historical evidence, not acceptance of the
+current candidate. Current engine checks remain open until actually observed.
+
+2026-10-11 candidate checks: all 168 repository tests passed in 492.89 seconds,
+including 98 normal RA checks and 10 Speed checks. Repository Ruff and
+`git diff --check` passed. Both builds validated their embedded XS, and both
+written files passed strict audit with zero errors/warnings. The Speed tests
+execute the emitted state machine and compare the serialized normal/Speed map,
+units, players and ordinary gameplay triggers. These results do not establish
+live DE acceptance. The active human match was preserved.
+
+Candidate files and SHA-256:
+
+- `dist/CBA Hero 4v4 RA v1.5.aoe2scenario` —
+  `c2f44b1d2b327f5f230afc02489d50eb910e74353d553a5999c15c9234f1024a`.
+- `dist/CBA Hero 4v4 RA Speed v0.1.0.aoe2scenario` —
+  `670e127b426616964db34d8c72e98f9d3bcb4ca40ed2e1c4658af91f48e6808e`.
+
+These candidates are saved locally, not installed over the open match or
+publicly published. The lobby-population replacement and fresh-game acceptance
+items above remain open.
+
+## Separate Speed candidate
+
+- [x] Add `ra_speed` (CBA Hero 4v4: RA Speed v0.1.0) using the maintained normal
+  RA builder, map and hero roster; keep the normal artifact independent.
+- [x] Implement a 900-second warm-up and 300-second teammate-loss rush: 2x
+  movement and 3x fire rate, with independent teams, refresh without stacking,
+  no closed-slot/early-loss payout, and visible remaining seconds.
+- [x] Finish automated parity/runtime tests, XS build and strict audit.
+- [ ] Complete fresh DE acceptance before public publishing; the user's current
+  human match remains open as requested. See `modes/ra_speed/README.md` for coverage.
+
 ## Plan and completion
 
 1. **Done — identity and match resolution.** Reviewed the 145-variable allocation,

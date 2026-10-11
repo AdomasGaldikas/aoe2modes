@@ -1129,11 +1129,11 @@ def _configure_combat_hud_header(trigger) -> None:
     """Use DE's native right-side objective list without adding a full objective."""
     _reset_trigger(trigger)
     trigger.name = "Combat HUD Header"
-    trigger.short_description = "P# | K | D | R | B"
+    trigger.short_description = "p# | k | d | r | b"
     trigger.display_on_screen = 1
     trigger.description_order = 19
     trigger.enabled = 1
-    trigger.header = 1
+    trigger.header = 0
     trigger.mute_objectives = 1
     trigger.new_condition.player_defeated(source_player=PlayerId.GAIA)
 
@@ -5104,13 +5104,14 @@ def _add_sparse_lobby_scoreboard(
             f"Combat HUD Live P{player_number}",
             description_stid=0,
             short_description=(
-                f"P{player_number} | <{kills_name}> | "
+                f"p{player_number} | <{kills_name}> | "
                 f"<{deaths_name}> | <{razings_name}>"
             ),
             short_description_stid=0,
             display_on_screen=1,
             description_order=display_order,
             enabled=0,
+            header=0,
             mute_objectives=1,
         )
         live.new_condition.player_defeated(source_player=PlayerId.GAIA)

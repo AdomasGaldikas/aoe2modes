@@ -37,7 +37,7 @@ def configure_backup_hud(ctx, *, occupied_base, eliminated_base):
             description_stid=0, short_description_stid=0,
             short_description=numeric.short_description.replace(f"<p{color}backup>", "A"),
             display_on_screen=1, description_order=numeric.description_order,
-            enabled=0, mute_objectives=1,
+            enabled=0, header=0, mute_objectives=1,
         )
         active.new_condition.player_defeated(source_player=PlayerId.GAIA)
         syncs = []
