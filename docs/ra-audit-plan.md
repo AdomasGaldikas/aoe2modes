@@ -43,9 +43,13 @@ Candidate files and SHA-256:
 - `dist/CBA Hero 4v4 RA Speed v0.1.0.aoe2scenario` —
   `670e127b426616964db34d8c72e98f9d3bcb4ca40ed2e1c4658af91f48e6808e`.
 
-These candidates are saved locally, not installed over the open match or
-publicly published. The lobby-population replacement and fresh-game acceptance
-items above remain open.
+On 2026-10-11 the user explicitly requested installing both candidates and
+pushing both to GitHub. Both exact files were installed in the active DE profile's
+scenario folder and their hashes verified. Downloadable copies and `SHA256SUMS`
+are tracked under `releases/ra-candidates`; the source and files are delivered on
+GitHub main. The open human match was preserved. No Steam/AoE mod listing was
+updated. The lobby-population replacement and fresh-game acceptance items above
+remain open; installation and GitHub delivery do not establish live acceptance.
 
 ## Separate Speed candidate
 

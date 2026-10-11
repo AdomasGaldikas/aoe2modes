@@ -1,6 +1,8 @@
 # CBA Hero 4v4: RA v1.5
 
-This is an unpublished candidate. The HUD headings now use lowercase letters and
+This is a candidate installed locally and delivered on GitHub at the user's request.
+The downloadable normal and Speed files are in
+[`releases/ra-candidates`](../../releases/ra-candidates/). Fresh DE acceptance is pending. The HUD headings now use lowercase letters and
 normal row-sized text. Lobby population selection and fresh-game load, spawning,
 and HUD alignment checks remain on the [current to-do list](../../docs/ra-audit-plan.md).
 The v1.4 behavior described below is the starting point, not a claim those outstanding

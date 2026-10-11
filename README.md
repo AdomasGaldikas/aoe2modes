@@ -33,6 +33,9 @@ Seven modes ship with the repo, illustrating both authoring styles:
 | [`chieftains_4v4`](modes/chieftains_4v4/) | decompiled | Big_Ytri's published Chieftains 2026 4v4 (workshop `469500`) — Royal 4v4 plus the Chieftains/Greece/Three Kingdoms DLC blocks and a team vote-kick. 3184 triggers, 1171 units; `verify` compares 117,824 fields. |
 | [`chieftains_ffa`](modes/chieftains_ffa/) | decompiled | The free-for-all cut of the same 2026 release (workshop `469501`): all-enemy diplomacy, no vote-kick. 3151 triggers, 1059 units; `verify` compares 115,299 fields. |
 
+Download the current normal and Speed scenario candidates from
+[`releases/ra-candidates`](releases/ra-candidates/). Their fresh DE checks remain pending.
+
 Three authoring styles are supported:
 
 - **Blank build** — the mode's `build.py` generates the whole scenario from scratch, using helpers in `src/aoe2modes/lib/`. Diffable end-to-end. (`cba_hero`, `cba_hero_duel`)

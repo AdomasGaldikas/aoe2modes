@@ -1,6 +1,6 @@
 # CBA Hero 4v4: RA Speed v0.1.0
 
-An independent, unpublished Speed candidate built from the maintained normal RA
+An independent Speed candidate built from the maintained normal RA
 map and rules. It does not import Zalabatta's scenario or trigger graph. Normal RA
 remains `evolution_alpha`; this mode is `ra_speed` with a separate filename/version.
 
@@ -46,4 +46,7 @@ modifications, upgrades during a rush, conversions, save/reload, full expiry and
 HUD countdowns in a fresh private match. Reciprocal factors preserve multiplicative
 technology upgrades; additive changes during the window require an engine check.
 The user requested keeping the current human match open, so it was not interrupted.
-This candidate is not publicly published or installed over the current game copy.
+The user subsequently requested installing both candidates and delivering them
+on GitHub. Both hash-verified files are installed locally and available under
+[`releases/ra-candidates`](../../releases/ra-candidates/). No Steam/AoE mod listing
+was updated, and the fresh-game checks above remain pending.
