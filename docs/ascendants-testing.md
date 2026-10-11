@@ -70,7 +70,7 @@ warns; when one fires, an assumption moved and the fix belongs at the cause.
 
 | Assertion | What moved if it fires |
 | --- | --- |
-| `_assert_variable_ids_are_contiguous` | A variable block collided, duplicated or left a hole in ids 0–144 |
+| `_assert_variable_ids_are_contiguous` | A variable block collided, duplicated or left a hole in ids 0–152 |
 | `_validate_army_spawn_geometry` | A color's four wave pads are unsafe, duplicated, or nearest the wrong Castle |
 | `_unique_trigger(ctx, name)` | An inherited trigger was renamed, duplicated or removed upstream |
 | Exact family counts | e.g. exactly 40 legacy late-hero triggers, exactly two legacy rename triggers, one Blacksmith condition per color |

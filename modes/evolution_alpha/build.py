@@ -60,6 +60,13 @@ from aoe2modes.lib.decompile import (
 from .birth_orders import configure_birth_orders, render_birth_orders
 from .runtime_conditions import configure_runtime_conditions
 from .scenario import apply as apply_scenario_source
+from .scorpion_backup import (
+    BACKUP_ACTIVE,
+    BACKUP_AVAILABLE,
+    BACKUP_SPENT,
+    BACKUP_VARIABLE_BASE,
+    configure_backup_hud,
+)
 from .team_routes import protect_team_routes
 from .v2_map import apply_v2_map, v2_cell_for_player, v2_position_for_player
 
@@ -625,6 +632,10 @@ PUBLIC_INSTRUCTIONS = (
     "side, and closed slots never count as votes.\r\r"
     "COMBAT HUD\r"
     "The right-side Kills / Deaths / Razings list shows live combat totals for P1 through P8. "
+    "B = Scorpion Backup: 1 available, A active, 0 used.\r\r"
+    "SCORPION BACKUP\r"
+    "Move your Skorpion King to the marked side island to call six Scorpions for "
+    "50 seconds. Each player can use this backup once.\r\r"
     "Resources stay "
     "at zero; available units, buildings, upgrades, and repairs are free.\r\r"
     "HERO MILESTONES\r"
@@ -1040,9 +1051,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 3_967:
+    if len(ctx.tm.triggers) != 4_056:
         raise RuntimeError(
-            f"expected 3,967 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 4,056 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -1099,7 +1110,7 @@ def _configure_combat_hud_header(trigger) -> None:
     """Use DE's native right-side objective list without adding a full objective."""
     _reset_trigger(trigger)
     trigger.name = "Combat HUD Header"
-    trigger.short_description = "P# | K | D | R"
+    trigger.short_description = "P# | K | D | R | B"
     trigger.display_on_screen = 1
     trigger.description_order = 19
     trigger.enabled = 1
@@ -3680,23 +3691,22 @@ def _configure_sparse_king_islands(
     legacy_cleanup.name = "Legacy Shared King Cleanup Disabled"
 
     cleanups = {}
-    for world_player in PLAYERS:
-        cleanup = ctx.tm.add_trigger(
-            f"King Island Cleanup W{int(world_player)}",
-            description_stid=0,
-            short_description_stid=0,
-            enabled=0,
-        )
-        cleanup.new_condition.timer(timer=50)
-        cleanup.new_effect.remove_object(
-            object_list_unit_id=UnitInfo.SCORPION.ID,
-            source_player=world_player,
-            area_x1=0,
-            area_y1=0,
-            area_x2=143,
-            area_y2=143,
-        )
-        cleanups[world_player] = cleanup
+    for color in PLAYERS:
+        for world_player in PLAYERS:
+            cleanup = ctx.tm.add_trigger(
+                f"King Island Cleanup S{int(color)} W{int(world_player)}",
+                description_stid=0, short_description_stid=0, enabled=0,
+            )
+            cleanup.new_condition.timer(timer=50)
+            cleanup.new_effect.remove_object(
+                object_list_unit_id=UnitInfo.SCORPION.ID, source_player=world_player,
+                area_x1=0, area_y1=0, area_x2=143, area_y2=143,
+            )
+            cleanup.new_effect.change_variable(
+                variable=BACKUP_VARIABLE_BASE + int(color) - 1,
+                quantity=BACKUP_SPENT, operation=Operation.SET,
+            )
+            cleanups[color, world_player] = cleanup
 
     templates = {
         color: deepcopy(_unique_trigger(ctx, f"P{int(color)} King"))
@@ -3748,8 +3758,16 @@ def _configure_sparse_king_islands(
                 variable=world_variables[color],
                 comparison=Comparison.EQUAL,
             )
+            trigger.new_condition.variable_value(
+                quantity=BACKUP_AVAILABLE, variable=BACKUP_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            trigger.new_effect.change_variable(
+                variable=BACKUP_VARIABLE_BASE + int(color) - 1,
+                quantity=BACKUP_ACTIVE, operation=Operation.SET,
+            )
             trigger.new_effect.activate_trigger(
-                trigger_id=cleanups[world_player].trigger_id
+                trigger_id=cleanups[color, world_player].trigger_id
             )
             for source_effect in templates[color].effects:
                 if source_effect.effect_type == EffectId.ACTIVATE_TRIGGER:
@@ -3759,7 +3777,7 @@ def _configure_sparse_king_islands(
                 )
                 if effect.effect_type == EffectId.DISPLAY_INSTRUCTIONS:
                     effect.message = (
-                        f"P{int(color)} claimed the side island."
+                        f"P{int(color)} called Scorpion Backup! Active for 50 seconds."
                     )
                 if (
                     effect.effect_type == EffectId.CHANGE_OBJECT_HP
@@ -5592,6 +5610,10 @@ def build(ctx: BuildContext) -> None:
         match_ready_variable,
     )
     _finalize_occupied_slot_gates(ctx)
+    configure_backup_hud(
+        ctx, occupied_base=COLOR_OCCUPIED_VARIABLE_BASE,
+        eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE,
+    )
     _stop_eliminated_color_production(ctx)
     birth_wrappers = configure_birth_orders(
         ctx, identity_base=COLOR_XS_VARIABLE_BASE, identity_tag=XS_IDENTITY_TAG_BASE,

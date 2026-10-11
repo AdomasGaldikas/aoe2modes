@@ -11,9 +11,9 @@ that consume them sit).
 
 ## Trigger-variable registry
 
-145 variables, ids **0–144**, contiguous with no holes. Every block is declared once as a
-`*_VARIABLE_BASE` constant and read by both the Python trigger code and the generated XS,
-so the two sides cannot drift apart.
+153 variables, ids **0–152**, contiguous with no holes. Each block has one named
+base constant. Blocks used by XS are substituted from the Python constants; the
+backup block is native-only.
 
 | Ids | Constant | Count | Meaning | Written by |
 | --- | --- | ---: | --- | --- |
@@ -32,6 +32,7 @@ so the two sides cannot drift apart.
 | 121–128 | `COLOR_OCCUPIED_VARIABLE_BASE` | 8 | Color has participated; survives elimination | XS-guarded Castle-owner detector, latched |
 | 129–136 | `COLOR_CLEANED_VARIABLE_BASE` | 8 | Empty slot or confirmed removal of all defeated owner's objects | XS initializes; owner detector resets; cleanup confirms |
 | 137–144 | `COLOR_XS_VARIABLE_BASE` | 8 | XS API index plus 1000, copied from reserved resource 10 | Native owner-resolved identity bridge |
+| 145–152 | `BACKUP_VARIABLE_BASE` | 8 | Scorpion Backup: 1 available, 2 active (HUD A), 0 spent | Native initialization, King activation, timed cleanup and elimination |
 
 Colour-indexed blocks are addressed as `BASE + scenario_color - 1`. The combat block is
 `BASE + (color - 1) * COMBAT_ROW_VARIABLE_STRIDE`, then `+0` kills, `+1` deaths,

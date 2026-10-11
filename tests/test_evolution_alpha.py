@@ -229,7 +229,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 3_968
+    assert len(triggers) == 4_057
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 956
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -825,6 +825,7 @@ def test_evolution_alpha_kings_use_symmetric_island_destinations(evolution_alpha
                 (31 + int(player), 1, Comparison.EQUAL),
                 (39 + int(player), world_player, Comparison.EQUAL),
                 (47 + int(player), 0, Comparison.EQUAL),
+                (144 + int(player), 1, Comparison.EQUAL),
             }
 
 
@@ -906,7 +907,7 @@ def test_evolution_alpha_king_cannons_use_symmetric_ground_positions(evolution_a
                 if effect.effect_type == EffectId.ACTIVATE_TRIGGER
             }
             assert {by_id[trigger_id].name for trigger_id in cleanup_ids} == {
-                f"King Island Cleanup W{world_player}"
+                f"King Island Cleanup S{int(player)} W{world_player}"
             }
             for trigger_id in cleanup_ids:
                 cleanup = by_id[trigger_id]
@@ -1784,6 +1785,7 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
         for player in range(1, 9)
     }
     expected_variables |= {(136 + player, f"p{player}xsidentity") for player in range(1, 9)}
+    expected_variables |= {(144 + player, f"p{player}backup") for player in range(1, 9)}
     assert {
         (variable.variable_id, variable.name) for variable in trigger_manager.variables
     } == expected_variables
@@ -1793,7 +1795,7 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
     assert header.display_on_screen
     assert not header.display_as_objective
     assert header.header
-    assert header.short_description == "P# | K | D | R"
+    assert header.short_description == "P# | K | D | R | B"
     assert header.description_order == 19
 
     divider = next(
@@ -1814,7 +1816,7 @@ def test_evolution_alpha_uses_ordered_right_side_combat_hud(evolution_alpha):
         expected_order = 19 - player if player <= 4 else 18 - player
         assert live.description_order == expected_order
         assert live.short_description == (
-            f"P{player} | <p{player}k> | <p{player}d> | <p{player}r>"
+            f"P{player} | <p{player}k> | <p{player}d> | <p{player}r> | <p{player}backup>"
         )
         assert len(live.conditions) == 1
         assert live.conditions[0].condition_type == ConditionId.PLAYER_DEFEATED
@@ -1971,6 +1973,7 @@ def test_evolution_alpha_equalizes_only_confirmed_occupied_slots(evolution_alpha
         for trigger in trigger_manager.triggers
         if trigger.name.startswith("Free Costs P")
     }
+    by_name = {trigger.name: trigger for trigger in trigger_manager.triggers}
     empty_rows = {
         trigger.name: trigger
         for trigger in trigger_manager.triggers
@@ -2066,7 +2069,8 @@ def test_evolution_alpha_equalizes_only_confirmed_occupied_slots(evolution_alpha
         assert activated == {
             equalizers[f"Resource Equalizer P{world_player}"].trigger_id,
             free_costs[f"Free Costs P{world_player}"].trigger_id,
-            live_rows[f"Combat HUD Live P{color}"].trigger_id,
+            by_name[f"Scorpion Backup HUD Numeric P{color}"].trigger_id,
+            by_name[f"Scorpion Backup HUD Active P{color}"].trigger_id,
             king_counters[f"White King Kills S{color} W{world_player}"].trigger_id,
         }
         deactivated = {
@@ -6025,7 +6029,7 @@ def test_evolution_alpha_native_hud_and_cleanup_work_with_no_xs_identity(evoluti
                     continue
                 assert all(variables.get(key, 0) == value for key, value in reads)
                 assert any(e.effect_type == EffectId.ACTIVATE_TRIGGER
-                           and e.trigger_id == by_name[f"Combat HUD Live P{color}"].trigger_id
+                           and e.trigger_id == by_name[f"Scorpion Backup HUD Numeric P{color}"].trigger_id
                            for e in gate.effects)
                 values = by_name[f"Color Combat Values S{color} W{owner}"]
                 assert set((c.variable, c.quantity) for c in values.conditions
@@ -6403,3 +6407,127 @@ def test_birth_wrappers_only_order_the_returned_unit_and_use_xs_owners(evolution
     assert seen == {"Hero": 576 * 8, "Builder": 128 * 8}
     assert "xsTaskUnits" in embedded_xs(evolution_alpha)
     assert "void xsTaskUnits" not in embedded_xs(evolution_alpha)  # Validator stub must never ship.
+
+
+def test_scorpion_backup_state_and_hud_follow_serialized_lifetime(evolution_alpha):
+    """Replay real native effects, including delayed occupancy and early defeat."""
+    by_name = {t.name: t for t in evolution_alpha.trigger_manager.triggers}
+    subsystem = [t for t in evolution_alpha.trigger_manager.triggers
+                 if t.name.startswith(("King Island ", "Scorpion Backup ", "Occupied Slot S"))]
+    rows = [t for t in evolution_alpha.trigger_manager.triggers
+            if t.name.startswith(("Combat HUD Live P", "Combat HUD Backup Active P"))]
+    subsystem += rows
+    by_id = {t.trigger_id: t for t in subsystem}
+
+    for color in range(1, 9):
+        for owner in range(1, 9):
+            # HUD setup arriving after activation must show A immediately, never 2.
+            for occupied_at, defeated_at in ((0, None), (20, None), (0, 25)):
+                variables = {31 + color: 1, 39 + color: owner}
+                enabled = {t.trigger_id: bool(t.enabled) for t in subsystem}
+                started = {t.trigger_id: 0 for t in subsystem}
+                created, removed = [], []
+                snapshots = {}
+                for now in range(76):
+                    variables[120 + color] = int(now >= occupied_at)
+                    variables[47 + color] = int(defeated_at is not None and now >= defeated_at)
+                    for trigger in subsystem:
+                        tid = trigger.trigger_id
+                        if not enabled[tid]:
+                            continue
+                        satisfied = True
+                        for condition in trigger.conditions:
+                            kind = condition.condition_type
+                            if kind == ConditionId.TIMER:
+                                match = now - started[tid] >= condition.timer
+                            elif kind == ConditionId.VARIABLE_VALUE:
+                                value = variables.get(condition.variable, 0)
+                                if condition.comparison == Comparison.EQUAL:
+                                    match = value == condition.quantity
+                                else:
+                                    assert condition.comparison == Comparison.LESS
+                                    match = value < condition.quantity
+                            elif kind == ConditionId.BRING_OBJECT_TO_AREA:
+                                # Select the right King and move onto its real activation rectangle.
+                                target = by_name[f"King Island S{color} W{owner}"].conditions[0]
+                                match = condition.unit_object == target.unit_object and now >= 10
+                            elif kind == ConditionId.PLAYER_DEFEATED:
+                                assert condition.source_player == PlayerId.GAIA
+                                match = False  # Objective rows remain displayed without firing.
+                            else:
+                                raise AssertionError((trigger.name, kind))
+                            satisfied &= match
+                        if not satisfied:
+                            continue
+                        if trigger.looping:
+                            started[tid] = now
+                        else:
+                            enabled[tid] = False
+                        for effect in trigger.effects:
+                            kind = effect.effect_type
+                            if kind == EffectId.CHANGE_VARIABLE:
+                                assert effect.operation == Operation.SET
+                                variables[effect.variable] = effect.quantity
+                            elif kind in (EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER):
+                                if effect.trigger_id in by_id:
+                                    # Re-activating an enabled trigger does not restart its timer.
+                                    if kind == EffectId.ACTIVATE_TRIGGER:
+                                        if not enabled[effect.trigger_id]:
+                                            started[effect.trigger_id] = now
+                                        enabled[effect.trigger_id] = True
+                                    else:
+                                        enabled[effect.trigger_id] = False
+                            elif kind == EffectId.CREATE_OBJECT:
+                                created.append((now, effect.source_player, effect.object_list_unit_id))
+                            elif (kind == EffectId.REMOVE_OBJECT
+                                  and effect.object_list_unit_id == UnitInfo.SCORPION.ID):
+                                removed.append((now, effect.source_player, effect.object_list_unit_id))
+                    snapshots[now] = (dict(variables), {r.name for r in rows if enabled[r.trigger_id]})
+                for now, value, variant in ((9, 1, "Live"), (22, 2, "Backup Active"),
+                                            (61, 0, "Live"), (75, 0, "Live")):
+                    if defeated_at is not None and now >= defeated_at:
+                        value, variant = 0, "Live"
+                    values, visible = snapshots[now]
+                    assert values[144 + color] == value
+                    expected = set() if now < occupied_at else {f"Combat HUD {variant} P{color}"}
+                    assert visible == expected, (color, owner, occupied_at, defeated_at, now)
+                if defeated_at is not None:
+                    assert snapshots[27][0][144 + color] == 0
+                    assert snapshots[27][1] == {f"Combat HUD Live P{color}"}
+                assert created == [(10, owner, UnitInfo.SCORPION.ID)] * 6
+                assert removed == [(60, owner, UnitInfo.SCORPION.ID)]
+                # Unoccupied colors stay hidden and unused. No XS tokens were supplied.
+                assert all(snapshots[75][0][144 + other] == 1
+                           for other in range(1, 9) if other != color)
+                active_row = by_name[f"Combat HUD Backup Active P{color}"]
+                assert active_row.short_description == (
+                    f"P{color} | <p{color}k> | <p{color}d> | <p{color}r> | A"
+                )
+                assert active_row.description_order == by_name[f"Combat HUD Live P{color}"].description_order
+
+
+def test_scorpion_backup_labels_target_activation_king_not_kill_counter(evolution_alpha):
+    by_name = {t.name: t for t in evolution_alpha.trigger_manager.triggers}
+    units = {u.reference_id: u for group in evolution_alpha.unit_manager.units for u in group}
+    for color in range(1, 9):
+        for owner in range(1, 9):
+            gate = by_name[f"Occupied Slot S{color} W{owner}"]
+            names = [e for e in gate.effects if e.effect_type == EffectId.CHANGE_OBJECT_NAME
+                     and e.message == "Skorpion King"]
+            assert len(names) == 1 and names[0].source_player == owner
+            reference = by_name[f"King Island S{color} W{owner}"].conditions[0].unit_object
+            assert names[0].selected_object_ids == [reference]
+            king_type = units[reference].unit_const
+            assert king_type == (HeroInfo.KING_SANCHO.ID if color == 1 else UnitInfo.KING.ID)
+            descriptions = [e for e in gate.effects if e.effect_type == EffectId.CHANGE_OBJECT_DESCRIPTION]
+            assert len(descriptions) == 1
+            assert descriptions[0].source_player == owner and descriptions[0].object_list_unit_id == king_type
+            assert "move" in descriptions[0].message.lower() and "50" in descriptions[0].message
+            if king_type == UnitInfo.KING.ID:
+                assert "White King: displays live kills." in descriptions[0].message
+            counter = by_name[f"White King Kills S{color} W{owner}"]
+            counter_refs = {ref for e in counter.effects for ref in (e.selected_object_ids or [])}
+            assert reference not in counter_refs
+    instructions = evolution_alpha.message_manager.instructions
+    assert "B = Scorpion Backup: 1 available, A active, 0 used." in instructions
+    assert "Move your Skorpion King" in instructions

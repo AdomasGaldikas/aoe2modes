@@ -170,24 +170,30 @@ Trebuchets **cannot be trained** by anyone, and packed Trebuchets are removed fr
 protected zone around every color's Castle row — including your own. The center reward is
 the only route to one.
 
-## King islands and the kill display
+## Scorpion Backup and the kill display
 
-Each color has a King on a small island. Two things run off it:
+Move your **Skorpion King** to its marked side island to call six Scorpions for
+**50 seconds**. This is **one use per player**. The King has a short description
+explaining the action; the activation announcement names Scorpion Backup.
 
-- Bringing a unit to the island awards a burst of **Scorpions** to that color. They have
-  a deliberate 50-second lifetime — they are a raid, not a standing army.
-- The white King displays your **live kill total** as its attack statistic. Trigger
-  variables are not expanded inside object names, so the number is published through the
-  stat rather than the label.
+The separate white King displays your **live kill total** as its attack statistic.
+Trigger variables are not expanded inside object names, so the number is published
+through the stat rather than the label.
 
 ## Combat HUD
 
 The right-hand panel is a compact ordered list showing, for P1 through P8:
 
-    P# | Kills | Deaths | Razings
+    P# | K | D | R | B
 
-It refreshes roughly every two seconds and reads live engine attributes. The ordinary
-score attributes (map explored, building value, tribute, wonders, resource scores) are
+B is **1** while backup is available, **A** during its active window, and **0**
+after use. Early elimination ends the active indication; final rows remain visible.
+Only participating colors get rows. Numeric and active rows share the same order
+and K/D/R variables; native state selects exactly one. Backup state refreshes
+roughly every second, independently of the XS identity token.
+
+Combat totals refresh roughly every two seconds from live engine attributes. The
+ordinary score attributes (map explored, building value, tribute, wonders, resource scores) are
 neutralized to zero so nothing competes with the combat numbers.
 
 One quirk is not a scenario defect: DE renders a **second number** beside a player — its

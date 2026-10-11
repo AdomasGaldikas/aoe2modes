@@ -1,8 +1,8 @@
-# CBA Hero 4v4: RA v1.2 issue register
+# CBA Hero 4v4: RA v1.3 issue register
 
 This is the working inventory recovered from the **Publish CBA Hero scenario** task.
 Only **CBA Hero: Ascendants v1.0.3** is a comparison baseline. Older builds are not
-repair targets. **RA v1.2** is the current source-validated candidate. The historical
+repair targets. **RA v1.3** is the current source-validated candidate. The historical
 v1.0.20 failed live sparse-lobby acceptance; v1.0.1.0 initialized P1/P3/P5/P8
 and displayed only participating rows.
 Broader engine acceptance remains separate from automated checks.
@@ -15,7 +15,7 @@ The failed v1.0.19 candidate was 161,657 bytes with SHA-256
 `ec4c03df92588582e5c5984e1befdd9d18b289b4553c9a4b86503a098c3991a0`;
 142 tests and the warning-free strict audit passed, but did not catch the live failure.
 See v1.0.1.0 release notes for the validated detection path and
-[v1.2 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.2.md) for the current candidate.
+[v1.3 notes](../modes/evolution_alpha/RELEASE_NOTES_v1.3.md) for the current candidate.
 “Guarded” means the serialized scenario and tests contain the intended correction; it
 does not mean the Definitive Edition engine has been observed running it successfully.
 
@@ -31,7 +31,7 @@ does not mean the Definitive Edition engine has been observed running it success
 | ASC-006 | Deleting rear vote markers did not kick a teammate safely. | Guarded | There are 24 two-voter detectors, 24 marker variables, 192 runtime-owner deletion detectors, and 64 target resolvers. Target plus both distinct voters must be active; a side with fewer than three live colors cannot resolve a kick. | With three and four teammates, cast two votes; with two teammates, prove no kick; repeat in a sparse lobby. |
 | ASC-007 | Builder pairs were missing or awarded at the wrong razing threshold. | Guarded | All 59 civilization thresholds are explicit. Earned pairs are persistent and queue at `razings - threshold + 1`; the local start message reports the selected civilization's threshold. | Use Persians: first pair at 4 razings, then one pair per razing; verify another low-threshold and high-threshold civilization. |
 | ASC-008 | Resources, research, buildings, upgrades, or repairs were not free; Bombard Tower was unavailable. | Guarded | Starting stockpiles and score resources are zeroed. XS sets technology and object costs to zero at runtime, repair modifiers are zero, and Bombard Tower availability is forced for every valid owner mapping. | Open several technology/build menus for multiple civilizations and confirm every available action costs zero. |
-| ASC-009 | Starting scores differed; K/D/R was misaligned; razings/MVP were not represented. | Guarded | The right-side rows use ordered `P# | K | D | R` variables. Non-combat score attributes are neutralized and kill/death/razing values are republished from live engine attributes. | Compare all starting scores, live K/D/R updates, and post-game statistics in full and sparse games. |
+| ASC-009 | Starting scores differed; K/D/R was misaligned; razings/MVP were not represented. | Guarded | The right-side rows use ordered `P# | K | D | R | B` variables. B shows 1 available, A active, 0 spent for Scorpion Backup. Non-combat score attributes are neutralized and kill/death/razing values are republished from live engine attributes. | Compare all starting scores, live K/D/R updates, and post-game statistics in full and sparse games. |
 | ASC-010 | Invisible spots behind Castles deleted units. | Resolved statically | All 32 legacy edge-deletion triggers are removed. No replacement trigger uses those hidden strips. | Patrol behind every Castle and leave units there for at least one minute. |
 | ASC-011 | Rear gates needed a small dry path to the University and Blacksmith, with no water inside the walls. | Guarded | Each transformed gate path is three tiles wide and non-water. A bounded flood-fill reaches both technology buildings for all eight colors while treating water, walls, towers, Castles, and cliffs as blocked. | Path a builder from each base through its rear gate to both buildings. |
 | ASC-012 | Allied paths must be walkable and protected without opening enemy shortcuts. | Guarded | Top/bottom team causeways are land; enemy-side corridors remain water; protected wall/gate references are included in anti-delete effects. | Test allied reinforcement and enemy pathfinding from every orientation. |

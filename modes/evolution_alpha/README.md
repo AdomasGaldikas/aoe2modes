@@ -1,14 +1,16 @@
-# CBA Hero 4v4: RA v1.2
+# CBA Hero 4v4: RA v1.3
 
-RA v1.2 orders each new army, Hero and builder by its creation reference, preserves
-older units' manual orders during new births, and distinguishes deletable side-wall
-switches from permanent allied gates. It also suppresses movement pulses when no
-unit is created. See [v1.2 notes](RELEASE_NOTES_v1.2.md) and the
-[audit](../../docs/ra-audit-plan.md) for evidence and live-game acceptance gaps.
+RA v1.3 adds a one-use **Scorpion Backup** indicator to the combat HUD:
+**B: 1 = available, A = active, 0 = used**. Move the **Skorpion King** to its
+marked side island to call six Scorpions for 50 seconds. Its short description
+explains the action. The existing white King's live kill statistic remains.
+See [v1.3 notes](RELEASE_NOTES_v1.3.md) for validation and live acceptance gaps.
+The [v1.2 birth-order fixes](RELEASE_NOTES_v1.2.md) and
+[audit](../../docs/ra-audit-plan.md) remain part of this candidate.
 
 RA is a 144×144, eight-color CBA Hero scenario with automatic Castle armies,
 kill-based Hero tiers, free development, four Castles per color, protected team routes,
-center rewards, vote-kicks, and a compact K/D/R display. The maintained Python source is
+center rewards, vote-kicks, and a compact K/D/R/B display. The maintained Python source is
 authoritative. It retains the DE update 185872 load/spawn fix from
 [Ascendants v1.0.1.1](RELEASE_NOTES_v1.0.1.1.md).
 
@@ -29,16 +31,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.2 |
+| Metric | v1.3 |
 | --- | ---: |
-| Triggers | 3,968 (3,508 initially enabled) |
-| Conditions | 18,978 |
-| Effects | 13,922 |
+| Triggers | 4,057 (3,517 initially enabled) |
+| Conditions | 19,178 |
+| Effects | 14,346 |
 | Units | 956 |
-| Runtime variables | 145 (ids 0–144) |
+| Runtime variables | 153 (ids 0–152) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero 4v4 RA v1.2.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero 4v4 RA v1.3.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -77,7 +79,7 @@ longer contain movement effects.
 
 Army waves are created at transformed cell centres. The 32 decorative Hay Stack
 creates are removed: their two-by-two footprints had overlapped 16 wave pads and
-eight level-0 destinations despite separate anchor points. v1.2 requires DE update
+eight level-0 destinations despite separate anchor points. v1.3 requires DE update
 185872 or newer; its exact-reference task API still requires live DE acceptance.
 
 The exact lane rectangles, level variables, spawn pads, and destinations are recorded
@@ -199,12 +201,12 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero 4v4 RA v1.2.aoe2scenario" --strict
+  "dist/CBA Hero 4v4 RA v1.3.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```
 
-The RA v1.2 build passes XS lint and a strict structural audit with zero errors
+The RA v1.3 build passes XS lint and a strict structural audit with zero errors
 and zero warnings. Automated regression coverage includes the six allied links,
 eight-tile route sections, all 64 intruder owner mappings, gate labels, and guards
 that persist with inactive protected endpoints.
@@ -223,4 +225,4 @@ scheduling. The remaining in-game acceptance cases are tracked in
 Older candidates are retained only as investigation history in `RELEASE_NOTES_v*.md`.
 They are not alternative repair targets. See
 [`RELEASE_NOTES_v1.0.18.md`](RELEASE_NOTES_v1.0.18.md) for the historical wall/cleanup change set. Current changes are in
-[`RELEASE_NOTES_v1.2.md`](RELEASE_NOTES_v1.2.md).
+[`RELEASE_NOTES_v1.3.md`](RELEASE_NOTES_v1.3.md).
