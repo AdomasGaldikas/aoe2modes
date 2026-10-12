@@ -1,4 +1,8 @@
-# CBA Hero 4v4: RA v1.7
+# CBA Hero 4v4: RA v1.8
+
+This candidate removes the startup/recurring Unit Limit zero-write after a
+reported `33/0` population display. A fresh match must confirm the displayed
+capacity and lobby-cap enforcement; this is a code correction, not engine proof.
 
 Builder rewards now retain undelivered pairs after creation failure, retry only
 the missing builder, and announce completion only after both births succeed.
@@ -8,11 +12,11 @@ shared names and selection groups cannot broaden it. Military/civilian roles rem
 intact: drag-box selection uses the engine's army priority with civilians selected
 separately. Fresh DE verification remains pending.
 
-The v1.7 source removes the population chooser island, King, signs, ownership
+The v1.8 source removes the population chooser island, King, signs, ownership
 transfer and 60-second default/lock. It no longer chooses a population limit or
 rewrites free housing. Select population in the lobby for everyone. Both modes
-use the stock 200 scenario fallback and clear civilization bonus population to
-keep the native limit equal. Native free housing guards still protect automatic
+use the stock 200 scenario fallback. The repeated Unit Limit zero-write is
+removed; the scoring script leaves population resources unchanged. Native free housing guards still protect automatic
 births and complete reward batches; that resource is not the lobby maximum.
 Fresh DE acceptance must confirm the effective cap and spawning at different
 lobby limits before claiming complete lobby-cap enforcement.
@@ -63,7 +67,7 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.7 candidate |
+| Metric | v1.8 candidate |
 | --- | ---: |
 | Triggers | 4,442 (3,902 initially enabled) |
 | Conditions | 22,827 |
@@ -72,7 +76,7 @@ This file is the release summary. The reference documentation lives in `docs/`:
 | Runtime variables | 153 (ids 0–152) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero 4v4 RA v1.7.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero 4v4 RA v1.8.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -247,7 +251,7 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero 4v4 RA v1.7.aoe2scenario" --strict
+  "dist/CBA Hero 4v4 RA v1.8.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```

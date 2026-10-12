@@ -1938,8 +1938,8 @@ def test_evolution_alpha_publishes_combat_only_score_values(evolution_alpha):
     for attribute, value in expected_values.items():
         assert f"xsSetPlayerAttribute(worldPlayer, {attribute}, {value});" in xs_source
     written_attributes = re.findall(r"xsSetPlayerAttribute\(worldPlayer, (cAttribute\w+),", xs_source)
-    assert set(written_attributes) == set(expected_values) | {"cAttributeUnitLimit"}
-    assert len(written_attributes) == 5
+    assert set(written_attributes) == set(expected_values)
+    assert len(written_attributes) == 4
 
     # Sparse lobbies compact selected colors into different runtime IDs. Clear
     # every non-combat score source through worldPlayer, not a fixed color slot.
@@ -6553,7 +6553,7 @@ def test_population_has_no_island_chooser_lock_or_cap_rewrite(evolution_alpha):
     assert "cbaPopulationSetup" not in source
     assert "xsSetUnitOwner(" not in source
     assert "xsSetPlayerAttribute(owner, 4," not in source
-    assert "xsSetPlayerAttribute(worldPlayer, cAttributeUnitLimit, 0);" in source
+    assert "xsSetPlayerAttribute(worldPlayer, cAttributeUnitLimit," not in source
     assert all(t.name != "Population Setup Labels" for t in evolution_alpha.trigger_manager.triggers)
     assert all(u.unit_const != HeroInfo.KING_ALFONSO.ID
                for units in evolution_alpha.unit_manager.units for u in units)
@@ -6810,3 +6810,37 @@ def test_builder_pairs_retry_failed_births_without_spending_or_duplicating(evolu
     for index in trigger.effect_order:
         runtime[trigger.effects[index].message]()
     assert len(created) == 4 and variables[0] == 0
+
+
+def test_combat_refresh_preserves_population_resources(evolution_alpha):
+    """Execute the emitted refresh: scoring must not overwrite capacity/headroom."""
+    source = embedded_xs(evolution_alpha)
+    body = re.search(r"void cbaRefreshCombatValues\(int worldPlayer = 0\) \{(.*?)\n\}", source, re.S)[1]
+    lines = []
+    for line in body.splitlines():
+        line = line.strip()
+        if not line or line.startswith("//"):
+            continue
+        line = re.sub(r"^int ", "", line).removesuffix(";")
+        assert line.startswith(("xsSetPlayerAttribute(", "kills =", "deaths =", "razings =", "razed ="))
+        lines.append(line)
+    constants = dict(zip(("cAttributeKills", "cAttributeKilledByOthers", "cAttributeRazings",
+                          "cAttributeRazedByOthers", "cAttributeTotalValueOfKills",
+                          "cAttributeValueKilledByOthers", "cAttributeTotalValueOfRazings",
+                          "cAttributeValueRazedByOthers"),
+                         (20, 154, 43, 155, 170, 152, 172, 153), strict=True))
+    program = compile("\n".join(lines), "<emitted combat refresh>", "exec")
+    for owner in range(1, 9):
+        resources = {4: 167, 11: 33, 32: 10, 62: 1, 20: 8, 154: 3, 43: 2, 155: 1}
+        namespace = dict(constants, worldPlayer=owner, xsCeilToInt=lambda value: value)
+        namespace["xsPlayerAttribute"] = lambda player, attribute, values=resources: values[attribute]
+        def write(player, attribute, value, expected_owner=owner, values=resources):
+            assert player == expected_owner
+            values[attribute] = value
+        namespace["xsSetPlayerAttribute"] = write
+        for _ in range(3):
+            exec(program, namespace)
+        assert {key: resources[key] for key in (4, 11, 32, 62)} == {4: 167, 11: 33, 32: 10, 62: 1}
+        assert {key: resources[key] for key in (170, 152, 172, 153)} == {
+            170: 800, 152: 300, 172: 1000, 153: 500,
+        }

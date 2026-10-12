@@ -2250,8 +2250,8 @@ void cbaAnnounceLocalBuilderGoal() {{
 }}
 
 void cbaRefreshCombatValues(int worldPlayer = 0) {{
-    // Keep the native lobby limit equal: no civilization bonus population.
-    xsSetPlayerAttribute(worldPlayer, cAttributeUnitLimit, 0);
+    // Combat score refresh must not write population, housing or unit-limit
+    // resources. DE owns the population selected by the host in the lobby.
 {score_neutral_lines}
     int kills = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKills));
     int deaths = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKilledByOthers));

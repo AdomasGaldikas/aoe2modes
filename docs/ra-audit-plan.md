@@ -6,6 +6,39 @@ Goal: audit the maintained RA source and serialized scenario, fix confirmed logi
 and map-design defects, validate the changes, and push a reproducible candidate.
 Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
+## 2026-10-12 reported zero population capacity
+
+The user clarified the RA v1.6 HUD reads `33/0`. This reports nonzero used
+population and zero displayed capacity. Inspection of the v1.6 written file
+confirms all eight stored fallback caps are 200; its eight inherited startup
+housing effects grant +195 free housing. The remaining XS writer is
+`xsSetPlayerAttribute(worldPlayer, cAttributeUnitLimit, 0)` in combat refresh,
+called from main and every two seconds. v1.7 preserved this code.
+
+Resource 32 is documented as bonus population, so code evidence does not prove
+this write causes the zero denominator. It is nevertheless an unwanted remaining
+population override after the user's lobby-only requirement. RA v1.8 and Speed
+v0.1.3 remove it and introduce no replacement fixed limit. The emitted scoring
+body is executed three times for each runtime owner, preserving resources
+4/11/32/62 while still producing correct combat scores. Remaining game acceptance
+includes the displayed capacity, actual lobby cap, all-player/civilization parity
+and automatic births. The current lobby is preserved and no UI test is run.
+
+Validation: all 114 normal/Speed tests passed in 179.52 seconds; repository
+Ruff and `git diff --check` passed. Both builds validated embedded XS and both
+readback audits report zero errors/warnings. Compared with v1.7/v0.1.2, only
+XS SCRIPT differs; all native triggers, map/terrain, objects, players, options,
+variables and unrelated effect execution orders are preserved. Every script
+call resolves. Both files were atomically installed and their hashes checked;
+source is delivered on GitHub main. The public mod listing remains unchanged.
+
+- RA v1.8 SHA-256: `020c80806b62becbffbb97ad56d64cc2799602f14077f4ea87c5543906d7009a`.
+- Speed v0.1.3 SHA-256: `49804c7ae17da9f42cd72ab0812cbe2747a7f78410d790710999731d4e589bad`.
+
+No claim is made that this proves the reported zero display is fixed in DE.
+Existing matches/saves keep their embedded scripts; a new file must be selected
+for a fresh match to exercise this correction.
+
 ## 2026-10-12 code-only full audit
 
 The user requested preserving the four-human lobby and auditing code only.

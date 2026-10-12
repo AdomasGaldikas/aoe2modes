@@ -290,3 +290,14 @@ DE rejected the old `cbaPopulationGate0` compound bool/float return during load.
 Every batch gate and the per-birth helper keep separate arithmetic, comparison
 and boolean literal returns. xs-check accepted the old expression, so validation
 alone cannot confirm the corrected game load.
+
+
+### RA v1.8: leave population resources out of combat refresh
+
+Following the reported `33/0` display, combat refresh no longer clears
+`cAttributeUnitLimit` (resource 32) at startup or every two seconds. That resource
+is documented as bonus population; treating it as the lobby limit would be an
+unsupported interpretation. The scenario introduces no replacement fixed limit
+or in-game selector. Native lobby/civilization parity and the reported zero
+capacity still require fresh-engine confirmation. A replay of the actual emitted
+score refresh preserves resources 4, 11, 32 and 62 for every runtime owner.

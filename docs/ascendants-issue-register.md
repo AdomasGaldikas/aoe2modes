@@ -305,3 +305,18 @@ Terrain, units, player settings, options, variable IDs, hero/backup/vote/route
 triggers and unrelated effect execution orders are preserved. The code audit
 and automated checks do not close ASC-053, pre-latch resignation, lobby-cap
 consumption or the live startup/spawning acceptance questions above.
+
+
+## RA v1.8 / Speed v0.1.3 population override correction
+
+ASC-060: user reports `33/0` in RA v1.6, meaning used population is nonzero but
+capacity displays zero. v1.6 and v1.7 still call
+`xsSetPlayerAttribute(worldPlayer, cAttributeUnitLimit, 0)` from combat refresh
+at startup and every two seconds. Resource 32 is documented as bonus population,
+not the lobby maximum; its connection to the reported zero display is unproven.
+The zero-write is removed in both modes to honor lobby-only population control.
+The actual emitted scoring body is executed with preserved population resources
+for all eight runtime owners. No substitute fixed-cap write is introduced.
+Native fallback settings remain 200, and the inherited +195 housing grant remains.
+Fresh-engine confirmation of the zero-display cause, capacity, civilization parity
+and lobby-cap enforcement is still required. The human lobby is left open.

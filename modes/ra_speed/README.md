@@ -1,4 +1,8 @@
-# CBA Hero 4v4: RA Speed v0.1.2
+# CBA Hero 4v4: RA Speed v0.1.3
+
+This candidate removes the startup/recurring Unit Limit zero-write after a
+reported `33/0` population display. A fresh match must confirm the displayed
+capacity and lobby-cap enforcement; this is a code correction, not engine proof.
 
 Builder rewards now retain undelivered pairs after creation failure, retry only
 the missing builder, and announce completion only after both births succeed.
@@ -8,10 +12,10 @@ shared names and selection groups cannot broaden it. Military/civilian roles rem
 intact: drag-box selection uses the engine's army priority with civilians selected
 separately. Fresh DE verification remains pending.
 
-The shared v0.1.2 source also removes the in-game population chooser island,
+The shared v0.1.3 source also removes the in-game population chooser island,
 King, signs and script-selected limit. Population is chosen in the lobby for
 all players. Native lobby-cap enforcement and spawning at different limits still
-need a fresh DE test; the source does not overwrite free housing.
+need a fresh DE test; the source does not overwrite free housing or zero the Unit Limit resource.
 
 An independent Speed candidate built from the maintained normal RA
 map and rules. It does not import Zalabatta's scenario or trigger graph. Normal RA
@@ -39,7 +43,7 @@ Tune the warm-up, duration and multipliers in `[speed_rush]` in `mode.toml`.
 
 ```bash
 .venv/bin/python -m aoe2modes build evolution_alpha ra_speed
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA Speed v0.1.2.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA Speed v0.1.3.aoe2scenario" --strict
 .venv/bin/python -m pytest tests/test_ra_speed.py tests/test_evolution_alpha.py
 ```
 
