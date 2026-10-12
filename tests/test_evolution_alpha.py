@@ -2645,38 +2645,17 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
                 for effect in reward.effects
                 if effect.effect_type in {EffectId.CREATE_OBJECT, EffectId.SEND_CHAT}
             )
-            chats = [
-                effect
-                for effect in reward.effects
-                if effect.effect_type == EffectId.SEND_CHAT
-            ]
-            assert len(chats) == 1
-            assert chats[0].message == "Villager Created"
-
-            variable_effects = [
-                effect
-                for effect in reward.effects
-                if effect.effect_type == EffectId.CHANGE_VARIABLE
-            ]
-            assert len(variable_effects) == 2
-            consume_pending = next(
-                effect for effect in variable_effects if effect.variable == color - 1
+            assert not any(effect.effect_type in {EffectId.SEND_CHAT, EffectId.CHANGE_VARIABLE}
+                           for effect in reward.effects)
+            assert reward.effects[reward.effect_order[-1]].message == (
+                f"cbaCommitBuilderPair{color}W{world_player}"
             )
-            assert (
-                consume_pending.variable,
-                consume_pending.operation,
-                consume_pending.quantity,
-            ) == (color - 1, Operation.SUBTRACT, 1)
-            arm_movement = next(
-                effect for effect in variable_effects if effect.variable == 104 + color
-            )
-            assert (
-                arm_movement.operation,
-                arm_movement.quantity,
-            ) == (Operation.SET, 1)
 
             mover = movers[f"Builder Move S{color} W{world_player}"]
             assert mover.enabled and mover.looping
+            chats = [effect for effect in mover.effects if effect.effect_type == EffectId.SEND_CHAT]
+            assert len(chats) == 1 and chats[0].message == "Villager Created"
+            assert chats[0].source_player == PlayerId(world_player)
             assert any(
                 condition.condition_type == ConditionId.TIMER
                 and condition.timer == 1
@@ -6390,6 +6369,9 @@ def test_birth_wrappers_only_order_the_returned_unit_and_use_xs_owners(evolution
         for xs_owner in range(1, 9):
             variables.update({136 + color: 1000 + xs_owner, 120 + color: 1,
                               47 + color: 0, 112 + color: 3})
+            variables[color - 1] = 1
+            runtime["xsArraySetInt"](70001, color, 0)
+            runtime["xsArraySetInt"](70002, color, 0)
             creates.clear()
             tasks.clear()
             selected[0] = 77777  # A returning unit parked on this spawn pad.
@@ -6405,6 +6387,8 @@ def test_birth_wrappers_only_order_the_returned_unit_and_use_xs_owners(evolution
         # Missing/delayed/invalid identity, unused color and elimination all block births.
         for variable, value in ((136 + color, 0), (136 + color, 1000),
                                 (136 + color, 1009), (120 + color, 0), (47 + color, 1)):
+            runtime["xsArraySetInt"](70001, color, 0)
+            runtime["xsArraySetInt"](70002, color, 0)
             original = variables[variable]
             variables[variable] = value
             creates.clear()
@@ -6768,3 +6752,61 @@ def test_hazard_visibility_uses_only_opposing_route_markers(evolution_alpha):
                 assert unit.unit_const == OtherInfo.BONFIRE.ID
                 expected_state = VisibilityState.VISIBLE if enemy else VisibilityState.INVISIBLE
                 assert effect.visibility_state == expected_state
+
+
+@pytest.mark.parametrize("failed_sex", [83, 293, None])
+def test_builder_pairs_retry_failed_births_without_spending_or_duplicating(evolution_alpha, failed_sex):
+    """Replay serialized reward calls, including partial success and tight housing."""
+    variables = defaultdict(int, {0: 2, 121: 1, 137: 1007})
+    room = [2.0]
+    refuse = [True]
+    created, orders = [], []
+    costs = {83: 0.5, 293: 1.0}
+
+    def create(unit, owner, *args):
+        if refuse[0] and (failed_sex is None or unit == failed_sex):
+            return -1
+        created.append((unit, owner))
+        room[0] -= costs[unit]
+        return 90000 + len(created)
+
+    runtime = birth_runtime(
+        evolution_alpha, xsTriggerVariable=lambda var: variables[var],
+        xsSetTriggerVariable=lambda var, value: variables.__setitem__(var, value),
+        xsPlayerAttribute=lambda owner, attribute: room[0],
+        xsGetObjectAttribute=lambda owner, unit, attribute: -costs[unit],
+        xsCreateUnit=create, xsDoesUnitExist=lambda ref: ref >= 90000,
+        xsArraySetInt=lambda *args: None, xsTaskUnits=lambda *args: orders.append(args),
+        xsVectorSet=lambda x, y, z: (x, y, z), vector=lambda x, y, z: (x, y, z),
+    )
+    trigger = next(t for t in evolution_alpha.trigger_manager.triggers
+                   if t.name == "Builder Reward S1 W1")
+    gate = next(c.xs_function for c in trigger.conditions
+                if c.condition_type == ConditionId.SCRIPT_CALL
+                and c.xs_function.startswith("cbaPopulationGate"))
+
+    def reward():
+        assert runtime[gate]()
+        for index in trigger.effect_order:
+            effect = trigger.effects[index]
+            assert effect.effect_type == EffectId.SCRIPT_CALL
+            runtime[effect.message]()
+
+    reward()
+    assert variables[0] == 2 and variables[105] == 0
+    assert len(created) == len(orders) == (0 if failed_sex is None else 1)
+    reward()  # Persistent failure must not duplicate the successful half.
+    assert variables[0] == 2 and len(created) == (0 if failed_sex is None else 1)
+    refuse[0] = False
+    room[0] = sum(costs[unit] for unit in costs if not any(u == unit for u, _ in created))
+    reward()  # Only the missing half needs free housing now.
+    assert created == ([(293, 7), (83, 7)] if failed_sex == 83 else [(83, 7), (293, 7)])
+    assert variables[0] == 1 and variables[105] == 1 and len(orders) == 2
+    assert room[0] == 0 and not runtime[gate]()
+    room[0] = 1.5
+    reward()
+    assert variables[0] == 0 and len(created) == len(orders) == 4
+    # An accidental replay without an entitlement must not create another pair.
+    for index in trigger.effect_order:
+        runtime[trigger.effects[index].message]()
+    assert len(created) == 4 and variables[0] == 0

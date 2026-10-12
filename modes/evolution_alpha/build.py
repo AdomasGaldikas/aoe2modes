@@ -2113,6 +2113,7 @@ def _render_color_spawn_xs(ctx: BuildContext, population_xs: str = "") -> str:
         builder_destinations=BUILDER_DESTINATION_POINTS,
         army_range_base=ARMY_RANGE_VARIABLE_BASE, hero_range_base=HERO_RANGE_VARIABLE_BASE,
         eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE, occupied_base=COLOR_OCCUPIED_VARIABLE_BASE,
+        pending_base=PENDING_BUILDER_VARIABLE_BASE, builder_notice_base=BUILDER_MOVE_PENDING_VARIABLE_BASE,
     )
     identity_base = COLOR_XS_VARIABLE_BASE
     return f"""// Sparse-lobby color-aware army spawning.
@@ -2293,6 +2294,8 @@ void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
 
 void main() {{
     gCbaBirthOrderUnit = xsArrayCreateInt(1, -1, "cbaBirthOrderUnit");
+    gCbaBuilderMaleDelivered = xsArrayCreateInt(9, 0, "cbaBuilderMaleDelivered");
+    gCbaBuilderFemaleDelivered = xsArrayCreateInt(9, 0, "cbaBuilderFemaleDelivered");
     for (scenarioPlayer = 1; <= 8) {{
         xsSetTriggerVariable({COLOR_CLEANED_VARIABLE_BASE} + scenarioPlayer - 1, 1);
     }}

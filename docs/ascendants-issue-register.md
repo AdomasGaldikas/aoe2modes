@@ -293,3 +293,15 @@ before changing admission. No DE failure from this timing is claimed here.
 | Silent Heroes | Every recurring Hero birth uses sound=false. | No global Hero creation cue in a fresh match. |
 | Latest civilizations | Installed Saxon/Varangian/Dane ids and both unit forms checked; spawn/builder tables cover 1–62. | Armies, builders, age-ups and training bans work with each civilization; balance remains provisional. |
 | Exact Mirror pairs | Explicit paired lobby choices documented. | Requested automatic P1/P5, P2/P6, P3/P7, P4/P8 Mirror pairing remains unresolved; no supported scenario API was found to reassign actual civilizations. |
+
+
+## RA v1.7 / Speed v0.1.2 code-only audit
+
+| ID | Finding | Source correction and verification | Remaining engine check |
+| --- | --- | --- | --- |
+| ASC-059 | Builder entitlement and completion notice were consumed even when XS creation failed | Delivered male/female halves are tracked per color. Only a completed pair deducts pending entitlement and arms its owner-resolved notice. Retrying skips delivered builders and budgets only missing births. Serialized failure tests cover first/second/all creation failures, persistent refusal, fractional housing, completion, the next earned pair and replay with no entitlement. Normal/Speed artifact parity applies the shared correction to both modes. | Observe builder births and native housing in a fresh match. User requested preserving the current lobby and no game testing. |
+
+Terrain, units, player settings, options, variable IDs, hero/backup/vote/route
+triggers and unrelated effect execution orders are preserved. The code audit
+and automated checks do not close ASC-053, pre-latch resignation, lobby-cap
+consumption or the live startup/spawning acceptance questions above.

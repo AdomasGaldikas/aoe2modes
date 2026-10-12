@@ -1,11 +1,14 @@
-# CBA Hero 4v4: RA Speed v0.1.1
+# CBA Hero 4v4: RA Speed v0.1.2
+
+Builder rewards now retain undelivered pairs after creation failure, retry only
+the missing builder, and announce completion only after both births succeed.
 
 Double-click/type selection is set to match the exact object type in both modes;
 shared names and selection groups cannot broaden it. Military/civilian roles remain
 intact: drag-box selection uses the engine's army priority with civilians selected
 separately. Fresh DE verification remains pending.
 
-The shared v0.1.1 source also removes the in-game population chooser island,
+The shared v0.1.2 source also removes the in-game population chooser island,
 King, signs and script-selected limit. Population is chosen in the lobby for
 all players. Native lobby-cap enforcement and spawning at different limits still
 need a fresh DE test; the source does not overwrite free housing.
@@ -36,7 +39,7 @@ Tune the warm-up, duration and multipliers in `[speed_rush]` in `mode.toml`.
 
 ```bash
 .venv/bin/python -m aoe2modes build evolution_alpha ra_speed
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA Speed v0.1.1.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA Speed v0.1.2.aoe2scenario" --strict
 .venv/bin/python -m pytest tests/test_ra_speed.py tests/test_evolution_alpha.py
 ```
 

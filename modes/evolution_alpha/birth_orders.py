@@ -34,6 +34,15 @@ def configure_birth_orders(ctx, *, identity_base, identity_tag):
                     variable=identity_base + color - 1, quantity=quantity, comparison=comparison,
                 )
             original = [trigger.effects[index] for index in trigger.effect_order]
+            if builder:
+                # Announce only a completed pair. The old mover now serves as its
+                # owner-resolved notification and acknowledgement trigger.
+                notice = next(t for t in ctx.tm.triggers
+                              if t.name == trigger.name.replace("Builder Reward", "Builder Move"))
+                notice.effects = [e for e in original if e.effect_type == EffectId.SEND_CHAT] + notice.effects
+                notice.effect_order = list(range(len(notice.effects)))
+                original = [e for e in original if e.effect_type not in
+                            {EffectId.SEND_CHAT, EffectId.CHANGE_VARIABLE}]
             trigger.effects = []
             for effect in original:
                 if effect.effect_type != EffectId.CREATE_OBJECT:
@@ -45,13 +54,17 @@ def configure_birth_orders(ctx, *, identity_base, identity_tag):
                 sound = "false" if hero or effect.disable_sound == 1 else "true"
                 ctx_fn = f"cbaBirth{family}{converted}"
                 wrappers.append(
-                    f"void {ctx_fn}() {{ cbaCreate{family}Birth({color}, "
+                    f"void {ctx_fn}() {{ cba{'Create' if hero else 'Deliver'}{family}Birth({color}, "
                     f"{effect.object_list_unit_id}, {effect.location_x}, {effect.location_y}, {sound}); }}"
                 )
                 # DE effects call a zero-argument function by name. Define the
                 # wrapper after its helpers in the shared embedded XS bundle.
                 trigger.new_effect.script_call(message=ctx_fn)
                 converted += 1
+            if builder:
+                commit = f"cbaCommitBuilderPair{color}W{trigger.name.rsplit('W', 1)[1]}"
+                wrappers.append(f"void {commit}() {{ cbaCommitBuilderPair({color}); }}")
+                trigger.new_effect.script_call(message=commit)
         if re.fullmatch(r"(?:Army|Hero) Range L\d S[1-8] W[1-8]|Builder Move S[1-8] W[1-8]", trigger.name):
             changed = True
             retired += sum(effect.effect_type == EffectId.TASK_OBJECT for effect in trigger.effects)
@@ -59,8 +72,8 @@ def configure_birth_orders(ctx, *, identity_base, identity_tag):
                 trigger.effects[index] for index in trigger.effect_order
                 if trigger.effects[index].effect_type != EffectId.TASK_OBJECT
             ]
-        # Existing pending-variable bookkeeping stays serialized for compatibility.
-        # It no longer selects or gives orders to units on a later game tick.
+        # The remaining movement triggers only acknowledge completed deliveries;
+        # they never select or order units on a later game tick.
         if changed:
             trigger.effect_order = list(range(len(trigger.effects)))
     if converted != 1024 or retired != 1984:
@@ -70,7 +83,7 @@ def configure_birth_orders(ctx, *, identity_base, identity_tag):
 
 def render_birth_orders(*, players, transform, army_destinations, hero_destinations,
                         builder_destinations, army_range_base, hero_range_base,
-                        eliminated_base, occupied_base):
+                        eliminated_base, occupied_base, pending_base, builder_notice_base):
     def branches(destinations, *, slot=False):
         lines = []
         for player in players:
@@ -125,14 +138,37 @@ void cbaCreateHeroBirth(int scenarioPlayer = 0, int unitId = -1, int x = 0, int 
 {branches(hero_destinations)}
 }}
 
-void cbaCreateBuilderBirth(int scenarioPlayer = 0, int unitId = -1,
+int cbaCreateBuilderBirth(int scenarioPlayer = 0, int unitId = -1,
                           int x = 0, int y = 0, bool sound = true) {{
-    if (xsTriggerVariable({eliminated_base} + scenarioPlayer - 1) == 1) return;
-    if (xsTriggerVariable({occupied_base} + scenarioPlayer - 1) != 1) return;
+    if (xsTriggerVariable({eliminated_base} + scenarioPlayer - 1) == 1) return(-1);
+    if (xsTriggerVariable({occupied_base} + scenarioPlayer - 1) != 1) return(-1);
     int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
-    if (worldPlayer < 1) return;
-    if (cbaHasPopulationRoom(worldPlayer, unitId, 1) == false) return;
+    if (worldPlayer < 1) return(-1);
+    if (cbaHasPopulationRoom(worldPlayer, unitId, 1) == false) return(-1);
     int unitRef = xsCreateUnit(unitId, worldPlayer, xsVectorSet(0.5 + x, 0.5 + y, -1), false, sound, false);
 {chr(10).join(builder_lines)}
+    return(unitRef);
+}}
+
+void cbaDeliverBuilderBirth(int scenarioPlayer = 0, int unitId = -1,
+                           int x = 0, int y = 0, bool sound = true) {{
+    if (xsTriggerVariable({pending_base} + scenarioPlayer - 1) < 1) return;
+    int delivered = gCbaBuilderMaleDelivered;
+    if (unitId == 293) delivered = gCbaBuilderFemaleDelivered;
+    if (xsArrayGetInt(delivered, scenarioPlayer) == 1) return;
+    int unitRef = cbaCreateBuilderBirth(scenarioPlayer, unitId, x, y, sound);
+    if (unitRef < 0) return;
+    xsArraySetInt(delivered, scenarioPlayer, 1);
+}}
+
+void cbaCommitBuilderPair(int scenarioPlayer = 0) {{
+    if (xsArrayGetInt(gCbaBuilderMaleDelivered, scenarioPlayer) != 1) return;
+    if (xsArrayGetInt(gCbaBuilderFemaleDelivered, scenarioPlayer) != 1) return;
+    int pending = xsTriggerVariable({pending_base} + scenarioPlayer - 1);
+    if (pending < 1) return;
+    xsSetTriggerVariable({pending_base} + scenarioPlayer - 1, pending - 1);
+    xsSetTriggerVariable({builder_notice_base} + scenarioPlayer - 1, 1);
+    xsArraySetInt(gCbaBuilderMaleDelivered, scenarioPlayer, 0);
+    xsArraySetInt(gCbaBuilderFemaleDelivered, scenarioPlayer, 0);
 }}
 """

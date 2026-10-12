@@ -112,7 +112,7 @@ def birth_descriptors(scenario):
     return {
         name: (family, int(color), int(unit), int(x), int(y), sound == "false")
         for name, family, color, unit, x, y, sound in re.findall(
-            r"void (cbaBirth(?:Hero|Builder)\d+)\(\) \{ cbaCreate(Hero|Builder)Birth"
+            r"void (cbaBirth(?:Hero|Builder)\d+)\(\) \{ cba(?:Create|Deliver)(Hero|Builder)Birth"
             r"\((\d+), (\d+), (\d+), (\d+), (true|false)\); \}", xs_source(scenario),
         )
     }
@@ -147,7 +147,8 @@ def compiled_births(xs):
     This does not simulate pathfinding or DE's scheduling.
     """
     names = (r"cba(?:WorldPlayerForColor|OrderBirth|OrderArmyBirth|CreateHeroBirth|"
-             r"CreateBuilderBirth|CreateWave|BirthHero\d+|BirthBuilder\d+|PopulationCost|"
+             r"CreateBuilderBirth|DeliverBuilderBirth|CommitBuilderPair(?:[1-8]W[1-8])?|"
+             r"BuilderPopulationCost|CreateWave|BirthHero\d+|BirthBuilder\d+|PopulationCost|"
              r"HasPopulationRoom|PopulationGate\d+)")
     lines = []
     for match in re.finditer(r"(?:void|int|bool|float) (" + names + r")\((.*?)\) \{", xs, re.S):
@@ -188,9 +189,10 @@ def compiled_births(xs):
                 assert token.startswith((
                     "return", "worldPlayer =", "level =", "unitRef =", "created =",
                     "owner =", "used =", "cost =", "candidate =", "position =", "x =", "y =",
-                    "room =",
+                    "room =", "delivered =", "pending =",
                     "xsArraySetInt(", "xsTaskUnits(", "xsSetTriggerVariable(",
                     "cbaOrderBirth(", "cbaOrderArmyBirth(", "cbaCreateHeroBirth(", "cbaCreateBuilderBirth(",
+                    "cbaDeliverBuilderBirth(", "cbaCommitBuilderPair(",
                 )), token
             lines.append("    " * indent + token)
         assert indent == 1
@@ -198,13 +200,28 @@ def compiled_births(xs):
 
 
 def birth_runtime(scenario, **api):
+    from collections import defaultdict
+
+    delivered = defaultdict(int)
     namespace = {
+        "gCbaBuilderMaleDelivered": 70001, "gCbaBuilderFemaleDelivered": 70002,
+        "xsArrayGetInt": lambda array, index: delivered[array, index],
+        "xsArraySetInt": lambda array, index, value: delivered.__setitem__((array, index), value),
         "gCbaBirthOrderUnit": 70000,
         "cAttributePopulation": 11, "cPopulation": 110, "cAttributeUnitLimit": 32,
         "cAttributePopulationCap": 4,
         "xsGetObjectAttribute": lambda *args: -1,
         "xsPlayerAttribute": lambda owner, attribute: 1000 if attribute == 4 else 1, **api,
     }
+    get_array = namespace["xsArrayGetInt"]
+    set_array = namespace["xsArraySetInt"]
+    namespace["xsArrayGetInt"] = lambda array, index: (
+        delivered[array, index] if array in (70001, 70002) else get_array(array, index)
+    )
+    namespace["xsArraySetInt"] = lambda array, index, value: (
+        delivered.__setitem__((array, index), value) if array in (70001, 70002)
+        else set_array(array, index, value)
+    )
     namespace.update({name: int(value) for name, value in
                       re.findall(r"const int (CBA_UNIT_\w+) = (\d+);", xs_source(scenario))})
     exec(compiled_births(xs_source(scenario)), namespace)

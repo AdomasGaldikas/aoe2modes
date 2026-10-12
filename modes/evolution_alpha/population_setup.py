@@ -32,6 +32,8 @@ def configure_population_setup(ctx):
         costs = " + ".join(
             f"cbaPopulationCost(owner, {e.object_list_unit_id})" for e in creates
         )
+        if builder:
+            costs = f"cbaBuilderPopulationCost({color}, owner)"
         # DE rejected the compound bool/float return in cbaPopulationGate0
         # even though xs-check accepted it. Separate the arithmetic and owner
         # guard, and return literals after the comparison.
@@ -59,6 +61,19 @@ bool cbaHasPopulationRoom(int worldPlayer = 0, int unitId = -1, int count = 1) {
     float room = xsPlayerAttribute(worldPlayer, cAttributePopulationCap);
     if (cost > room) return(false);
     return(true);
+}}
+int gCbaBuilderMaleDelivered = -1;
+int gCbaBuilderFemaleDelivered = -1;
+
+float cbaBuilderPopulationCost(int scenarioPlayer = 0, int owner = 0) {{
+    float cost = 0;
+    if (xsArrayGetInt(gCbaBuilderMaleDelivered, scenarioPlayer) == 0) {{
+        cost = cost + cbaPopulationCost(owner, 83);
+    }}
+    if (xsArrayGetInt(gCbaBuilderFemaleDelivered, scenarioPlayer) == 0) {{
+        cost = cost + cbaPopulationCost(owner, 293);
+    }}
+    return(cost);
 }}
 {chr(10).join(gates)}
 """

@@ -6,6 +6,63 @@ Goal: audit the maintained RA source and serialized scenario, fix confirmed logi
 and map-design defects, validate the changes, and push a reproducible candidate.
 Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
+## 2026-10-12 code-only full audit
+
+The user requested preserving the four-human lobby and auditing code only.
+No game input or live acceptance test is part of this audit. The source review
+covers owner identity, start/closed-slot resolution, Castle spawning and defeat,
+hero bands and buffs, builder entitlement, population admission, backup lifetime,
+route guards, vote-kicks, selection initialization, and Speed activation/expiry.
+
+Confirmed correction: serialized builder rewards consumed a pending pair and
+announced creation unconditionally, even when one or both XS creates returned -1.
+Normal v1.7 and Speed v0.1.2 track delivered halves per color, retain entitlement
+until both births succeed, and retry only the missing half. Population admission
+uses the cost of the undelivered half on a retry. The existing owner-resolved
+builder acknowledgement emits the completion notice. No new trigger variables
+or map objects are needed; the state arrays are initialized by embedded XS main.
+
+The suspected extra-Hero pad mismatch was ruled out: unbuffed milestone templates
+have no pad buff and allow shared births, while boosted Genghis tiers already
+guard their own type. Their triggers are preserved. Owner-wide backup cleanup,
+native owner selectors outside ASC-053's declared sweep, and lobby-cap enforcement
+still have the engine limits described below; this audit does not certify them.
+
+Plan:
+
+1. Review shared normal/Speed code and replay serialized failure paths.
+2. Correct confirmed builder entitlement loss and partial-delivery duplication.
+3. Run all repository tests, embedded XS validation, strict artifact audits,
+   callable binding checks, and full terrain/object/player preservation comparison.
+4. Push source and install the tested candidates without interacting with the game.
+5. Keep public listing updates gated on the outstanding fresh-engine acceptance.
+
+Artifact validation passed: embedded XS validation on both builds; strict
+readback audits with zero errors/warnings; every embedded callable resolved;
+129 changed triggers per mode (64 builder rewards, 64 builder acknowledgements
+and XS SCRIPT). Terrain, units, players, options, variables, display order and
+unrelated effect execution orders exactly match v1.6/v0.1.1. Normal has 22,827
+conditions and 15,563 effects; Speed has 22,829 conditions and 15,563 effects.
+
+Candidate files:
+
+- `dist/CBA Hero 4v4 RA v1.7.aoe2scenario` —
+  `1161eb5bff67136386d13d022361b0bbfa2454980329242e4f31d8969ee8caa1`.
+- `dist/CBA Hero 4v4 RA Speed v0.1.2.aoe2scenario` —
+  `9d4bd7cfb5590c5393651060f98a785b00255400680a3d1c771c8f942ef33950`.
+
+All 177 repository tests passed in 440.86 seconds, including the three new
+serialized builder failure cases. Repository Ruff and `git diff --check` passed.
+Both files were atomically installed into the verified active DE profile's
+scenario directory and their SHA-256 values above rechecked after installation.
+Older scenario files were preserved. No game input was sent and the human lobby
+was kept open. The currently selected lobby scenario is not switched by copying
+new files; select the new version for the next fresh lobby/match.
+
+The correction and audit evidence are delivered as source on GitHub main.
+The earlier downloadable candidate directory and public mod listing remain
+unchanged pending the fresh-engine acceptance items below.
+
 ## Current to-do list
 
 - [x] Apply exact-type double-click selection (Run Pattern 140 = 255) in the
@@ -87,8 +144,10 @@ Local build files and SHA-256:
 - `dist/CBA Hero 4v4 RA Speed v0.1.1.aoe2scenario` —
   `e023dcc73552a601433fb1c1d49638413e759f77640ac5ed60c000d5214de4ee`.
 
-This delivery updates source only. These new files have not been installed
-or added to the downloadable candidate directory or mod listing. The existing
+At source delivery these files had not been installed or added to the downloadable
+candidate directory or mod listing. On the later explicit quick-install request,
+both exact v1.6/v0.1.1 files above were installed and their hashes verified.
+The downloadable directory and public mod listing remained unchanged. The existing
 human match was left open. Fresh DE acceptance of lobby cap override, XS birth
 hard-cap enforcement, loading/spawning, double-click selection and the HUD
 remains required. In particular, resource 4 is free housing; mocked headroom
