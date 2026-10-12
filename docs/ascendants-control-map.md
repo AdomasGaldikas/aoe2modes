@@ -174,7 +174,7 @@ pending Hero pulse. v1.2 removes the capture-pad collision described by ASC-037
 from the source; exact-reference API behavior remains a live acceptance item.
 
 Hero spawning itself requires Penguin level 1 or greater and exactly one current kill
-band: 100–199, 200–399, 400–599, 600–699, 700–799, 800–999, 1,000–1,499,
+band: 200–399, 400–599, 600–799, 800–999, 1,000–1,499,
 1,500–1,999, 2,000–2,500, 2,501–3,000, 3,001–3,499, 3,500–4,999, or 5,000+.
 Thus level 0 pauses production, and re-enabling it cannot
 activate stale lower tiers.

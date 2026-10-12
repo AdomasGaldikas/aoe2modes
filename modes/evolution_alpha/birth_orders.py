@@ -76,7 +76,8 @@ def configure_birth_orders(ctx, *, identity_base, identity_tag):
         # they never select or order units on a later game tick.
         if changed:
             trigger.effect_order = list(range(len(trigger.effects)))
-    if converted != 1024 or retired != 1984:
+    # Eleven tiers have twelve Hero streams (dual SGK250) plus 128 builder births.
+    if converted != 896 or retired != 1984:
         raise RuntimeError(f"birth-order migration drift: creates={converted}, area tasks={retired}")
     return "\n".join(wrappers)
 

@@ -199,7 +199,7 @@ units are created at **cell centres**. Dynamic XS coordinates use `0.5 + x` and
 a one-element integer array passed to `xsTaskUnits` with Move action 1.
 
 Hero and builder trigger effects call zero-argument wrappers defined after the birth
-helpers in the embedded bundle. The 1,024 wrappers retain their configured unit IDs,
+helpers in the embedded bundle. The current 896 wrappers retain their configured unit IDs,
 color-local coordinates and sound settings. Creators additionally wait for token
 1001–1008. The 1,984 former area-based task effects are removed, so an older unit
 on the pad cannot join a new birth's order. Neither helper orders a failed creation.

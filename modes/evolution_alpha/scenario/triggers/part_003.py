@@ -3589,7 +3589,10 @@ def emit(tm) -> None:
     t.new_condition.timer(timer=5, inverted=-1)
     t.new_condition.own_fewer_objects(quantity=250, object_type=ObjectType.MILITARY, include_changeable_weapon_objects=-1)
     t.new_effect.deactivate_trigger(trigger_id=960)
-    t.new_effect.create_object(object_list_unit_id=HeroInfo.SUBOTAI.ID, location_x=39, location_y=16, disable_sound=-1)
+    t.new_effect.create_object(
+        object_list_unit_id=HeroInfo.HARALD_HARDRADA.ID,
+        location_x=39, location_y=16, disable_sound=-1,
+    )
 
     # --- #962  1000 -----------------    [display 1155]
     t = tm.add_trigger('1000 ----------------- ', description_stid=0, looping=1)
@@ -3747,7 +3750,7 @@ def emit(tm) -> None:
     )
     t.new_effect.deactivate_trigger(trigger_id=971)
     t.new_effect.create_object(
-        object_list_unit_id=HeroInfo.SUBOTAI.ID,
+        object_list_unit_id=HeroInfo.HARALD_HARDRADA.ID,
         source_player=PlayerId.TWO,
         location_x=101,
         location_y=16,
@@ -3946,7 +3949,7 @@ def emit(tm) -> None:
     )
     t.new_effect.deactivate_trigger(trigger_id=982)
     t.new_effect.create_object(
-        object_list_unit_id=HeroInfo.SUBOTAI.ID,
+        object_list_unit_id=HeroInfo.HARALD_HARDRADA.ID,
         source_player=PlayerId.THREE,
         location_x=16,
         location_y=38,
@@ -4145,7 +4148,7 @@ def emit(tm) -> None:
     )
     t.new_effect.deactivate_trigger(trigger_id=993)
     t.new_effect.create_object(
-        object_list_unit_id=HeroInfo.SUBOTAI.ID,
+        object_list_unit_id=HeroInfo.HARALD_HARDRADA.ID,
         source_player=PlayerId.FOUR,
         location_x=126,
         location_y=40,

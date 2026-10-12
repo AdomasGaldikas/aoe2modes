@@ -150,3 +150,36 @@ int main() {
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stderr
     subprocess.run([str(binary)], check=True, timeout=15)
+
+
+@pytest.mark.parametrize("mode", ["evolution_alpha", "ra_speed"])
+def test_current_hero_roster_removes_archer_and_subotai_and_unlocks_harald_at_800(candidates, mode):
+    from AoE2ScenarioParser.datasets.conditions import ConditionId
+    from AoE2ScenarioParser.datasets.heroes import HeroInfo
+    from AoE2ScenarioParser.datasets.trigger_lists import Attribute
+
+    from ascendants_runtime import birth_descriptors, logical_effects
+
+    scenario = candidates[mode]
+    retired = {HeroInfo.ARCHER_OF_THE_EYES.ID, HeroInfo.SUBOTAI.ID}
+    assert not any(u.unit_const in retired for row in scenario.unit_manager.units for u in row)
+    births = birth_descriptors(scenario)
+    assert not any(unit in retired for _family, _color, unit, _x, _y, _sound in births.values())
+    for trigger in scenario.trigger_manager.triggers:
+        assert not re.fullmatch(r"Hero Milestone S[1-8] W[1-8] K(?:100|700)", trigger.name)
+        assert not any(e.object_list_unit_id in retired for e in logical_effects(scenario, trigger))
+        match = re.fullmatch(r"Hero Milestone S([1-8]) W([1-8]) K800", trigger.name)
+        if match:
+            effects = list(logical_effects(scenario, trigger))
+            assert sum(e.object_list_unit_id == HeroInfo.HARALD_HARDRADA.ID for e in effects) == 1
+            timer, = [c.timer for c in trigger.conditions if c.condition_type == ConditionId.TIMER]
+            assert timer == 5
+            bands = {(c.quantity, bool(c.inverted)) for c in trigger.conditions
+                     if c.condition_type == ConditionId.ACCUMULATE_ATTRIBUTE
+                     and c.attribute == Attribute.UNITS_KILLED}
+            assert bands == {(800, False), (1000, True)}
+    assert sum(bool(re.fullmatch(r"Hero Milestone S[1-8] W[1-8] K800", t.name))
+               for t in scenario.trigger_manager.triggers) == 64
+    instructions = scenario.message_manager.instructions
+    assert "800 Harald Hardrada" in instructions
+    assert "Archer of the Eyes" not in instructions and "Subotai" not in instructions

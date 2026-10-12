@@ -151,7 +151,7 @@ def test_evolution_alpha_returned_units_are_not_deleted_or_rebuffed_by_rewards(e
             assert [not (count >= guard.quantity) for count in (0, 1, 4)] == [True, False, False]
             checked["buffs"] += 1
         checked["producers"] += 1
-    assert checked == {"buffs": 1088, "producers": 960}
+    assert checked == {"buffs": 1088, "producers": 832}
 
 
 def test_evolution_alpha_hero_off_discards_a_pending_route(evolution_alpha):
@@ -231,7 +231,7 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 4_442
+    assert len(triggers) == 4_314
     assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 994
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
@@ -4492,7 +4492,7 @@ def test_evolution_alpha_spawns_for_compacted_color_slots(evolution_alpha):
             HeroInfo.ROBIN_HOOD.ID,
             HeroInfo.THEODORIC_THE_GOTH.ID,
             HeroInfo.CHARLES_MARTEL.ID,
-            HeroInfo.SUBOTAI.ID,
+            HeroInfo.HARALD_HARDRADA.ID,
             HeroInfo.GENGHIS_KHAN.ID,
         }
         and effect.location_x >= 0
@@ -4624,16 +4624,14 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
 ):
     triggers = evolution_alpha.trigger_manager.triggers
     milestone_pattern = re.compile(
-        r"Hero Milestone S([1-8]) W([1-8]) K(100|200|400|600|700|800|1000|1500|2000)"
+        r"Hero Milestone S([1-8]) W([1-8]) K(200|400|600|800|1000|1500|2000)"
     )
     order_pattern = re.compile(r"Hero Range L([1-5]) S([1-8]) W([1-8])")
     milestone_units = {
-        100: HeroInfo.ARCHER_OF_THE_EYES.ID,
         200: HeroInfo.ROBIN_HOOD.ID,
         400: HeroInfo.THEODORIC_THE_GOTH.ID,
         600: HeroInfo.CHARLES_MARTEL.ID,
-        700: HeroInfo.HARALD_HARDRADA.ID,
-        800: HeroInfo.SUBOTAI.ID,
+        800: HeroInfo.HARALD_HARDRADA.ID,
         1_000: HeroInfo.GENGHIS_KHAN.ID,
         1_500: HeroInfo.GENGHIS_KHAN.ID,
         2_000: HeroInfo.GENGHIS_KHAN.ID,
@@ -4681,11 +4679,9 @@ def test_evolution_alpha_hero_milestones_work_for_every_color_and_runtime_owner(
                     (
                         world_player,
                         {
-                            100: 200,
                             200: 400,
                             400: 600,
-                            600: 700,
-                            700: 800,
+                            600: 800,
                             800: 1_000,
                             1_000: 1_500,
                             1_500: 2_000,
@@ -4918,12 +4914,10 @@ def test_evolution_alpha_late_heroes_arm_one_shot_route_orders(evolution_alpha):
     )
 
     hero_ids = {
-        HeroInfo.ARCHER_OF_THE_EYES.ID,
         HeroInfo.HARALD_HARDRADA.ID,
         HeroInfo.ROBIN_HOOD.ID,
         HeroInfo.THEODORIC_THE_GOTH.ID,
         HeroInfo.CHARLES_MARTEL.ID,
-        HeroInfo.SUBOTAI.ID,
         HeroInfo.GENGHIS_KHAN.ID,
     }
     live_hero_creates = [
@@ -4933,10 +4927,10 @@ def test_evolution_alpha_late_heroes_arm_one_shot_route_orders(evolution_alpha):
         if effect.effect_type == EffectId.CREATE_OBJECT
         and effect.object_list_unit_id in hero_ids
     ]
-    assert len(live_hero_creates) == 896
+    assert len(live_hero_creates) == 768
     for trigger, _effect in live_hero_creates:
         match = re.fullmatch(
-            r"Hero (?:Milestone S([1-8]) W[1-8] K(?:100|200|400|600|700|800|1000|1500|2000)"
+            r"Hero (?:Milestone S([1-8]) W[1-8] K(?:200|400|600|800|1000|1500|2000)"
             r"|Boost (?:K2501|K3001|K3500|K5000A|K5000B) S([1-8]) W[1-8])",
             trigger.name,
         )
@@ -6318,7 +6312,7 @@ def test_native_player_scoped_conditions_stay_a_declared_inventory(evolution_alp
             if 1 <= condition.source_player <= 8:
                 inventory[ConditionId(condition.condition_type).name] += 1
     assert dict(inventory) == {
-        "ACCUMULATE_ATTRIBUTE": 1763,  # Added five exclusive Hero bands per owner/color pair
+        "ACCUMULATE_ATTRIBUTE": 1507,  # Three extra Hero bands; no 100/700-kill tiers
         "OBJECTS_IN_AREA": 904,  # Added two boosted-Hero pad exclusion guards per pair
         "RESEARCH_TECHNOLOGY": 736,  # Goth restrictions and civilization age-ups
         "OWN_FEWER_OBJECTS": 64,  # Color Cleanup Complete; Hero caps now use actual XS costs
@@ -6354,14 +6348,14 @@ def test_birth_wrappers_only_order_the_returned_unit_and_use_xs_owners(evolution
         xsTaskUnits=task, xsVectorSet=lambda x, y, z: (x, y), vector=lambda x, y, z: (x, y),
     )
     descriptors = birth_descriptors(evolution_alpha)
-    assert len(descriptors) == 1024
+    assert len(descriptors) == 896
     seen = Counter()
     calls = []
     for trigger in evolution_alpha.trigger_manager.triggers:
         for effect in trigger.effects:
             if effect.effect_type == EffectId.SCRIPT_CALL and effect.message in descriptors:
                 calls.append((trigger, effect.message))
-    assert len(calls) == 1024 and len({name for _, name in calls}) == 1024
+    assert len(calls) == 896 and len({name for _, name in calls}) == 896
     for _trigger, name in calls:
         family, color, unit, x, y, disable_sound = descriptors[name]
         if family == "Hero":
@@ -6410,7 +6404,7 @@ def test_birth_wrappers_only_order_the_returned_unit_and_use_xs_owners(evolution
         runtime[name]()
         assert len(creates) == 1 and tasks == []
         refuse_creation = False
-    assert seen == {"Hero": 896 * 8, "Builder": 128 * 8}
+    assert seen == {"Hero": 768 * 8, "Builder": 128 * 8}
     assert "xsTaskUnits" in embedded_xs(evolution_alpha)
     assert "void xsTaskUnits" not in embedded_xs(evolution_alpha)  # Validator stub must never ship.
 
@@ -6572,15 +6566,17 @@ def test_extended_hero_bands_have_no_gaps_catchup_or_adrenaline(evolution_alpha)
     The separate birth replay executes all wrappers with independent XS owners.
     """
     expected = (
-        (100, ("Milestone K100",)), (200, ("Milestone K200",)),
+        (200, ("Milestone K200",)),
         (400, ("Milestone K400",)), (600, ("Milestone K600",)),
-        (700, ("Milestone K700",)), (800, ("Milestone K800",)),
+        (800, ("Milestone K800",)),
         (1000, ("Milestone K1000",)), (1500, ("Milestone K1500",)),
         (2000, ("Milestone K2000",)), (2501, ("Boost K2501",)),
         (3001, ("Boost K3001",)), (3500, ("Boost K3500",)),
         (5000, ("Boost K5000A", "Boost K5000B")),
     )
-    probes = {0, 99, 10000} | {n + delta for n, _ in expected for delta in (-1, 0, 1)}
+    probes = {0, 99, 100, 199, 699, 700, 799, 10000} | {
+        n + delta for n, _ in expected for delta in (-1, 0, 1)
+    }
     by_pair = defaultdict(list)
     for trigger in evolution_alpha.trigger_manager.triggers:
         match = re.fullmatch(r"Hero (Milestone) S([1-8]) W([1-8]) (K\d+)", trigger.name)
@@ -6608,7 +6604,7 @@ def test_extended_hero_bands_have_no_gaps_catchup_or_adrenaline(evolution_alpha)
             assert (reach.quantity, reach.operation) == (10, Operation.SET)
     assert set(by_pair) == VALID_COLOR_WORLD_PAIRS
     for (color, owner), triggers in by_pair.items():
-        assert len(triggers) == 14
+        assert len(triggers) == 12
         for kills in probes:
             earned = next((labels for lower, labels in reversed(expected) if kills >= lower), ())
             for penguin in (0, 1, 5, 0, 3):

@@ -110,7 +110,7 @@ def emit(tm) -> None:
     )
     t.new_effect.deactivate_trigger(trigger_id=1004)
     t.new_effect.create_object(
-        object_list_unit_id=HeroInfo.SUBOTAI.ID,
+        object_list_unit_id=HeroInfo.HARALD_HARDRADA.ID,
         source_player=PlayerId.FIVE,
         location_x=14,
         location_y=100,
@@ -309,7 +309,7 @@ def emit(tm) -> None:
     )
     t.new_effect.deactivate_trigger(trigger_id=1015)
     t.new_effect.create_object(
-        object_list_unit_id=HeroInfo.SUBOTAI.ID,
+        object_list_unit_id=HeroInfo.HARALD_HARDRADA.ID,
         source_player=PlayerId.SIX,
         location_x=126,
         location_y=100,
@@ -508,7 +508,7 @@ def emit(tm) -> None:
     )
     t.new_effect.deactivate_trigger(trigger_id=1026)
     t.new_effect.create_object(
-        object_list_unit_id=HeroInfo.SUBOTAI.ID,
+        object_list_unit_id=HeroInfo.HARALD_HARDRADA.ID,
         source_player=PlayerId.SEVEN,
         location_x=40,
         location_y=126,
@@ -707,7 +707,7 @@ def emit(tm) -> None:
     )
     t.new_effect.deactivate_trigger(trigger_id=1037)
     t.new_effect.create_object(
-        object_list_unit_id=HeroInfo.SUBOTAI.ID,
+        object_list_unit_id=HeroInfo.HARALD_HARDRADA.ID,
         source_player=PlayerId.EIGHT,
         location_x=102,
         location_y=124,

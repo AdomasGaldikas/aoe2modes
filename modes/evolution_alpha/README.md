@@ -1,4 +1,8 @@
-# CBA Hero 4v4: RA v1.8
+# CBA Hero 4v4: RA v1.9
+
+The current hero ladder starts at 200 kills. Archer of the Eyes and Subotai are
+removed; Harald Hardrada unlocks at 800 kills (every five seconds). Charles Martel
+continues through 799 kills. Normal and Speed share this eleven-tier progression.
 
 This candidate removes the startup/recurring Unit Limit zero-write after a
 reported `33/0` population display. A fresh match must confirm the displayed
@@ -12,7 +16,7 @@ shared names and selection groups cannot broaden it. Military/civilian roles rem
 intact: drag-box selection uses the engine's army priority with civilians selected
 separately. Fresh DE verification remains pending.
 
-The v1.8 source removes the population chooser island, King, signs, ownership
+The v1.9 source removes the population chooser island, King, signs, ownership
 transfer and 60-second default/lock. It no longer chooses a population limit or
 rewrites free housing. Select population in the lobby for everyone. Both modes
 use the stock 200 scenario fallback. The repeated Unit Limit zero-write is
@@ -34,8 +38,10 @@ All automatic births use real population costs; complete builder and backup batc
 wait for enough room. Saxons, Varangians and Danes have automatic armies, builder
 thresholds and both base/Elite training bans. New balance values are provisional.
 
-The v1.4 update also adds Archer of the Eyes, Harald Hardrada and the missing
-1,500/2,501/3,001-kill levels from Adrenaline Rush, for thirteen exclusive tiers.
+The current ladder has eleven exclusive tiers. Robin Hood begins at 200 kills;
+Charles Martel covers 600–799, and Harald Hardrada replaces Subotai at 800 kills
+with the existing five-second interval. The 100/700-kill tiers are removed.
+The 1,500/2,501/3,001-kill levels retain the Adrenaline Rush hero progression.
 The adrenaline fire-rate multiplier is reserved for a future variant. Population
 gates use separate arithmetic and literal returns after DE rejected their earlier
 compound return expression during load.
@@ -67,16 +73,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.8 candidate |
+| Metric | v1.9 candidate |
 | --- | ---: |
-| Triggers | 4,442 (3,902 initially enabled) |
-| Conditions | 22,827 |
-| Effects | 15,563 |
+| Triggers | 4,314 (3,774 initially enabled) |
+| Conditions | 21,547 |
+| Effects | 15,307 |
 | Units | 994 |
 | Runtime variables | 153 (ids 0–152) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero 4v4 RA v1.8.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero 4v4 RA v1.9.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -132,12 +138,10 @@ The Penguin controls all automatic Hero tiers:
 
 | Kills | Unit | Active band |
 | ---: | --- | --- |
-| 100 | Archer of the Eyes | 100–199 |
 | 200 | Robin Hood | 200–399 |
 | 400 | Theodoric the Goth | 400–599 |
-| 600 | Charles Martel | 600–699 |
-| 700 | Harald Hardrada | 700–799 |
-| 800 | Subotai | 800–999 |
+| 600 | Charles Martel | 600–799 |
+| 800 | Harald Hardrada | 800–999 |
 | 1,000 | Genghis Khan | 1,000–1,499 |
 | 1,500 | Faster Genghis, every 3s | 1,500–1,999 |
 | 2,000 | Super Genghis | 2,000–2,500 |
@@ -251,7 +255,7 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero 4v4 RA v1.8.aoe2scenario" --strict
+  "dist/CBA Hero 4v4 RA v1.9.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```

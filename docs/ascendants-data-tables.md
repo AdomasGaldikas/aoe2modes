@@ -143,12 +143,10 @@ and closes all bands after insertion so exactly one tier is live.
 
 | Kills | Hero | Band upper bound |
 | ---: | --- | ---: |
-| 100 | Archer of the Eyes | 200 |
 | 200 | Robin Hood | 400 |
 | 400 | Theodoric the Goth | 600 |
-| 600 | Charles Martel | 700 |
-| 700 | Harald Hardrada | 800 |
-| 800 | Subotai | 1,000 |
+| 600 | Charles Martel | 800 |
+| 800 | Harald Hardrada | 1,000 |
 | 1,000 | Genghis Khan | 1,500 |
 | 1,500 | Faster Genghis | 2,000 |
 | 2,000 | Genghis Khan (Super) | 2,501 |

@@ -1,8 +1,8 @@
 [mode]
 id = "evolution_alpha"
 name = "CBA Hero 4v4: RA"
-version = "1.8"
-description = "A complete CBA Hero arena with independent Castle-army and Hero spawn sliders, thirteen Hero tiers, free development, protected team routes, live K/D/R and compact one-use Scorpion Backup status, center rewards, and team vote-kicks."
+version = "1.9"
+description = "A complete CBA Hero arena with independent Castle-army and Hero spawn sliders, eleven Hero tiers, free development, protected team routes, live K/D/R and compact one-use Scorpion Backup status, center rewards, and team vote-kicks."
 authors = []
 tags = ["cba", "hero", "arena", "4v4"]
 
@@ -38,17 +38,7 @@ include = []
 scripts = []
 
 # Additional Adrenaline Rush heroes/levels, without its fire-rate multiplier.
-# Existing RA unlocks keep their thresholds; the two extra heroes fit between them.
-[[hero_progression.extra_tiers]]
-kills = 100
-hero = "ARCHER_OF_THE_EYES"
-interval = 5
-
-[[hero_progression.extra_tiers]]
-kills = 700
-hero = "HARALD_HARDRADA"
-interval = 3
-
+# The base ladder starts at 200 kills, with Harald Hardrada at 800.
 [[hero_progression.extra_tiers]]
 kills = 1500
 hero = "GENGHIS_KHAN"

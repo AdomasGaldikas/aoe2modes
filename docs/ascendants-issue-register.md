@@ -147,12 +147,14 @@ Castle survival mask, including missing, dead and wrong-owner objects.
 **Open. No live failure attributed to it yet; recorded because the v1.0.1.0 diagnosis
 predicts one.** v1.0.1.0 replaced Castle, defeat and identity-token conditions with XS
 guards after native selectors did not recognize P5/P8 live. RA v1.4 removes 896 integer Hero count gates in favor of actual population costs.
-The hero extension adds 640 kill-threshold and 128 pad-exclusion conditions using
-the existing native domain. The other 3,691 player-scoped conditions remain native:
+The current eleven-tier ladder adds 384 kill-threshold and 128 pad-exclusion
+conditions using the existing native domain; RA v1.9 removes the 100/700-kill
+tiers without widening the identity sweep. The remaining 3,435 player-scoped
+conditions are native:
 
 | Condition | Count | Systems | Direction if the diagnosis holds |
 | --- | ---: | --- | --- |
-| `Accumulate Attribute` | 1,763 | Hero milestone and boost kill thresholds | Fails closed — high colors never reach a hero tier |
+| `Accumulate Attribute` | 1,507 | Hero milestone and boost kill thresholds | Fails closed — high colors never reach a hero tier |
 | `Objects in Area` | 904 | Hero pads (inverted), vote markers (inverted), center rewards, Blacksmith/Town Center age gates, Goth Barracks ban | Mixed — rewards and upgrades never arrive; pad and vote checks read "clear" and fire early |
 | `Research Technology` | 736 | Goth restrictions, civilization age-ups | Mixed |
 | `Own Fewer Objects` | 64 | `Color Cleanup Complete` | Fails open — the empty-owner gate that authorizes victory |
@@ -276,7 +278,7 @@ field-by-field preservation check and engine acceptance boundaries.
 | ID | Finding | Source status and verification | Required game check |
 | --- | --- | --- | --- |
 | ASC-057 | DE rejects `cbaPopulationGate0` during load although xs-check passes | Rewritten: owner validation, float arithmetic and comparison are separate statements; gates and the per-birth helper return boolean literals. Serialized regression pins the supported form; fractional costs and whole-batch deferral still pass. Engine acceptance pending. | Start a fresh updated v1.4 match, then verify population choices, heroes, builders and Scorpion backup. |
-| ASC-058 | Directly copying Adrenaline Rush's late activation chain would downgrade SGK250 | Avoided: all thirteen hero bands are exclusive; 3500/5000 births retain +250 attack/+300 HP/range 10. Boundary/OFF/resume tests cover every color/selector pair. No adrenaline reload or global line-of-sight changes imported. | Play through 2501/3001/3500/5000 kills with OFF/resume and returning heroes; assess SGK250 balance and sparse high colors (ASC-053). |
+| ASC-058 | Directly copying Adrenaline Rush's late activation chain would downgrade SGK250 | Avoided: all eleven current hero bands are exclusive; 3500/5000 births retain +250 attack/+300 HP/range 10. Boundary/OFF/resume tests cover every color/selector pair. No adrenaline reload or global line-of-sight changes imported. | Play through 2501/3001/3500/5000 kills with OFF/resume and returning heroes; assess SGK250 balance and sparse high colors (ASC-053). |
 
 Pre-latch resignation remains a startup acceptance question. The detector waits
 three seconds and tests assume an owner is observed before departure. A probe must

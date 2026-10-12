@@ -126,12 +126,10 @@ on OFF.
 
 | Kills | Hero | Active band |
 | ---: | --- | --- |
-| 100 | Archer of the Eyes | 100–199 |
 | 200 | Robin Hood | 200–399 |
 | 400 | Theodoric the Goth | 400–599 |
-| 600 | Charles Martel | 600–699 |
-| 700 | Harald Hardrada | 700–799 |
-| 800 | Subotai | 800–999 |
+| 600 | Charles Martel | 600–799 |
+| 800 | Harald Hardrada | 800–999 |
 | 1,000 | Genghis Khan | 1,000–1,499 |
 | 1,500 | Faster Genghis (every 3s) | 1,500–1,999 |
 | 2,000 | Super Genghis | 2,000–2,500 |
@@ -142,7 +140,8 @@ on OFF.
 
 SGK250 adds 250 attack and 300 HP to each newborn and sets its range to 10.
 Later tiers retain that strength. The roster and additional levels are adapted
-from Adrenaline Rush, with Archer/Harald inserted around RA's existing unlocks.
+from Adrenaline Rush. The ladder starts at 200 kills; Harald replaces Subotai
+at 800 kills with the existing five-second interval.
 There is no adrenaline fire-rate multiplier. Existing heroes keep their stats
 and manual orders; no unit-type-wide stat change is applied.
 

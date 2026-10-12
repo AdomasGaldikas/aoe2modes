@@ -6,6 +6,34 @@ Goal: audit the maintained RA source and serialized scenario, fix confirmed logi
 and map-design defects, validate the changes, and push a reproducible candidate.
 Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
+## 2026-10-12 simplified hero ladder
+
+RA v1.9 and Speed v0.1.4 remove the 100-kill Archer of the Eyes and 700-kill
+Harald tiers. Charles Martel now covers 600–799 kills. Harald Hardrada replaces
+Subotai at 800–999 kills, retaining the existing five-second interval. The first
+Hero remains Robin Hood at 200 kills; all later Genghis tiers retain their
+thresholds, buffs and spawn intervals. Both variants use the same eleven tiers.
+
+The saved-file comparison removes exactly 128 owner/color tier triggers and
+changes the 64 Charles upper bounds, 64 Harald births and embedded XS bundle.
+Map/terrain, objects, players, options and variable IDs are preserved. Both XS
+bundles validate, both strict audits have zero errors/warnings, and all embedded
+calls resolve. Native identity exposure remains in ASC-053: this roster change
+removes 256 native kill conditions without widening the identity sweep.
+
+- RA v1.9 SHA-256: `d8c2e9df493985f2ce27cf68ce808d919da758e745bf077fe02ed2a53b404d26`.
+- Speed v0.1.4 SHA-256: `9fb2bde591e966e860db961b02ea3ea7e7b519130697d08bdc2cec442926542e`.
+
+Validation: 116 passed in 153.47s (0:02:33). Repository Ruff and `git diff --check`
+passed. Both candidates were atomically copied into the game scenario folder and
+the installed SHA-256 hashes match the audited files. Source is merged to main
+and delivered to GitHub; no game UI actions are performed.
+
+Fresh-match acceptance remains open: no Hero before 200 kills, Charles continues
+through 799, Harald appears at 800, and neither retired Hero is created. The
+human lobby stays open; public mod-listing updates still wait for outstanding
+engine checks, including population and native owner selectors.
+
 ## 2026-10-12 reported zero population capacity
 
 The user clarified the RA v1.6 HUD reads `33/0`. This reports nonzero used

@@ -655,8 +655,8 @@ PUBLIC_INSTRUCTIONS = (
     "and P4/P8 in the lobby. The game resolves Mirror before the scenario starts; "
     "this map cannot reassign those engine choices.\r\r"
     "HERO MILESTONES\r"
-    "100 Archer of the Eyes | 200 Robin Hood | 400 Theodoric | 600 Charles Martel\r"
-    "700 Harald Hardrada | 800 Subotai | 1000 Genghis | 1500 faster Genghis\r"
+    "200 Robin Hood | 400 Theodoric | 600 Charles Martel\r"
+    "800 Harald Hardrada | 1000 Genghis | 1500 faster Genghis\r"
     "2000 Super Genghis | 2501 rapid Super Genghis | 3001 SGK250\r"
     "3500 faster SGK250 | 5000 dual SGK250. No adrenaline fire-rate multiplier."
 )
@@ -685,7 +685,7 @@ HERO_MILESTONES = (
     (200, HeroInfo.ROBIN_HOOD.ID),
     (400, HeroInfo.THEODORIC_THE_GOTH.ID),
     (600, HeroInfo.CHARLES_MARTEL.ID),
-    (800, HeroInfo.SUBOTAI.ID),
+    (800, HeroInfo.HARALD_HARDRADA.ID),
     (1_000, HeroInfo.GENGHIS_KHAN.ID),
     (2_000, HeroInfo.GENGHIS_KHAN.ID),
 )
@@ -1069,9 +1069,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 4_441:
+    if len(ctx.tm.triggers) != 4_313:
         raise RuntimeError(
-            f"expected 4,441 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 4,313 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -5020,7 +5020,7 @@ def _rewrite_public_messages(ctx: BuildContext) -> None:
         "your allies through the protected team routes, and destroy every enemy Castle."
     )
     messages.hints = (
-        "Defeat enemy units to ascend through thirteen hero tiers. Protect all four Castles, "
+        "Defeat enemy units to ascend through eleven hero tiers. Protect all four Castles, "
         "move the Sheep to set Castle-army travel, move the Penguin to control Hero "
         "production and travel, and use the rear gates to reinforce your allies."
     )
