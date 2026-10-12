@@ -1,4 +1,14 @@
-# CBA Hero 4v4: RA Speed v0.1.0
+# CBA Hero 4v4: RA Speed v0.1.1
+
+Double-click/type selection is set to match the exact object type in both modes;
+shared names and selection groups cannot broaden it. Military/civilian roles remain
+intact: drag-box selection uses the engine's army priority with civilians selected
+separately. Fresh DE verification remains pending.
+
+The shared v0.1.1 source also removes the in-game population chooser island,
+King, signs and script-selected limit. Population is chosen in the lobby for
+all players. Native lobby-cap enforcement and spawning at different limits still
+need a fresh DE test; the source does not overwrite free housing.
 
 An independent Speed candidate built from the maintained normal RA
 map and rules. It does not import Zalabatta's scenario or trigger graph. Normal RA
@@ -26,7 +36,7 @@ Tune the warm-up, duration and multipliers in `[speed_rush]` in `mode.toml`.
 
 ```bash
 .venv/bin/python -m aoe2modes build evolution_alpha ra_speed
-.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA Speed v0.1.0.aoe2scenario" --strict
+.venv/bin/python -m aoe2modes audit "dist/CBA Hero 4v4 RA Speed v0.1.1.aoe2scenario" --strict
 .venv/bin/python -m pytest tests/test_ra_speed.py tests/test_evolution_alpha.py
 ```
 
@@ -35,7 +45,7 @@ engine API stubs, including shuffled owners, closed slots, early and simultaneou
 losses, independent teams, refreshes, expiry and repeated apply/remove cycles.
 Serialized comparisons verify that normal RA geometry and gameplay are preserved.
 
-Validation on 2026-10-11: all 168 repository tests passed, including 10 Speed
+Historical v0.1.0 validation on 2026-10-11: all 168 repository tests passed, including 10 Speed
 checks; repository Ruff, embedded XS validation and strict serialized audits of
 both candidates passed. Speed contains 4,445 triggers, 999 objects and 155 trigger
 variables. Artifact SHA-256:
@@ -47,6 +57,6 @@ HUD countdowns in a fresh private match. Reciprocal factors preserve multiplicat
 technology upgrades; additive changes during the window require an engine check.
 The user requested keeping the current human match open, so it was not interrupted.
 The user subsequently requested installing both candidates and delivering them
-on GitHub. Both hash-verified files are installed locally and available under
+on GitHub. Those historical v0.1.0/v1.5 files are installed locally and available under
 [`releases/ra-candidates`](../../releases/ra-candidates/). No Steam/AoE mod listing
 was updated, and the fresh-game checks above remain pending.

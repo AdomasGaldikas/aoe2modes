@@ -26,7 +26,7 @@ Castle the other side owns.
 | Players | 8 fixed scenario colors |
 | Sides | Blue, Red, Green, Yellow **vs** Teal, Purple, Gray, Orange |
 | Starting age | Feudal |
-| Population | 250 usable slots (the scenario cap is 251; one slot is reserved) |
+| Population | Select the shared limit in the lobby; no in-game chooser (fresh cap/spawn acceptance pending) |
 | Civilizations | Free choice, ids 1–59 |
 
 Close any slots you do not need, **but keep at least one occupied color on each side**.

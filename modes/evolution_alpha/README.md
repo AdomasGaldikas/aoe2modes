@@ -1,18 +1,28 @@
-# CBA Hero 4v4: RA v1.5
+# CBA Hero 4v4: RA v1.6
 
-This is a candidate installed locally and delivered on GitHub at the user's request.
-The downloadable normal and Speed files are in
-[`releases/ra-candidates`](../../releases/ra-candidates/). Fresh DE acceptance is pending. The HUD headings now use lowercase letters and
-normal row-sized text. Lobby population selection and fresh-game load, spawning,
-and HUD alignment checks remain on the [current to-do list](../../docs/ra-audit-plan.md).
-The v1.4 behavior described below is the starting point, not a claim those outstanding
-requests have been completed.
+Double-click/type selection is set to match the exact object type in both modes;
+shared names and selection groups cannot broaden it. Military/civilian roles remain
+intact: drag-box selection uses the engine's army priority with civilians selected
+separately. Fresh DE verification remains pending.
+
+The v1.6 source removes the population chooser island, King, signs, ownership
+transfer and 60-second default/lock. It no longer chooses a population limit or
+rewrites free housing. Select population in the lobby for everyone. Both modes
+use the stock 200 scenario fallback and clear civilization bonus population to
+keep the native limit equal. Native free housing guards still protect automatic
+births and complete reward batches; that resource is not the lobby maximum.
+Fresh DE acceptance must confirm the effective cap and spawning at different
+lobby limits before claiming complete lobby-cap enforcement.
+
+The earlier v1.5/Speed v0.1.0 candidates are available in
+[`releases/ra-candidates`](../../releases/ra-candidates/). Current source changes
+and outstanding fresh-game checks are tracked in the
+[current to-do list](../../docs/ra-audit-plan.md). HUD headings use lowercase
+letters and normal row-sized text.
 
 RA v1.4 silences recurring Hero creation cues, doubles the main allied route
 spans to 16 tiles, kills enemies entering opposing protected routes, and adds
-warning flames with owner-resolved per-player visibility requests. A start-of-match
-chooser offers 200 / 250 / 300 / 500 population, controlled by the lowest active
-occupied color (the host should take that color). It locks at 60 seconds, default 250.
+warning flames with owner-resolved per-player visibility requests.
 All automatic births use real population costs; complete builder and backup batches
 wait for enough room. Saxons, Varangians and Danes have automatic armies, builder
 thresholds and both base/Elite training bans. New balance values are provisional.
@@ -50,16 +60,16 @@ This file is the release summary. The reference documentation lives in `docs/`:
 
 ## Current build
 
-| Metric | v1.5 candidate |
+| Metric | v1.6 candidate |
 | --- | ---: |
-| Triggers | 4,443 (3,903 initially enabled) |
-| Conditions | 22,828 |
-| Effects | 15,633 |
-| Units | 999 |
+| Triggers | 4,442 (3,902 initially enabled) |
+| Conditions | 22,827 |
+| Effects | 15,627 |
+| Units | 994 |
 | Runtime variables | 153 (ids 0–152) |
 | Scenario format | DE v1.58 |
 
-The serialized artifact is `dist/CBA Hero 4v4 RA v1.5.aoe2scenario`.
+The serialized artifact is `dist/CBA Hero 4v4 RA v1.6.aoe2scenario`.
 `tests/test_evolution_alpha.py::test_evolution_alpha_readme_tracks_the_built_version`
 keeps this file's version in step with `mode.toml`.
 
@@ -85,9 +95,9 @@ Each two-tile-wide track is surrounded by water, with a three-tile Deep Water ga
 between the tracks. This keeps each controller inside its own selector line without
 repeatedly overriding movement orders. The Signs leave one row clear for travel, and
 every dry track tile belongs to one of its controller's six levels. The protected
-Penguin's one real population slot is excluded from custom gameplay ceilings.
-The selected 200/250/300/500 cap also reserves the temporary population chooser's
-actual cost while it exists.
+Penguin's one real population slot is excluded from the civilization-specific
+army-wave threshold; it still consumes ordinary native population. There is no
+population chooser or extra reserved chooser slot.
 
 The sliders latch color-local variables. XS passes only the reference returned by
 `xsCreateUnit` to `xsTaskUnits`, immediately after that birth, using the selected
@@ -234,7 +244,7 @@ removes all of the eliminated player's objects. See the wall-role table in
 .venv/bin/pytest -q --ignore=tests/test_evolution_alpha.py
 .venv/bin/python -m aoe2modes build evolution_alpha
 .venv/bin/python -m aoe2modes audit \
-  "dist/CBA Hero 4v4 RA v1.5.aoe2scenario" --strict
+  "dist/CBA Hero 4v4 RA v1.6.aoe2scenario" --strict
 .venv/bin/python -m aoe2modes map evolution_alpha \
   --html dist/ascendants-map.html
 ```

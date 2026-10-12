@@ -8,6 +8,13 @@ Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
 ## Current to-do list
 
+- [x] Apply exact-type double-click selection (Run Pattern 140 = 255) in the
+  shared normal/Speed initialization, covering each runtime player's complete
+  engine object table, including new and upgraded types.
+- [ ] Check double-click selection in a fresh DE match with different Hero/army
+  types mixed together and with renamed controllers nearby. Drag-box and explicit
+  mixed control groups retain their standard engine behavior.
+
 - [x] Use lowercase `p# | k | d | r | b` HUD headings at the same text size as
   player rows, instead of the large bold objective-header style. Numeric and active
   rows now explicitly disable header styling and use matching lowercase `p#` tags.
@@ -15,15 +22,22 @@ Automated checks cannot certify DE pathfinding or multiplayer scheduling.
   multi-digit kills/deaths/razings and backup states `1`, `A`, and `0`. The native
   objectives font has proportional widths; lowercase text alone does not guarantee
   fixed-width columns.
-- [ ] Replace the north-island in-game population chooser with a lobby selection
-  that applies the same limit to every player. Verify how custom scenarios can
-  consume the lobby setting before choosing an implementation.
+- [x] Remove the north-island population chooser, King, four signs, labels,
+  ownership transfer and 60-second lock/default from both modes. Remove the
+  script-selected limit and repeated free-housing rewrites. Use the stock 200
+  fallback, retain native free-housing admission and clear civilization bonuses.
+- [ ] In fresh normal and Speed matches, choose different population limits in
+  the lobby (including 25 and 500). Verify every player has the same effective
+  maximum and automatic births stop there, resume after losses and retain full
+  builder/backup batch admission. Resource 4 is free housing, not the lobby cap;
+  XS creation bypass behavior and lobby override still need engine evidence.
 - [ ] Resolve the reported load/startup and missing-spawn failures in a fresh
   match; verify occupied-player HUD rows appear as well as the headings.
-- [ ] Finish and validate the v1.5 candidate. Run tests, lint, embedded XS validation,
-  and strict serialized audit before publishing; also complete fresh-game acceptance
-  for the reported load/spawn/UI problems. An active match with human players must
-  not be interrupted for testing.
+- [x] Validate the v1.6 / Speed v0.1.1 source candidates with all 110 focused
+  tests, Ruff, embedded XS validation and strict audits of both written files.
+- [ ] Complete fresh-game acceptance for lobby population and the reported
+  load/spawn/UI problems before publishing new scenario files. An active match
+  with human players must not be interrupted for testing.
 
 The completed v1.2 audit below is historical evidence, not acceptance of the
 current candidate. Current engine checks remain open until actually observed.
@@ -50,6 +64,36 @@ are tracked under `releases/ra-candidates`; the source and files are delivered o
 GitHub main. The open human match was preserved. No Steam/AoE mod listing was
 updated. The lobby-population replacement and fresh-game acceptance items above
 remain open; installation and GitHub delivery do not establish live acceptance.
+
+## 2026-10-12 selector removal and unit selection source checks
+
+Normal RA v1.6 and Speed v0.1.1 remove the in-game population island, King,
+four signs, labels, ownership transfer, script-selected cap and timed lock.
+Both also initialize exact-type double-click selection without changing unit
+classes or military/civilian interface roles.
+
+All 110 focused tests passed (98 normal and 12 Speed). Repository Ruff and
+`git diff --check` passed. Both written scenarios validated embedded XS and
+passed strict audits with zero errors/warnings. Normal has 4,442 triggers,
+994 objects and 153 variables; Speed has 4,444 triggers, 994 objects and
+155 variables. Comparison with the delivered v1.5 file confirms exactly
+48 changed terrain tiles and five removed objects; all other terrain and
+object values remain unchanged.
+
+Local build files and SHA-256:
+
+- `dist/CBA Hero 4v4 RA v1.6.aoe2scenario` —
+  `9451991fc1fee7e5ee97af5d4e0a4c277fc4003adf5878aa42b7a774ffca2f70`.
+- `dist/CBA Hero 4v4 RA Speed v0.1.1.aoe2scenario` —
+  `e023dcc73552a601433fb1c1d49638413e759f77640ac5ed60c000d5214de4ee`.
+
+This delivery updates source only. These new files have not been installed
+or added to the downloadable candidate directory or mod listing. The existing
+human match was left open. Fresh DE acceptance of lobby cap override, XS birth
+hard-cap enforcement, loading/spawning, double-click selection and the HUD
+remains required. In particular, resource 4 is free housing; mocked headroom
+tests do not prove consumption of the lobby maximum. The only unused diagnostic
+scenario created for this check was removed from the game folder.
 
 ## Separate Speed candidate
 

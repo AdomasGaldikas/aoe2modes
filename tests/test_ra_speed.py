@@ -100,3 +100,53 @@ def test_speed_rejects_invalid_settings(field, value, repo, tmp_path):
         f"{key} = {toml(value)}" for key, value in values.items()))
     with pytest.raises(ValueError):
         rush.load_settings(tmp_path)
+
+
+@pytest.mark.parametrize("mode", ["evolution_alpha", "ra_speed"])
+def test_same_type_selection_initializes_every_runtime_owner_and_future_type(candidates, mode, tmp_path):
+    source = xs_source(candidates[mode])
+    marker = "int objectCount = xsGetPlayerNumberOfObjects(worldPlayer);"
+    assert source.count(marker) == 1
+    initialization = marker + source.split(marker, 1)[1].split("cbaRefreshCombatValues(worldPlayer);", 1)[0]
+    assert "xsEffectAmount(cSetAttribute, objectId, 140, 255, worldPlayer);" in initialization
+    initialization = re.sub(r"for \((\w+) = (\d+); < (\w+)\)",
+                            lambda m: f"for (int {m[1]} = {m[2]}; {m[1]} < {m[3]}; ++{m[1]})",
+                            initialization)
+    # Execute the serialized initialization with independently numbered owners and
+    # differing table lengths. High IDs stand for future/DLC/upgraded definitions.
+    harness = r'''
+#include <cassert>
+#include <map>
+#include <tuple>
+constexpr int cSetAttribute = 0;
+constexpr int cFoodCost = 103, cWoodCost = 104, cGoldCost = 105, cStoneCost = 106;
+std::map<std::tuple<int,int,int>, float> writes;
+int xsGetPlayerNumberOfObjects(int owner) { return 2400 + owner * 3; }
+void xsEffectAmount(int operation, int type, int attribute, float value, int owner) {
+    assert(operation == cSetAttribute && owner >= 1 && owner <= 8);
+    assert(attribute == 140 || (attribute >= 103 && attribute <= 106));
+    assert(type >= 0 && type < xsGetPlayerNumberOfObjects(owner));
+    assert(writes.emplace(std::make_tuple(owner, type, attribute), value).second);
+}
+void initialize(int worldPlayer) {
+// INITIALIZATION
+}
+int main() {
+    for (int owner : {7, 2, 5, 8, 3, 1, 4, 6}) initialize(owner);
+    for (int owner = 1; owner <= 8; ++owner) {
+        for (int type = 0; type < xsGetPlayerNumberOfObjects(owner); ++type) {
+            assert(writes.at({owner, type, 140}) == 255);
+            for (int cost = 103; cost <= 106; ++cost) assert(writes.at({owner, type, cost}) == 0);
+        }
+    }
+}
+'''
+    cpp = tmp_path / "selection.cpp"
+    cpp.write_text(harness.replace("// INITIALIZATION", initialization))
+    binary = tmp_path / "selection"
+    compiler = shutil.which("g++")
+    assert compiler, "g++ is required for the emitted selection initialization test"
+    result = subprocess.run([compiler, "-std=c++17", "-Wall", "-Werror", str(cpp), "-o", str(binary)],
+                            capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    subprocess.run([str(binary)], check=True, timeout=15)

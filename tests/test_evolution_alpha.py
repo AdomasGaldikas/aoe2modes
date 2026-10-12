@@ -231,8 +231,8 @@ def evolution_alpha(tmp_path_factory, repo):
 
 def test_evolution_alpha_keeps_compact_trigger_count(evolution_alpha):
     triggers = evolution_alpha.trigger_manager.triggers
-    assert len(triggers) == 4_443
-    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 999
+    assert len(triggers) == 4_442
+    assert sum(len(units) for units in evolution_alpha.unit_manager.units) == 994
     assert all(trigger.conditions or trigger.effects for trigger in triggers)
     names = [trigger.name for trigger in triggers]
     assert len(names) == len(set(names))
@@ -261,7 +261,7 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
         for x in range(144)
     )
     assert hashlib.sha256(terrain).hexdigest() == (
-        "ff99432ab3d41ca4243e9d30f0c65e14ec387996c3f1d9b68075f003bd06b866"
+        "14fcb3a15635f74aeddc1c1017d4c8af863f0affd12cadab6a26d02d5b40e01d"
     )
 
     source_milestone_shore = {
@@ -333,9 +333,7 @@ def test_evolution_alpha_uses_v2_terrain_with_protected_team_routes(evolution_al
                 )
             if transformed_terrain != {tile_values}:
                 asymmetrical.add((x, y))
-    setup_orbit = {transform(x, y) for x in range(68, 76) for y in range(2, 8)
-                   for transform in transforms}
-    assert asymmetrical == route_orbits | entrance_accent_tiles | setup_orbit
+    assert asymmetrical == route_orbits | entrance_accent_tiles
 
     for x1, y1, x2, y2 in (
         (65, 20, 78, 23), (65, 120, 78, 123), (66, 14, 77, 29), (66, 114, 77, 129),
@@ -568,9 +566,9 @@ def test_evolution_alpha_keeps_v2_objects_and_playable_gate_holes(evolution_alph
     assert original_digest == (
         "46db5fdc5165b1ea1ca13082d7d9d2d05081d61ebc44e04e7cd4fb4a46fe631d"
     )
-    assert len(additions) == 183
+    assert len(additions) == 178
     assert additions_digest == (
-        "ae8778e8b84dca5228d0369968806a0cc680f33e0c828a6c33650d28c99694ac"
+        "a7267a857044eb4b0fa29b9f5dc19f5b620d281b8a617af0ddccf292e192b840"
     )
 
 
@@ -946,7 +944,6 @@ def test_evolution_alpha_builds_clear_two_lane_range_islands(evolution_alpha):
         for unit in gaia_units
         if unit.unit_const == OtherInfo.SIGN.ID
     }
-    expected_signs |= {(x + 0.5, 3.5) for x in (68, 70, 72, 74)}
     assert actual_signs == expected_signs
 
     for player in PlayerId.all(exclude_gaia=True):
@@ -1588,7 +1585,7 @@ def test_evolution_alpha_uses_independent_sheep_and_penguin_range_sliders(
     assert {
         evolution_alpha.player_manager.players[player].population_cap
         for player in PlayerId.all(exclude_gaia=True)
-    } == {501}
+    } == {200}
     assert not [
         trigger
         for trigger in evolution_alpha.trigger_manager.triggers
@@ -1940,7 +1937,9 @@ def test_evolution_alpha_publishes_combat_only_score_values(evolution_alpha):
     }
     for attribute, value in expected_values.items():
         assert f"xsSetPlayerAttribute(worldPlayer, {attribute}, {value});" in xs_source
-    assert xs_source.count("xsSetPlayerAttribute(worldPlayer, cAttribute") == 4
+    written_attributes = re.findall(r"xsSetPlayerAttribute\(worldPlayer, (cAttribute\w+),", xs_source)
+    assert set(written_attributes) == set(expected_values) | {"cAttributeUnitLimit"}
+    assert len(written_attributes) == 5
 
     # Sparse lobbies compact selected colors into different runtime IDs. Clear
     # every non-combat score source through worldPlayer, not a fixed color slot.
@@ -2726,9 +2725,9 @@ def test_evolution_alpha_spawns_sparse_raze_builders_in_their_color_base(evoluti
     assert "xsGetPlayerCivilization(localPlayer)" in xs_source
     assert "first builder pair after" in xs_source
     assert "if (xsGetGameTime() >= 4)" in xs_source
-    # Two mutually exclusive builder messages, plus one exceptional chooser cleanup report.
-    assert xs_source.count("xsChatData(") == 3
-    assert xs_source.count('xsChatData("[CBA] Population choice is locked;') == 1
+    # Only the two mutually exclusive builder messages remain.
+    assert xs_source.count("xsChatData(") == 2
+    assert "Population choice is locked" not in xs_source
     assert "Unsupported civilization (id " in xs_source
     assert "xsDisableSelf();" in xs_source
     assert xs_source.count("cbaQueueColorBuilders(") == 9
@@ -6563,81 +6562,23 @@ def test_scorpion_backup_labels_target_activation_king_not_kill_counter(evolutio
     assert "Move your Skorpion King" in instructions
 
 
-def test_population_setup_claims_lowest_active_color_and_locks(evolution_alpha):
-    """Execute the shipped selector with independently numbered native/XS owners."""
+def test_population_has_no_island_chooser_lock_or_cap_rewrite(evolution_alpha):
     source = embedded_xs(evolution_alpha)
-    ref = int(re.search(r"xsSetUnitOwner\((\d+), candidate", source)[1])
-    variables = defaultdict(int, {123: 1, 128: 1, 139: 0, 144: 1008})  # P3 and P8 occupied.
-    clock, position = [3], [(70.5, 4.5, 1)]
-    alive, owner = [True], [0]
-    resources = defaultdict(float, {(7, 11): 151, (8, 11): 101, (7, 32): 10})
-    properties, claims, instructions = [], [], []
-    allow_claim = [True]
-
-    def transfer(reference, player, flash):
-        assert reference == ref and flash is False
-        claims.append(player)
-        if not allow_claim[0]:
-            return False
-        if owner[0] != player:
-            resources[player, 11] += 1
-            owner[0] = player
-        return True
-
-    def remove(reference):
-        assert reference == ref
-        if alive[0] and owner[0]:
-            resources[owner[0], 11] -= 1
-        alive[0] = False
-        return True
-
-    runtime = birth_runtime(
-        evolution_alpha, xsTriggerVariable=lambda var: variables[var],
-        xsGetGameTime=lambda: clock[0], xsDoesUnitExist=lambda reference: reference == ref and alive[0],
-        xsGetUnitOwner=lambda reference: owner[0], xsGetUnitPosition=lambda reference: position[0],
-        xsVectorGetX=lambda vector: vector[0], xsVectorGetY=lambda vector: vector[1],
-        xsSetUnitOwner=transfer,
-        xsSetUnitProperty=lambda *args: properties.append(args) or True,
-        xsRemoveUnit=remove, xsPlayerAttribute=lambda player, resource: resources[player, resource],
-        xsSetPlayerAttribute=lambda player, resource, value: resources.__setitem__((player, resource), value),
-        xsDisplayInstructions=lambda *args: instructions.append(args), xsChatData=lambda message: None,
-        cPanelTop=0,
-    )
-    update = runtime["cbaUpdatePopulationSetup"]
-    update()
-    assert not claims  # Before four seconds.
-    clock[0] = 4
-    update()
-    assert not claims and runtime["gCbaPopulationOwner"] == 0  # P3's token pending, do not skip to P8.
-    variables[139] = 1007  # P3 selector is 3, XS API owner is 7.
-    allow_claim[0] = False
-    update()
-    assert runtime["gCbaPopulationOwner"] == 0
-    allow_claim[0] = True
-    update()
-    assert runtime["gCbaPopulationOwner"] == 7 and claims == [7, 7]
-    assert {args[1:] for args in properties} == {(7, 0.0), (8, 0.0), (9, 0.0)}
-    assert instructions[0][-1] == 7  # Owner-only setup instructions.
-    for limit, x in ((200, 68.5), (250, 70.5), (300, 72.5), (500, 74.5)):
-        position[0] = x, 4.5, 1
-        update()
-        assert runtime["gCbaPopulationLimit"] == limit
-        assert 501 + resources[7, 32] == limit + 2  # Penguin + temporary chooser.
-        assert 501 + resources[8, 32] == limit + 1
-        assert resources[7, 4] == limit - 150 and resources[8, 4] == limit - 100
-    # An overfull army is not killed when lowering the limit; headroom becomes zero.
-    resources[7, 11] = 402
-    position[0] = 68.5, 4.5, 1
-    update()
-    assert resources[7, 4] == 0 and runtime["gCbaPopulationLimit"] == 200
-    clock[0] = 60
-    position[0] = 74.5, 4.5, 1
-    update()
-    assert runtime["gCbaPopulationLocked"] and runtime["gCbaPopulationLimit"] == 200
-    assert not alive[0] and resources[7, 32] == -300  # Only the Penguin reserve remains.
-    clock[0] = 90
-    update()
-    assert runtime["gCbaPopulationLimit"] == 200 and claims == [7, 7]
+    assert "gCbaPopulationLimit" not in source
+    assert "gCbaPopulationOwner" not in source
+    assert "cbaPopulationSetup" not in source
+    assert "xsSetUnitOwner(" not in source
+    assert "xsSetPlayerAttribute(owner, 4," not in source
+    assert "xsSetPlayerAttribute(worldPlayer, cAttributeUnitLimit, 0);" in source
+    assert all(t.name != "Population Setup Labels" for t in evolution_alpha.trigger_manager.triggers)
+    assert all(u.unit_const != HeroInfo.KING_ALFONSO.ID
+               for units in evolution_alpha.unit_manager.units for u in units)
+    # The chooser's terrain was a 48-tile island; all of it is water again.
+    for x in range(68, 76):
+        for y in range(2, 8):
+            assert evolution_alpha.map_manager.get_tile(x=x, y=y).terrain_id not in (
+                TerrainId.GRASS_1, TerrainId.GRASS_2, TerrainId.GRASS_3,
+            )
 
 
 def test_extended_hero_bands_have_no_gaps_catchup_or_adrenaline(evolution_alpha):
@@ -6716,14 +6657,14 @@ def test_population_gates_avoid_the_de_rejected_compound_return(evolution_alpha)
     assert gates
     for _name, body in gates:
         assert "if (owner < 1) return(false);" in body
-        assert "room = room - used;" in body
+        assert "room = xsPlayerAttribute(owner, cAttributePopulationCap);" in body
         assert "if (cost > room) return(false);" in body
         assert re.findall(r"return\(([^)]+)\)", body) == ["false", "false", "true"]
 
 
 def test_population_budget_defers_whole_rewards_and_bounds_births(evolution_alpha):
     variables = defaultdict(int, {137: 1007, 121: 1, 113: 1})
-    used, costs = [250.0], defaultdict(lambda: 1.0, {83: 0.5, 293: 1.0})
+    used, limit, costs = [250.0], [250], defaultdict(lambda: 1.0, {83: 0.5, 293: 1.0})
     creates, orders, selected = [], [], {}
     castles = {u.reference_id for u in evolution_alpha.unit_manager.units[1]
                if u.unit_const == BuildingInfo.CASTLE.ID}
@@ -6736,7 +6677,7 @@ def test_population_budget_defers_whole_rewards_and_bounds_births(evolution_alph
 
     runtime = birth_runtime(
         evolution_alpha, xsTriggerVariable=lambda var: variables[var],
-        xsPlayerAttribute=lambda *args: used[0] + 1,
+        xsPlayerAttribute=lambda owner, attribute: limit[0] - used[0] if attribute == 4 else used[0] + 1,
         xsGetObjectAttribute=lambda owner, unit, attr: -costs[unit],
         xsDoesUnitExist=lambda ref: ref in castles or ref >= 99000,
         xsGetUnitHitpoints=lambda ref: 1000, xsGetUnitOwner=lambda ref: 7,
@@ -6764,21 +6705,21 @@ def test_population_budget_defers_whole_rewards_and_bounds_births(evolution_alph
     assert not runtime[backup_gate]()
     used[0] = 244
     assert runtime[backup_gate]()
-    for limit in (200, 250, 300, 500):
-        runtime["gCbaPopulationLimit"] = limit
-        used[0] = limit - 2
+    for selected_limit in (25, 200, 250, 300, 500):
+        limit[0] = selected_limit
+        used[0] = selected_limit - 2
         creates.clear()
         orders.clear()
         runtime["cbaCreateWave"](1, 7, 530)
-        assert len(creates) == len(orders) == 2 and used[0] == limit
+        assert len(creates) == len(orders) == 2 and used[0] == selected_limit
         runtime["cbaCreateHeroBirth"](1, 200, 1, 1, False)
         assert len(creates) == 2
-        used[0] = limit - 0.5
+        used[0] = selected_limit - 0.5
         runtime["cbaCreateBuilderBirth"](1, 83, 1, 1, False)
-        assert len(creates) == 3 and used[0] == limit  # Fractional costs preserved.
+        assert len(creates) == 3 and used[0] == selected_limit  # Fractional costs preserved.
         assert not runtime["cbaHasPopulationRoom"](-1, 530, 1)
         assert not runtime["cbaHasPopulationRoom"](7, 530, 0)
-    # Native player cap agrees with runtime ceilings; no old Hero count gates remain.
+    # Every reward uses native free housing; no old Hero count gates remain.
     for trigger in by_name.values():
         if trigger.name.startswith(("Hero Milestone ", "Hero Boost ", "Builder Reward ", "King Island S")):
             assert any(c.condition_type == ConditionId.SCRIPT_CALL

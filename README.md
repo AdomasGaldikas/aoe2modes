@@ -29,8 +29,8 @@ Eight modes ship with the repo, illustrating both authoring styles:
 | [`cba_hero_duel`](modes/cba_hero_duel/) | blank build | 1v1 sudden-death cut of the above, on a smaller map. Same library, different pacing. |
 | [`cba_royale`](modes/cba_royale/) | code-defined | **Last Caravan v0.1.1 prototype** — 4v4 moving command wagons, randomized shrinking firestorm, teammate rescues, supply objectives and limited construction. [Playable download](releases/cba-royale/v0.1.1/); live DE acceptance and human balance pending. |
 | [`big_ytri`](modes/big_ytri/) | decompiled | Big_Ytri's Royal 4v4, decompiled to Python: 2993 triggers, 3314 conditions, 7814 effects, 1123 units, 20736 terrain tiles. `verify` compares 100,857 fields against the original. |
-| [`evolution_alpha`](modes/evolution_alpha/) | code-defined | **CBA Hero 4v4: RA v1.5 candidate** — normal RA: automatic Castle armies, thirteen Hero bands, protected team routes, free development, independent Sheep/Penguin controls, Scorpion Backup, center rewards, vote-kicks, cleanup/victory and a compact lowercase combat HUD. [Current work and release gates](docs/ra-audit-plan.md). |
-| [`ra_speed`](modes/ra_speed/) | code-defined | **CBA Hero 4v4: RA Speed v0.1.0 candidate** — the same maintained RA map and rules, plus a five-minute teammate-loss rush after a fifteen-minute warm-up: 2x movement and 3x fire rate, independent team countdowns, refresh without stacking. Live DE acceptance pending. |
+| [`evolution_alpha`](modes/evolution_alpha/) | code-defined | **CBA Hero 4v4: RA v1.6 candidate** — normal RA: automatic Castle armies, thirteen Hero bands, protected team routes, free development, independent Sheep/Penguin controls, Scorpion Backup, center rewards, vote-kicks, cleanup/victory and a compact lowercase combat HUD. [Current work and release gates](docs/ra-audit-plan.md). |
+| [`ra_speed`](modes/ra_speed/) | code-defined | **CBA Hero 4v4: RA Speed v0.1.1 candidate** — the same maintained RA map and rules, plus a five-minute teammate-loss rush after a fifteen-minute warm-up: 2x movement and 3x fire rate, independent team countdowns, refresh without stacking. Live DE acceptance pending. |
 | [`chieftains_4v4`](modes/chieftains_4v4/) | decompiled | Big_Ytri's published Chieftains 2026 4v4 (workshop `469500`) — Royal 4v4 plus the Chieftains/Greece/Three Kingdoms DLC blocks and a team vote-kick. 3184 triggers, 1171 units; `verify` compares 117,824 fields. |
 | [`chieftains_ffa`](modes/chieftains_ffa/) | decompiled | The free-for-all cut of the same 2026 release (workshop `469501`): all-enemy diplomacy, no vote-kick. 3151 triggers, 1059 units; `verify` compares 115,299 fields. |
 
@@ -73,7 +73,7 @@ Six CLI commands cover the loop from opaque binary to code-generated mode:
 
 ```bash
 aoe2modes inspect "input/CBA Hero Royal 4v4 Big_Ytri.aoe2scenario" --triggers
-aoe2modes audit "dist/CBA Hero 4v4 RA v1.5.aoe2scenario" --strict
+aoe2modes audit "dist/CBA Hero 4v4 RA v1.6.aoe2scenario" --strict
 aoe2modes map evolution_alpha --html dist/ascendants-map.html
 aoe2modes diff modes/chieftains_4v4/base.aoe2scenario modes/chieftains_ffa/base.aoe2scenario
 aoe2modes decompile "input/CBA Hero.aoe2scenario" --out scratch/generated/

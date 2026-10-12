@@ -116,15 +116,15 @@ No task, stop, freeze, kill, damage, replacement, ownership-change, or ordinary 
 effect selects either controller; full-map defeat, resignation, and vote-kick cleanup
 remain intentionally able to remove an eliminated player's objects.
 
-War Penguin is a military-class one-population object. RA v1.4 declares a 501
-engine ceiling and adjusts it to the selected 200/250/300/500 limit plus controller
-reserves. XS subtracts the permanent Penguin from actual gameplay population and
-legacy civilization army-cap checks. Hero production uses actual population costs.
+War Penguin is a military-class one-population object. XS excludes it only from
+legacy civilization army-wave thresholds. It consumes ordinary native population;
+Hero production checks actual costs and native free housing.
 
-The population chooser lives on the isolated north island x=68..75, y=2..7.
-Its four two-tile pads start at (68,4), (70,4), (72,4) and (74,4). The lowest
-active occupied color owns it; the host should take that color. Selection locks
-at 60 seconds and the chooser is removed. It defaults to 250 if unused.
+RA v1.6 and Speed v0.1.1 remove the population chooser, its King, four signs and
+48-tile north island at x=68..75, y=2..7. Those tiles are water again. There are no
+population pads, controller ownership transfer, default choice or timed lock.
+Choose the shared population limit in the lobby. A fresh DE check at different
+lobby limits remains required to confirm native hard-cap enforcement.
 
 ## Castle-wave creation and destinations
 

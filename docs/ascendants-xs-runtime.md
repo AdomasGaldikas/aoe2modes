@@ -268,27 +268,25 @@ and tells the reader to update `CIV_SPAWN_RULES` and rebuild.
 - **Verify with** `pytest -q tests/test_evolution_alpha.py -k "xs or identity or writer"`
   and a full build, which runs `xs-check` over the rendered script.
 
-## RA v1.4 population setup
+## RA v1.6 native population admission
 
-`population_setup.py` emits a shared 200/250/300/500 choice, default 250 and
-locked at 60 seconds. The lowest active occupied color receives the chooser
-after its independent XS token arrives. Hosts must take that color. All selection
-and ownership changes run synchronized; instructions alone target its owner.
+The population island, King, signs, selection/ownership code and 60-second lock
+are removed in normal RA and Speed. The scenario uses the stock 200 fallback;
+choose the common limit in the lobby. The script no longer sets a shared limit,
+uses a 501 ceiling offset or writes resource 4. Civilization bonus population
+(resource 32) is cleared so it does not add different ceilings for different civs.
 
-Each active player starts with a declared engine ceiling of 501. Resource 32
-adds `selected + reserved - 501`, replacing civilization population bonuses.
-Resource 4 is refreshed to actual free housing headroom. One Penguin slot is
-reserved permanently; the chooser's actual population cost is reserved only
-while it exists for its controller owner. Lowering the limit never removes troops.
-
-Castle, Hero and builder births check actual per-type population costs. Complete
-builder pairs and six-Scorpion backup use 1,088 emitted batch gates before native
-reward consumption. Fractional costs remain floats; 896 integer Hero count
-gates are removed. Per-birth checks also prevent four-Castle waves overflowing
-the shared budget. Engine resource semantics and setup-property API behavior
-remain live acceptance cases.
+`population_setup.py` reads native free housing (resource 4) and derives each
+unit's actual population cost from object attribute 110. Complete builder pairs
+and six-Scorpion backup wait for sufficient room before consuming their reward;
+individual Castle/Hero/builder births check room again. Fractional costs remain
+floats. Resource 4 is not a getter for the lobby maximum, and these automated
+checks do not prove that XS creation obeys the native hard cap. Fresh DE tests
+at different lobby limits remain required before publishing this candidate.
+Existing map housing grants remain; they provide housing rather than choosing
+or overriding the native hard maximum.
 
 DE rejected the old `cbaPopulationGate0` compound bool/float return during load.
-Every batch gate and the per-birth population helper now separate cost arithmetic
-from the comparison and return boolean literals. xs-check accepted the old
-expression, so validation alone cannot confirm the corrected game load.
+Every batch gate and the per-birth helper keep separate arithmetic, comparison
+and boolean literal returns. xs-check accepted the old expression, so validation
+alone cannot confirm the corrected game load.

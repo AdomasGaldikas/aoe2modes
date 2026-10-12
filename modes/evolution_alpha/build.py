@@ -623,11 +623,10 @@ PUBLIC_INSTRUCTIONS = (
     "Guarded rear team routes connect allies through wider sixteen-tile sections. "
     "Gate entrances remain narrow. Enemy units entering these routes are killed, "
     "even after a teammate is defeated. Use the central battlefield to attack.\r\r"
-    "POPULATION SETUP\r"
-    "The host should take the lowest occupied color. Move its Population chooser on "
-    "the north island to 200, 250, 300, or 500 within the first 60 seconds. Default: 250. "
-    "This applies to armies, Heroes, builders, and backup; full builder pairs and six-Scorpion "
-    "backup wait for room. Lowering the limit stops new units until population falls.\r\r"
+    "POPULATION\r"
+    "Choose the shared population limit in the lobby before starting. "
+    "Armies, Heroes, builders and backup use normal population; full builder pairs "
+    "and six-Scorpion backup wait for enough free room. No in-game population chooser.\r\r"
     "SPAWN CONTROLS\r"
     "Sheep = Castle army range. Penguin = Hero range. Move each along its own road: "
     "farther toward the arena sends new units farther. Snow is the end zone: Sheep on "
@@ -1070,9 +1069,9 @@ def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
     ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
 
     # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
-    if len(ctx.tm.triggers) != 4_442:
+    if len(ctx.tm.triggers) != 4_441:
         raise RuntimeError(
-            f"expected 4,442 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+            f"expected 4,441 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
         )
     if any(
         not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
@@ -2250,6 +2249,8 @@ void cbaAnnounceLocalBuilderGoal() {{
 }}
 
 void cbaRefreshCombatValues(int worldPlayer = 0) {{
+    // Keep the native lobby limit equal: no civilization bonus population.
+    xsSetPlayerAttribute(worldPlayer, cAttributeUnitLimit, 0);
 {score_neutral_lines}
     int kills = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKills));
     int deaths = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKilledByOthers));
@@ -2320,6 +2321,10 @@ void main() {{
             xsEffectAmount(cSetAttribute, objectId, cWoodCost, 0, worldPlayer);
             xsEffectAmount(cSetAttribute, objectId, cStoneCost, 0, worldPlayer);
             xsEffectAmount(cSetAttribute, objectId, cGoldCost, 0, worldPlayer);
+            // Run Pattern 255 makes double-click selection match the exact type,
+            // rather than a shared name/class or shared-selection group. Apply to
+            // the whole engine table, including future births and upgraded types.
+            xsEffectAmount(cSetAttribute, objectId, {int(ObjectAttribute.RUN_PATTERN)}, 255, worldPlayer);
         }}
         cbaRefreshCombatValues(worldPlayer);
     }}
@@ -5640,9 +5645,7 @@ def build(ctx: BuildContext) -> None:
         eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE,
     )
     _stop_eliminated_color_production(ctx)
-    population_xs = configure_population_setup(
-        ctx, occupied_base=COLOR_OCCUPIED_VARIABLE_BASE, eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE,
-    )
+    population_xs = configure_population_setup(ctx)
     birth_wrappers = configure_birth_orders(
         ctx, identity_base=COLOR_XS_VARIABLE_BASE, identity_tag=XS_IDENTITY_TAG_BASE,
     )
