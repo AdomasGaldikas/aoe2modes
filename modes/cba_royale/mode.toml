@@ -1,0 +1,103 @@
+[mode]
+id = "cba_royale"
+name = "CBA Royale: Last Caravan"
+version = "0.1.0"
+description = "4v4 civilization CBA: escort command wagons through a randomly shifting firestorm."
+tags = ["cba", "royale", "4v4", "prototype"]
+
+[scenario]
+version = "1.58"
+filename = "CBA Royale Last Caravan v{version}"
+
+[map]
+size = 240
+terrain = "GRASS_1"
+elevation = 1
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "IMPERIAL_AGE"
+population_cap = 200
+lock_civilization = false
+
+[players.resources]
+food = 0
+wood = 0
+gold = 0
+stone = 0
+
+[xs]
+# Mutating engine APIs return values that are intentionally unused.
+ignore_warnings = ["DiscardedFn"]
+scripts = ["xs/main.xs"]
+
+# All durations here are nominal real-play seconds at the locked 2x hosting speed.
+[royale]
+speed_factor = 2
+lobby_settle_game_seconds = 3
+deadline = 2100
+castle_evacuation = 180
+wagon_protection = 90
+wagon_hp = 1500
+wagon_speed = 0.85
+wagon_regen = 10
+wagon_quiet = 20
+army_batch = 4
+combat_cap = 120
+object_cap = 120
+support_cap = 24
+hero_hp = 450
+hero_attack = 16
+hero_speed = 1.1
+hero_respawn = 45
+support_hero_respawn = 60
+rank_kills = [40, 120, 260]
+rank_floors = [720, 1200, 1680]
+rank_hp_percent = 5
+rank_attack = 1
+hero_rank_hp = 100
+hero_rank_attack = 2
+rescue_cutoff = 1740
+rescue_window = 60
+rescue_channel = 15
+rescue_radius = 5
+rescue_enemy_radius = 6
+final_clear_radius = 14
+builder_kills = [40, 100, 200, 350]
+builder_limit = 2
+builder_wood = 250
+builder_stone = 100
+wood_cap = 1000
+stone_cap = 500
+build_radius = 10
+tower_limit = 2
+wall_limit = 12
+gate_limit = 1
+tower_wood = 100
+tower_stone = 75
+wall_wood = 10
+gate_wood = 30
+camp_wood = 200
+camp_interval = 20
+camp_batch = 2
+objective_radius = 8
+objective_population = 5
+outpost_capture = 10
+outpost_interval = 30
+outpost_wood = 60
+outpost_stone = 20
+chest_times = [240, 480, 720, 960, 1200, 1440, 1680]
+chest_capture = 12
+chest_lifetime = 90
+cache_wood = 200
+cache_stone = 100
+objective_renown = 10
+objective_renown_cap = 100
+marker_limit = 256
+marker_interval = 4
+storm_deadlines = [360, 660, 960, 1260, 1500, 1740, 1920, 2040, 2100]
+storm_radii = [96, 80, 64, 48, 36, 24, 14, 6, 0]
+storm_damage_percent = [1, 2, 3, 4, 6, 8, 10, 15, 15]
+storm_warning = 120
+storm_closure = 60
