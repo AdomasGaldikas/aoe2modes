@@ -268,7 +268,11 @@ bool royaleLand(vector point = vector(-1, -1, -1)) {
         for (iy = 0; < 2) {
             int cx = 100 + ix * 40;
             int cy = 100 + iy * 40;
-            if (x >= cx - 4 && x < cx + 4 && y >= cy - 4 && y < cy + 4) return (false);
+            int left = cx - 4;
+            int right = cx + 4;
+            int top = cy - 4;
+            int bottom = cy + 4;
+            if (x >= left && x < right && y >= top && y < bottom) return (false);
         }
     }
     return (true);
@@ -284,10 +288,18 @@ int royaleBirth(int color = 0, int type = -1, vector pad = vector(-1, -1, -1), i
     if (owner < 1 || xsArrayGetInt(gState, color) == RESIGNED || gWinner != 0) return (-1);
     if (pool != 4) {
         float cost = royaleCost(owner, type);
-        if (royalePopulation(color, 0) + cost > ${COMBAT_CAP}
-            || royalePopulation(color, 3) >= ${OBJECT_CAP}) return (-1);
-        if (pool == 1 && royalePopulation(color, 1) + cost > xsArrayGetInt(gMainCaps, color)) return (-1);
-        if (pool == 2 && royalePopulation(color, 2) + cost > ${SUPPORT_CAP}) return (-1);
+        // Keep arithmetic separate from DE's compound logical conditions.
+        float nextCombat = royalePopulation(color, 0) + cost;
+        if (nextCombat > ${COMBAT_CAP}) return (-1);
+        if (royalePopulation(color, 3) >= ${OBJECT_CAP}) return (-1);
+        if (pool == 1) {
+            float nextMain = royalePopulation(color, 1) + cost;
+            if (nextMain > xsArrayGetInt(gMainCaps, color)) return (-1);
+        }
+        if (pool == 2) {
+            float nextSupport = royalePopulation(color, 2) + cost;
+            if (nextSupport > ${SUPPORT_CAP}) return (-1);
+        }
     }
     int reference = -1;
     for (attempt = 0; < 32) {
@@ -321,6 +333,7 @@ bool royalePath(bool greedy = false) {
     int oldRadius = 112;
     for (stage = 0; < 9) {
         int radius = xsArrayGetInt(gStormRadii, stage);
+        int radiusSquared = radius * radius;
         vector chosen = xsArrayGetVector(gZones, 0);
         if (stage > 0) {
             int candidates = 0;
@@ -330,7 +343,7 @@ bool royalePath(bool greedy = false) {
                     vector point = xsVectorSet(gx * 4, gy * 4, -1);
                     if (royaleDistance(point, previous) > (oldRadius - radius) * (oldRadius - radius)) continue;
                     float distance = royaleDistance(point, gFinal);
-                    if (distance > radius * radius || royaleLand(point) == false) continue;
+                    if (distance > radiusSquared || royaleLand(point) == false) continue;
                     candidates++;
                     if (greedy) {
                         if (distance < nearest) { nearest = distance; chosen = point; }
@@ -458,7 +471,8 @@ float royaleNearby(int team = 0, vector point = vector(-1, -1, -1), int radius =
 
 void royaleRescue(int color = 0, int now = 0) {
     if (xsArrayGetInt(gState, color) != RECOVERABLE) return;
-    if (now >= ${RESCUE_CUTOFF} || now - xsArrayGetInt(gLostAt, color) >= ${RESCUE_WINDOW}) {
+    int rescueAge = now - xsArrayGetInt(gLostAt, color);
+    if (now >= ${RESCUE_CUTOFF} || rescueAge >= ${RESCUE_WINDOW}) {
         xsArraySetInt(gState, color, STRANDED);
         int expiredWreck = xsArrayGetInt(gWrecks, color);
         if (expiredWreck >= 0 && xsDoesUnitExist(expiredWreck)) xsRemoveUnit(expiredWreck);
@@ -467,6 +481,7 @@ void royaleRescue(int color = 0, int now = 0) {
         return;
     }
     vector point = xsArrayGetVector(gLastWagon, color);
+    int rescueRadiusSquared = ${RESCUE_RADIUS} * ${RESCUE_RADIUS};
     bool escort = false;
     for (ally = 1; <= 8) {
         if (ally == color || royaleTeam(ally) != royaleTeam(color)
@@ -474,7 +489,7 @@ void royaleRescue(int color = 0, int now = 0) {
         int hero = xsArrayGetInt(gHeroes, ally);
         if (royaleExists(hero, xsArrayGetInt(gOwners, ally))
             && xsGetUnitProperty(hero, 5, -1) < 0
-            && royaleDistance(royalePosition(hero), point) <= ${RESCUE_RADIUS} * ${RESCUE_RADIUS}) escort = true;
+            && royaleDistance(royalePosition(hero), point) <= rescueRadiusSquared) escort = true;
     }
     if (royaleSafe(point) == false || escort == false
         || royaleNearby(3 - royaleTeam(color), point, ${RESCUE_ENEMY_RADIUS}) > 0) {
@@ -840,7 +855,10 @@ void royaleObjectives(int now = 0) {
 
 void royaleHazard(int now = 0) {
     int damageStage = gStage - 1;
-    if (gStage < 9 && now >= xsArrayGetInt(gStormDeadlines, gStage) - ${STORM_CLOSURE}) damageStage = gStage;
+    if (gStage < 9) {
+        int closureStart = xsArrayGetInt(gStormDeadlines, gStage) - ${STORM_CLOSURE};
+        if (now >= closureStart) damageStage = gStage;
+    }
     if (damageStage < 0) return;
     float percent = 0.01 * xsArrayGetInt(gStormDamagePercent, damageStage);
     for (color = 1; <= 8) {

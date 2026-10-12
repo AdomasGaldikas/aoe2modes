@@ -1,8 +1,14 @@
 # Last Caravan acceptance and balance
 
-Status: v0.1.0 prototype. Automated checks are separate from live acceptance.
+Status: v0.1.1 prototype. Automated checks are separate from live acceptance.
 On 2026-10-11 a desktop inspection found an existing Naval match; it was left
 untouched. No Royale live match was started or deployed over an existing copy.
+
+On 2026-10-12 the first reported Royale load rejected v0.1.0's compound
+population-cap condition (Error 0308, `default0.xs` line 296). v0.1.1 splits
+arithmetic from logical checks and adds an emitted-script regression guard.
+The current failed-initialization match was preserved; fresh native loading
+of the correction remains pending.
 
 ## Fresh private DE matches
 

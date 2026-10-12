@@ -1,5 +1,8 @@
 # CBA Royale: Last Caravan v0.1.0 prototype
 
+**Superseded:** DE rejects this version during startup (Error 0308).
+Use the [v0.1.1 correction](../v0.1.1/) for a fresh match.
+
 [Download the playable scenario](CBA%20Royale%20Last%20Caravan%20v0.1.0.aoe2scenario?raw=true)
 and place it in your AoE2 DE profile's `resources/_common/scenario` folder.
 In a new lobby select Custom Scenario and **CBA Royale Last Caravan v0.1.0**.

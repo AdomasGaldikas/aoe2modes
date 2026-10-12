@@ -1,7 +1,7 @@
 [mode]
 id = "cba_royale"
 name = "CBA Royale: Last Caravan"
-version = "0.1.0"
+version = "0.1.1"
 description = "4v4 civilization CBA: escort command wagons through a randomly shifting firestorm."
 tags = ["cba", "royale", "4v4", "prototype"]
 

@@ -1,11 +1,11 @@
-# CBA Royale: Last Caravan v0.1.0
+# CBA Royale: Last Caravan v0.1.1
 
 A separate code-defined 4v4 prototype. P1–P4 fight P5–P8 while escorting one
 Command Wagon each. Civilization armies follow the wagon; fire progressively
 forces both caravans toward one of nine randomly chosen final arenas.
 
 Build with `aoe2modes build cba_royale`. The output is
-`dist/CBA Royale Last Caravan v0.1.0.aoe2scenario`. All gameplay XS is embedded;
+`dist/CBA Royale Last Caravan v0.1.1.aoe2scenario`. All gameplay XS is embedded;
 there are no loose scripts to distribute. Existing modes, including Naval, are
 independent. `civilizations.py` owns its snapshot of the Ascendants table.
 
@@ -139,3 +139,13 @@ This is an automated-validated prototype. Fresh full and sparse DE matches, save
 load, spectator behavior, marker visibility, measured timing, native construction,
 and at least 20 human balance matches remain release gates. See
 [the acceptance checklist](../../docs/cba-royale-playtesting.md).
+
+## v0.1.1 startup correction
+
+DE rejected v0.1.0 at the compound population-cap condition in `royaleBirth`
+(Error 0308, generated `default0.xs` line 296). The offline checker and C++
+harness accepted that expression. v0.1.1 calculates candidate populations
+before comparisons and separates arithmetic from compound logical conditions
+throughout the runtime. An emitted-script regression guard covers this parser
+mismatch. Population limits and gameplay rules are unchanged. A fresh native
+DE load of v0.1.1 remains required; an existing match retains its original XS.

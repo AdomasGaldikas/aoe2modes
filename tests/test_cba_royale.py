@@ -101,6 +101,40 @@ def test_connected_routes_flat_final_arenas_and_equal_team_travel(royale):
     )
 
 
+def _assert_de_condition_arithmetic(xs):
+    """Keep arithmetic out of compound conditions that DE's parser rejects.
+
+    xs-check and C++ both accept the population-cap expression reported by DE
+    as Error 0308. Arithmetic may still appear inside function arguments or an
+    explicitly grouped subexpression; only the outer expression is inspected.
+    """
+    for match in re.finditer(r"\bif\s*\(", xs):
+        depth = 1
+        outer = []
+        for character in xs[match.end() :]:
+            if character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+            elif depth == 1:
+                outer.append(character)
+            if depth == 0:
+                break
+        expression = "".join(outer)
+        if "&&" in expression or "||" in expression:
+            assert not re.search(r"[+*/%\-]", expression), expression
+
+
+def test_emitted_conditions_avoid_de_parser_failure(royale):
+    rejected = (
+        "if (royalePopulation(color, 0) + cost > 120 || royalePopulation(color, 3) >= 120) return (-1);"
+    )
+    with pytest.raises(AssertionError):
+        _assert_de_condition_arithmetic(rejected)
+    xs = next(t for t in royale.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
+    _assert_de_condition_arithmetic(xs)
+
+
 def test_emitted_xs_runtime(royale, tmp_path):
     compiler = shutil.which("g++")
     if compiler is None:
