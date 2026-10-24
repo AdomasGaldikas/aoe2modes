@@ -141,7 +141,7 @@ GATE_IDS = frozenset({64, 88, 659, 660, 661, 662, 663, 664, 667, 669, 671, 673})
 
 #: Objects that never block movement even though they sit on a tile.
 _NON_BLOCKING = frozenset(
-    {285, 434, 499, 548, 594, 600, 601, 602, 603, 706, 711, 720, 731, 838, 2254}
+    {285, 434, 499, 548, 594, 600, 601, 602, 603, 706, 711, 720, 731, 838, 1258, 2254, 2750}
 )
 
 PLAYER_COLORS: dict[int, str] = {

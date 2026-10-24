@@ -69,6 +69,17 @@ def test_decorative_objects_do_not_block():
     assert mapview._footprint(285, 4.5, 4.5) == []  # relic
 
 
+def test_mobile_ram_does_not_turn_the_center_into_a_permanent_obstacle():
+    size = 12
+    castles = [[], [_unit(CASTLE, 2.0, 2.0, 1)], [_unit(CASTLE, 10.0, 10.0, 2)]]
+    baseline = mapview.analyse(_scenario(size, [GRASS] * size**2, castles))
+    with_ram = [[_unit(1258, 6.0, 6.0, 0)], *castles[1:]]
+    report = mapview.analyse(_scenario(size, [GRASS] * size**2, with_ram))
+    assert report.walkable_open == baseline.walkable_open
+    assert [p.to_centre for p in report.players] == [p.to_centre for p in baseline.players]
+    assert all(p.to_centre is not None for p in report.players)
+
+
 # --- terrain ------------------------------------------------------------------------
 
 def test_water_is_classified_by_name_not_by_a_hardcoded_list():

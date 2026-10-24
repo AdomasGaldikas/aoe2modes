@@ -1,0 +1,38 @@
+RAM native military selection voices
+
+This audio was created with Boson AI's Higgs Audio — https://www.boson.ai/higgs-audio
+
+Lithuanian, Persian and Roman Latin replies: bosonai/higgs-tts-3-4b, revision
+239f63fb7b02b1aa085f98d9efae5e35cc5523e8. Full source-available research,
+noncommercial, and creator-use terms are in licenses/HIGGS-LICENSE.txt.
+The native inference adapter's MIT terms are in licenses/ADAPTER-LICENSE.txt.
+
+All other generated civilization replies: k2-fsa/OmniVoice, revision
+c5fdb5ccb189668d56333f77ba2629f4cd7535f4. The model author's CC-BY-NC weights
+statement and full terms are in licenses/OMNIVOICE-LICENSE.txt. Its incorporated
+Higgs Audio 2 tokenizer terms, including incorporated Meta Llama terms, are in
+licenses/OMNIVOICE-TOKENIZER-LICENSE.txt. The inference code is Apache-2.0.
+
+Lithuanian voice conditioning uses the documented male Z19 LIEPA-3 corpus sample
+from the region of Žemaitija. See licenses/NATIVE_REFERENCE_ATTRIBUTION.txt and
+the per-clip manifest provenance for the CC BY 4.0 source, attribution, derivative
+changes, and limits. It is not a reconstruction of medieval pronunciation, a
+claim about an exact subdialect, or an endorsement by the corpus speaker.
+
+Persian and Roman Latin voice conditioning use an original synthetic VoxCPM2 male voice.
+The source model and inference code are Apache-2.0; the preserved license is in
+licenses/VOXCPM-REFERENCE-CODE-LICENSE.txt. Per-clip references and revisions
+remain in manifest.json. No stock game voice was extracted.
+
+These copies preserve the original five civilization sets and extend them with
+new local game-test generations; this is not a general voice library. Model and reference terms are distinct from the repository
+code license. This packaging does not establish unrestricted redistribution or
+commercial rights. Consult the complete terms before publication.
+
+WAV files and their .wem aliases contain identical mono 48 kHz PCM16 audio; the
+aliases are not Wwise-compressed WEM files. Native pronunciation, perceived
+gender, and fresh-match playback still require listening/gameplay acceptance.
+
+DAT packaging uses genieutils-py 0.1.2 (LGPL-3.0), a separate build dependency
+which is not included in the game package:
+https://github.com/SiegeEngineers/genieutils-py

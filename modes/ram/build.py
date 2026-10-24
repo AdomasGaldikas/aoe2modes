@@ -1,0 +1,5709 @@
+"""CBA Hero: Ascendants — a code-defined scenario, not a decompiled binary.
+
+**This code is the only source of truth.** There is no ``scenario.base`` and no
+``scenario.reference``: the ``.aoe2scenario`` in ``dist/`` is a build product, and
+nothing in the repo is verified back against a binary. ``aoe2modes decompile
+--mode evolution_alpha`` is not a valid operation here.
+
+Two source layers, both hand-maintained:
+
+- ``scenario/`` lays down the arena — terrain, units, players, lobby options and the
+  legacy trigger graph inherited from CBA Hero. It began as decompiler output and is
+  now edited directly.
+- This module, plus ``v2_map.py``, runs after ``scenario.apply(ctx)`` and applies the
+  Ascendants map and gameplay layer. It runs last and wins.
+
+Put structural arena changes in ``scenario/``; put Ascendants behavior here.
+``aoe2modes audit`` on the built file is the structural check — see
+``docs/ascendants-development.md``.
+"""
+
+from __future__ import annotations
+
+import math
+import re
+from collections import defaultdict
+from copy import deepcopy
+
+from AoE2ScenarioParser.datasets.buildings import BuildingInfo
+from AoE2ScenarioParser.datasets.conditions import ConditionId
+from AoE2ScenarioParser.datasets.effects import EffectId
+from AoE2ScenarioParser.datasets.heroes import HeroInfo
+from AoE2ScenarioParser.datasets.other import OtherInfo
+from AoE2ScenarioParser.datasets.players import PlayerId
+from AoE2ScenarioParser.datasets.techs import TechInfo
+from AoE2ScenarioParser.datasets.terrains import TerrainId
+from AoE2ScenarioParser.datasets.trigger_lists import (
+    ActionType,
+    AttackStance,
+    Attribute,
+    Comparison,
+    ObjectAttribute,
+    ObjectClass,
+    ObjectType,
+    Operation,
+    VictoryCondition,
+)
+from AoE2ScenarioParser.datasets.units import UnitInfo
+from AoE2ScenarioParser.objects.managers.unit_manager import create_id_generator
+
+from aoe2modes.context import BuildContext
+from aoe2modes.lib.decompile import (
+    CONDITION_PARAMS,
+    EFFECT_PARAMS,
+    TRIGGER_PARAMS,
+    condition_factory_name,
+    effect_factory_name,
+    safe_get,
+)
+
+from .backup_audio import configure_backup_audio
+from .birth_orders import configure_birth_orders, render_birth_orders
+from .center_audio import configure_center_audio
+from .center_control import configure_center_control
+from .center_map import configure_center_hill
+from .civilization_balance import balanced_spawn_rules, render_civilization_balance
+from .hero_progression import configure_extra_hero_tiers
+from .leader_runtime import configure_civilization_leaders
+from .mixed_content import configure_mixed_content
+from .population_setup import configure_population_setup
+from .runtime_conditions import configure_runtime_conditions
+from .scenario import apply as apply_scenario_source
+from .scorpion_backup import (
+    BACKUP_ACTIVE,
+    BACKUP_AVAILABLE,
+    BACKUP_SPENT,
+    BACKUP_VARIABLE_BASE,
+    configure_backup_hud,
+)
+from .team_routes import protect_team_routes
+from .team_signals import configure_team_signals
+from .unit_selection import configure_leader_selection, render_unit_selection
+from .v2_map import apply_v2_map, v2_cell_for_player, v2_position_for_player
+
+PLAYERS = tuple(PlayerId.all(exclude_gaia=True))
+
+
+def _mirrored_area_bounds(
+    source_area: tuple[int, int, int, int],
+) -> dict[PlayerId, tuple[int, int, int, int]]:
+    """Mirror one P3-frame trigger area into all eight color sectors.
+
+    Trigger areas are inclusive tile rectangles, so each corner goes through
+    ``v2_cell_for_player`` and the result is re-normalised to (x1, y1, x2, y2) with
+    x1 <= x2 and y1 <= y2 — the transposing sectors swap which corner is which.
+    """
+    source_x1, source_y1, source_x2, source_y2 = source_area
+    bounds = {}
+    for player in PLAYERS:
+        corner_a = v2_cell_for_player(player, source_x1, source_y1)
+        corner_b = v2_cell_for_player(player, source_x2, source_y2)
+        x1, x2 = sorted((corner_a[0], corner_b[0]))
+        y1, y2 = sorted((corner_a[1], corner_b[1]))
+        bounds[player] = (x1, y1, x2, y2)
+    return bounds
+
+
+def _mirrored_position_bounds(
+    source_area: tuple[int, int, int, int],
+) -> dict[PlayerId, tuple[int, int, int, int]]:
+    """Mirror bounds expressed by object positions rather than tile cells.
+
+    Even-footprint buildings on whole coordinates reflect across axis 144, while tile
+    cells reflect across 143. Castle-owner conditions deliberately use the Castle
+    anchors, so applying the tile transform would shift four mirrored rows by one.
+    """
+    source_x1, source_y1, source_x2, source_y2 = source_area
+    bounds = {}
+    for player in PLAYERS:
+        corner_a = v2_position_for_player(player, source_x1, source_y1)
+        corner_b = v2_position_for_player(player, source_x2, source_y2)
+        x1, x2 = sorted((int(corner_a[0]), int(corner_b[0])))
+        y1, y2 = sorted((int(corner_a[1]), int(corner_b[1])))
+        bounds[player] = (x1, y1, x2, y2)
+    return bounds
+
+
+def _possible_world_players():
+    """Trigger-side player selectors that may resolve any scenario color.
+
+    The serialized trigger graph retains all eight candidates for compatibility with
+    full and sparse lobbies. The set is deliberately colour-independent: DE may seat
+    any lobby slot in any Castle row, so every colour has to be prepared to resolve to
+    every candidate. These ids belong only in trigger condition/effect fields; XS
+    player APIs use the independently cached XS owner of placed Castles instead.
+    """
+    return PLAYERS
+
+
+RESOURCE_STOCKPILES = (0, 1, 2, 3)  # food, wood, stone, gold
+FREE_PLAYER_ATTRIBUTES = (
+    Attribute.RESEARCH_COST_MODIFIER,
+    Attribute.UNIT_REPAIR_COST,
+    Attribute.BUILDING_REPAIR_COST,
+)
+SCORE_NEUTRAL_ATTRIBUTES = (
+    Attribute.PERCENT_MAP_EXPLORED,
+    Attribute.BUILDING_COST_SUM,
+    Attribute.TECH_COST_SUM,
+    Attribute.VALUE_CURRENT_UNITS,
+    Attribute.VALUE_CURRENT_BUILDINGS,
+    Attribute.TRIBUTE_SCORE,
+    Attribute.VALUE_WONDERS_CASTLES,
+    Attribute.FOOD_SCORE,
+    Attribute.WOOD_SCORE,
+    Attribute.STONE_SCORE,
+    Attribute.GOLD_SCORE,
+    Attribute.UNITS_VALUE_TOTAL,
+    Attribute.BUILDINGS_VALUE_TOTAL,
+)
+VOTE_KICK_NAME = re.compile(r"VoteKickP([1-8])-P([1-8])-P([1-8])")
+#: Trigger-variable id map. Every block is stated here once and read by both the
+#: Python triggers and the generated XS, so the two sides cannot drift apart.
+#: ``_assert_variable_ids_are_contiguous`` checks the whole allocation after build.
+#:
+#: The builder and combat-row blocks used to be bare literals — ``int(player) - 1``
+#: and ``8 + ((n - 1) * 3)`` — repeated independently in Python and again inside the
+#: XS source string, with nothing tying them together.
+PENDING_BUILDER_VARIABLE_BASE = 0
+COMBAT_ROW_VARIABLE_BASE = 8
+COMBAT_ROW_VARIABLE_STRIDE = 3
+COLOR_ACTIVE_VARIABLE_BASE = 32
+# Trigger-side selector chosen by the Castle-row detector. Despite the historical
+# serialized name ``p#worldplayer``, this value must never be passed to an XS player
+# API. XS independently caches xsGetUnitOwner for the placed Castle references.
+COLOR_WORLD_VARIABLE_BASE = 40
+COLOR_ELIMINATED_VARIABLE_BASE = 48
+MATCH_READY_VARIABLE_ID = 56
+VOTE_MARKER_VARIABLE_BASE = 57
+ARMY_MOVE_PENDING_VARIABLE_BASE = 81
+ARMY_RANGE_VARIABLE_BASE = 89
+HERO_MOVE_PENDING_VARIABLE_BASE = 97
+BUILDER_MOVE_PENDING_VARIABLE_BASE = 105
+HERO_RANGE_VARIABLE_BASE = 113
+COLOR_OCCUPIED_VARIABLE_BASE = 121
+COLOR_CLEANED_VARIABLE_BASE = 129
+COLOR_XS_VARIABLE_BASE = 137
+# Explicit cross-domain handshake, not a player-number conversion. Resource 10
+# is unused (unlike resource 8, now Sun Ce building conversion in current DE).
+XS_IDENTITY_RESOURCE = Attribute.UNUSED_RESOURCE_010
+XS_IDENTITY_TAG_BASE = 1000
+RANGE_LEVELS = tuple(range(6))
+DEFAULT_RANGE_LEVEL = 3
+VOTE_FLAG_OFFSETS = {
+    PlayerId.ONE: (2, 0),
+    PlayerId.TWO: (-2, 0),
+    PlayerId.THREE: (0, 2),
+    PlayerId.FOUR: (0, 2),
+    PlayerId.FIVE: (0, -2),
+    PlayerId.SIX: (0, -2),
+    PlayerId.SEVEN: (2, 0),
+    PlayerId.EIGHT: (-2, 0),
+}
+PLAYER_COLOR_NAMES = {
+    PlayerId.ONE: "BLUE",
+    PlayerId.TWO: "RED",
+    PlayerId.THREE: "GREEN",
+    PlayerId.FOUR: "YELLOW",
+    PlayerId.FIVE: "TEAL",
+    PlayerId.SIX: "PURPLE",
+    PlayerId.SEVEN: "GRAY",
+    PlayerId.EIGHT: "ORANGE",
+}
+EDGE_KILL_ZONE_NAME = re.compile(r"uk[1-4] \(p[1-8]\)")
+ANTI_TREB_NAME = re.compile(r"No trebs in p([1-8]) base(?: \(p[1-8]\))?")
+
+#: Anti-Trebuchet areas, stated once in the P3 source frame and mirrored to the
+#: other seven sectors by ``_mirrored_area_bounds``.
+#:
+#: These used to be eight hand-written rectangles. The anti-treb set had drifted: only
+#: one of the eight matched any mirror of another, and P4/P6/P7/P8's zones stopped at
+#: 123 while their Castle rows sit at 125, so a Trebuchet parked beside those four
+#: players' Castles was never removed while the same position in P1/P2/P3/P5's base
+#: was. Deriving the zones from one rect makes that class of asymmetry unstateable,
+#: and keeps each zone clear of its own rear route by construction (the source rect
+#: starts at x=18; the rear route land is x=14..16).
+ANTI_TREB_SOURCE_AREA = (18, 38, 25, 64)
+# Both short shoulders and long side walls are disposable. The x=39.5 front
+# gate row and the complete rear University enclosure are not. Resolve exact
+# object positions after V2, never a mirrored inclusive removal rectangle.
+SOURCE_BREACH_REMOVABLE_WALL_POSITIONS = frozenset(
+    {
+        *((x + 0.5, y) for x in range(17, 25) for y in (43.5, 64.5)),
+        *((24.5, y + 0.5) for y in (*range(44, 47), *range(61, 64))),
+        *((x + 0.5, y) for x in range(24, 39) for y in (47.5, 60.5)),
+    }
+)
+SOURCE_FRONT_WIPE_END_POSTS = ((39.5, 45.5), (39.5, 62.5))
+LOBBY_SETTLE_SECONDS = 3
+VICTORY_RESOLVE_SECONDS = 5
+SOURCE_ARMY_SPAWN_POINTS = ((22, 48), (22, 52), (22, 55), (22, 59))
+# Army route capture and destination geometry use inclusive map cells, whose
+# reflected axis is 143. XS creates each unit at the center of that transformed
+# cell; this avoids the old integer-boundary ambiguity that collapsed reflected
+# L0 routes onto their spawn point.
+SPAWN_POINTS = {
+    player: tuple(
+        v2_cell_for_player(player, x, y)
+        for x, y in SOURCE_ARMY_SPAWN_POINTS
+    )
+    for player in PLAYERS
+}
+SPAWN_WORLD_POSITIONS = {
+    player: tuple((x + 0.5, y + 0.5) for x, y in points)
+    for player, points in SPAWN_POINTS.items()
+}
+BASE_CASTLE_SOURCE_AREA = (19, 48, 19, 60)
+BASE_CASTLE_AREAS = _mirrored_position_bounds(BASE_CASTLE_SOURCE_AREA)
+BUILDER_SPAWN_POINTS = {
+    player: {
+        UnitInfo.VILLAGER_MALE.ID: v2_cell_for_player(player, 10, 54),
+        UnitInfo.VILLAGER_FEMALE.ID: v2_cell_for_player(player, 11, 54),
+    }
+    for player in PLAYERS
+}
+BUILDER_DESTINATION_POINTS = {
+    player: {
+        UnitInfo.VILLAGER_MALE.ID: v2_cell_for_player(player, 17, 45),
+        UnitInfo.VILLAGER_FEMALE.ID: v2_cell_for_player(player, 17, 63),
+    }
+    for player in PLAYERS
+}
+SOURCE_BUILDER_FLAG_POSITIONS = ((22.5, 40.5), (23.5, 40.5))
+SOURCE_BUILDER_FLAG_TARGETS = ((10.5, 53.5), (10.5, 55.5))
+BLACKSMITH_SOURCE_AREA = (1, 50, 6, 58)
+BLACKSMITH_AREAS = _mirrored_area_bounds(BLACKSMITH_SOURCE_AREA)
+# Civilization ID -> (spawned unit ID, military population cap, interval seconds).
+# These reproduce the 59 legacy civilization loops without binding a color to a
+# compacted runtime player number.
+CIV_SPAWN_RULES = {
+    1: (530, 72, 9),
+    2: (531, 76, 8),
+    3: (761, 92, 10),
+    4: (554, 76, 8),
+    5: (560, 80, 9),
+    6: (559, 76, 8),
+    7: (553, 56, 10),
+    8: (239, 40, 13),
+    9: (556, 68, 12),
+    10: (46, 50, 9),
+    11: (694, 86, 9),
+    12: (561, 56, 9),
+    13: (534, 80, 9),
+    14: (771, 60, 10),
+    15: (726, 92, 8),
+    16: (765, 70, 8),
+    17: (757, 80, 13),
+    18: (829, 60, 12),
+    19: (868, 72, 9),
+    20: (1749, 60, 12),
+    21: (881, 77, 8),
+    22: (871, 80, 13),
+    23: (878, 56, 10),
+    24: (1001, 34, 12),
+    25: (1018, 80, 8),
+    26: (1015, 81, 10),
+    27: (1009, 61, 10),
+    28: (1122, 31, 14),
+    29: (1125, 80, 6),
+    30: (1128, 61, 10),
+    31: (1131, 81, 10),
+    32: (1227, 41, 12),
+    33: (1230, 61, 12),
+    34: (1233, 61, 12),
+    35: (1236, 60, 10),
+    36: (1657, 60, 8),
+    37: (1659, 92, 8),
+    38: (1703, 60, 8),
+    39: (1706, 35, 15),
+    40: (1737, 60, 8),
+    41: (1761, 40, 8),
+    42: (1743, 41, 11),
+    43: (1792, 60, 8),
+    44: (1802, 80, 8),
+    45: (1805, 80, 8),
+    46: (2175, 70, 10),
+    47: (2105, 80, 10),
+    48: (2108, 80, 8),
+    49: (1961, 60, 10),
+    50: (1970, 60, 10),
+    51: (1951, 60, 10),
+    52: (1910, 80, 10),
+    53: (1922, 80, 10),
+    54: (2383, 70, 10),
+    55: (2387, 92, 8),
+    56: (2389, 72, 9),
+    57: (2587, 80, 8),
+    58: (2571, 80, 10),
+    59: (2584, 80, 8),
+    60: (2706, 80, 8),  # Saxons; verified against installed civilizations.json.
+    61: (2709, 80, 8),  # Varangians
+    62: (2712, 80, 8),  # Danes
+}
+# Civilization ID -> (public name, razings needed for the first builder pair).
+# After the first pair, the legacy CBA rule awards another pair for every razing.
+CIV_BUILDER_RULES = {
+    1: ("Britons", 1),
+    2: ("Franks", 3),
+    3: ("Goths", 2),
+    4: ("Teutons", 3),
+    5: ("Japanese", 3),
+    6: ("Chinese", 2),
+    7: ("Byzantines", 2),
+    8: ("Persians", 4),
+    9: ("Saracens", 2),
+    10: ("Turks", 3),
+    11: ("Vikings", 2),
+    12: ("Mongols", 2),
+    13: ("Celts", 2),
+    14: ("Spanish", 3),
+    15: ("Aztecs", 2),
+    16: ("Mayans", 1),
+    17: ("Huns", 4),
+    18: ("Koreans", 3),
+    19: ("Italians", 1),
+    20: ("Hindustanis", 3),
+    21: ("Incas", 2),
+    22: ("Magyars", 1),
+    23: ("Slavs", 2),
+    24: ("Portuguese", 3),
+    25: ("Ethiopians", 2),
+    26: ("Malians", 3),
+    27: ("Berbers", 1),
+    28: ("Khmer", 4),
+    29: ("Malay", 1),
+    30: ("Burmese", 3),
+    31: ("Vietnamese", 1),
+    32: ("Bulgarians", 2),
+    33: ("Tatars", 2),
+    34: ("Cumans", 2),
+    35: ("Lithuanians", 2),
+    36: ("Burgundians", 2),
+    37: ("Sicilians", 2),
+    38: ("Poles", 2),
+    39: ("Bohemians", 2),
+    40: ("Dravidians", 2),
+    41: ("Bengalis", 2),
+    42: ("Gurjaras", 3),
+    43: ("Romans", 2),
+    44: ("Armenians", 2),
+    45: ("Georgians", 1),
+    46: ("Achaemenids", 1),
+    47: ("Athenians", 1),
+    48: ("Spartans", 1),
+    49: ("Shu", 2),
+    50: ("Wu", 2),
+    51: ("Wei", 2),
+    52: ("Jurchens", 2),
+    53: ("Khitans", 2),
+    54: ("Macedonians", 1),
+    55: ("Thracians", 1),
+    56: ("Puru", 1),
+    57: ("Muisca", 1),
+    58: ("Mapuche", 1),
+    59: ("Tupi", 1),
+    60: ("Saxons", 2),
+    61: ("Varangians", 2),
+    62: ("Danes", 2),
+}
+REAR_ENCLOSURES = (
+    (
+        PlayerId.ONE,
+        "horizontal",
+        13.5,
+        ((51.5, 51.5), (56.5, 56.5)),
+        54.0,
+        ((52.5, 15.5), (55.5, 15.5), (62.5, 16.5)),
+    ),
+    (
+        PlayerId.TWO,
+        "horizontal",
+        13.5,
+        ((84.5, 84.5), (89.5, 89.5)),
+        87.0,
+        ((85.5, 15.5), (88.5, 15.5), (78.5, 16.5)),
+    ),
+    (
+        PlayerId.THREE,
+        "vertical",
+        10.5,
+        ((51.5, 51.5), (56.5, 56.5)),
+        54.0,
+        ((12.5, 52.5), (12.5, 55.5), (15.5, 45.5)),
+    ),
+    (
+        PlayerId.FOUR,
+        "vertical",
+        130.5,
+        ((51.5, 51.5), (56.5, 56.5)),
+        54.0,
+        ((128.5, 52.5), (128.5, 55.5), (125.5, 45.5)),
+    ),
+    (
+        PlayerId.FIVE,
+        "vertical",
+        10.5,
+        ((84.5, 84.5), (89.5, 89.5)),
+        87.0,
+        ((12.5, 85.5), (12.5, 88.5), (15.5, 95.5)),
+    ),
+    (
+        PlayerId.SIX,
+        "vertical",
+        130.5,
+        ((84.5, 84.5), (89.5, 89.5)),
+        87.0,
+        ((128.5, 85.5), (128.5, 88.5), (125.5, 95.5)),
+    ),
+    (
+        PlayerId.SEVEN,
+        "horizontal",
+        128.5,
+        ((51.5, 51.5), (56.5, 56.5)),
+        54.0,
+        ((52.5, 126.5), (55.5, 126.5), (62.5, 125.5)),
+    ),
+    (
+        PlayerId.EIGHT,
+        "horizontal",
+        128.5,
+        ((84.5, 84.5), (89.5, 89.5)),
+        87.0,
+        ((85.5, 126.5), (88.5, 126.5), (78.5, 125.5)),
+    ),
+)
+REAR_SIDE_GATES = (
+    (PlayerId.ONE, 64.5, (20.5, 21.5, 22.5), 23.5, 22.0),
+    (PlayerId.TWO, 76.5, (20.5, 21.5, 22.5), 23.5, 22.0),
+    (PlayerId.SEVEN, 64.5, (121.5, 122.5, 123.5), 124.5, 123.0),
+    (PlayerId.EIGHT, 76.5, (121.5, 122.5, 123.5), 124.5, 123.0),
+)
+# Short wall runs that close the walkable seam between each existing side wall
+# and the first intact rear-cliff segment. These are deliberately perpendicular
+# to the cliff barrier instead of duplicating it with another long wall.
+REAR_END_CONNECTORS = (
+    (PlayerId.ONE, "vertical", 43.5, 14.5, 15.5),
+    (PlayerId.ONE, "vertical", 64.5, 14.5, 15.5),
+    (PlayerId.TWO, "vertical", 76.5, 14.5, 15.5),
+    (PlayerId.TWO, "vertical", 97.5, 14.5, 15.5),
+    (PlayerId.THREE, "horizontal", 43.5, 11.5, 14.5),
+    (PlayerId.THREE, "horizontal", 64.5, 11.5, 14.5),
+    (PlayerId.FOUR, "horizontal", 43.5, 126.5, 129.5),
+    (PlayerId.FOUR, "horizontal", 64.5, 126.5, 129.5),
+    (PlayerId.FIVE, "horizontal", 76.5, 11.5, 14.5),
+    (PlayerId.FIVE, "horizontal", 97.5, 11.5, 14.5),
+    (PlayerId.SIX, "horizontal", 76.5, 126.5, 129.5),
+    (PlayerId.SIX, "horizontal", 97.5, 126.5, 129.5),
+    (PlayerId.SEVEN, "vertical", 43.5, 126.5, 127.5),
+    (PlayerId.SEVEN, "vertical", 64.5, 126.5, 127.5),
+    (PlayerId.EIGHT, "vertical", 76.5, 126.5, 127.5),
+    (PlayerId.EIGHT, "vertical", 97.5, 126.5, 127.5),
+)
+# One extra wall tile beyond each end of the three-gate arena-facing wall
+# removes the two diagonal squeeze points used to enter a base from the front.
+FRONT_GATE_END_EXTENSIONS = (
+    (PlayerId.ONE, "horizontal", 39.5, (46.5, 61.5)),
+    (PlayerId.TWO, "horizontal", 39.5, (79.5, 94.5)),
+    (PlayerId.THREE, "vertical", 39.5, (46.5, 61.5)),
+    (PlayerId.FOUR, "vertical", 101.5, (46.5, 61.5)),
+    (PlayerId.FIVE, "vertical", 39.5, (79.5, 94.5)),
+    (PlayerId.SIX, "vertical", 101.5, (79.5, 94.5)),
+    (PlayerId.SEVEN, "horizontal", 101.5, (46.5, 61.5)),
+    (PlayerId.EIGHT, "horizontal", 101.5, (79.5, 94.5)),
+)
+REAR_TECH_PATHS = (
+    (
+        PlayerId.ONE,
+        (53, 7, 54, 15),
+        (
+            (70385, OtherInfo.CLIFF_DEFAULT_3.ID, 52.5, 13.5),
+            (70383, OtherInfo.CLIFF_DEFAULT_3.ID, 55.5, 13.5),
+        ),
+    ),
+    (
+        PlayerId.TWO,
+        (86, 7, 87, 15),
+        (
+            (70319, OtherInfo.CLIFF_DEFAULT_3.ID, 85.5, 13.5),
+            (70305, OtherInfo.CLIFF_DEFAULT_3.ID, 88.5, 13.5),
+        ),
+    ),
+    (
+        PlayerId.THREE,
+        (7, 53, 14, 54),
+        (
+            (70476, OtherInfo.CLIFF_DEFAULT_1.ID, 13.5, 52.5),
+            (70478, OtherInfo.CLIFF_DEFAULT_1.ID, 13.5, 55.5),
+        ),
+    ),
+    (
+        PlayerId.FOUR,
+        (128, 53, 136, 54),
+        (
+            (70235, OtherInfo.CLIFF_DEFAULT_2.ID, 127.5, 52.5),
+            (70233, OtherInfo.CLIFF_DEFAULT_2.ID, 127.5, 55.5),
+        ),
+    ),
+    (
+        PlayerId.FIVE,
+        (7, 86, 14, 87),
+        (
+            (90121, OtherInfo.CLIFF_DEFAULT_1.ID, 10.5, 85.5),
+            (90118, OtherInfo.CLIFF_DEFAULT_1.ID, 10.5, 88.5),
+        ),
+    ),
+    (
+        PlayerId.SIX,
+        (128, 86, 136, 87),
+        (
+            (70167, OtherInfo.CLIFF_DEFAULT_2.ID, 127.5, 85.5),
+            (70165, OtherInfo.CLIFF_DEFAULT_2.ID, 127.5, 88.5),
+        ),
+    ),
+    (
+        PlayerId.SEVEN,
+        (53, 128, 54, 136),
+        (
+            (90179, OtherInfo.CLIFF_DEFAULT_1.ID, 52.5, 130.5),
+            (90180, OtherInfo.CLIFF_DEFAULT_1.ID, 55.5, 130.5),
+        ),
+    ),
+    (
+        PlayerId.EIGHT,
+        (86, 128, 87, 136),
+        (
+            (70095, OtherInfo.CLIFF_DEFAULT_1.ID, 85.5, 127.5),
+            (70097, OtherInfo.CLIFF_DEFAULT_1.ID, 88.5, 127.5),
+        ),
+    ),
+)
+REAR_LAND_APRONS = (
+    (PlayerId.ONE, (38, 13, 67, 15), (38, 12, 67, 12)),
+    (PlayerId.TWO, (74, 13, 103, 15), (74, 12, 103, 12)),
+    (PlayerId.THREE, (10, 38, 14, 67), (9, 38, 9, 67)),
+    (PlayerId.FOUR, (126, 38, 130, 67), (131, 38, 131, 67)),
+    (PlayerId.FIVE, (10, 74, 14, 103), (9, 74, 9, 103)),
+    (PlayerId.SIX, (126, 74, 130, 103), (131, 74, 131, 103)),
+    (PlayerId.SEVEN, (38, 126, 67, 128), (38, 129, 67, 129)),
+    (PlayerId.EIGHT, (74, 126, 103, 128), (74, 129, 103, 129)),
+)
+# Water occupies only the short apron ends beyond the two side-wall endpoints.
+# This blocks diagonal cliff-end bypasses without flooding the allied route.
+REAR_WATER_END_CAPS = (
+    (PlayerId.ONE, ((38, 13, 42, 15), (65, 13, 67, 15))),
+    (PlayerId.TWO, ((74, 13, 75, 15), (98, 13, 103, 15))),
+    (PlayerId.THREE, ((10, 38, 14, 42), (10, 65, 14, 67))),
+    (PlayerId.FOUR, ((126, 38, 130, 42), (126, 65, 130, 67))),
+    (PlayerId.FIVE, ((10, 74, 14, 75), (10, 98, 14, 103))),
+    (PlayerId.SIX, ((126, 74, 130, 75), (126, 98, 130, 103))),
+    (PlayerId.SEVEN, ((38, 126, 42, 128), (65, 126, 67, 128))),
+    (PlayerId.EIGHT, ((74, 126, 75, 128), (98, 126, 103, 128))),
+)
+REAR_CLIFF_CLEANUP_AREAS = (
+    (PlayerId.ONE, (37, 13, 68, 17)),
+    (PlayerId.TWO, (73, 13, 104, 17)),
+    (PlayerId.THREE, (13, 37, 17, 68)),
+    (PlayerId.FOUR, (124, 37, 128, 68)),
+    (PlayerId.FIVE, (10, 73, 17, 104)),
+    (PlayerId.SIX, (124, 73, 128, 104)),
+    (PlayerId.SEVEN, (37, 127, 68, 131)),
+    (PlayerId.EIGHT, (73, 127, 104, 131)),
+)
+REAR_CLIFF_PERIMETERS = (
+    (PlayerId.ONE, "horizontal", 13.5, 43.5, 64.5, 54.0, OtherInfo.CLIFF_DEFAULT_3.ID, (10, 11)),
+    (PlayerId.TWO, "horizontal", 13.5, 76.5, 97.5, 87.0, OtherInfo.CLIFF_DEFAULT_3.ID, (10, 11)),
+    (PlayerId.THREE, "vertical", 10.5, 43.5, 64.5, 54.0, OtherInfo.CLIFF_DEFAULT_1.ID, (1, 2)),
+    (PlayerId.FOUR, "vertical", 130.5, 43.5, 64.5, 54.0, OtherInfo.CLIFF_DEFAULT_2.ID, (7, 8)),
+    (PlayerId.FIVE, "vertical", 10.5, 76.5, 97.5, 87.0, OtherInfo.CLIFF_DEFAULT_1.ID, (1, 2)),
+    (PlayerId.SIX, "vertical", 130.5, 76.5, 97.5, 87.0, OtherInfo.CLIFF_DEFAULT_2.ID, (7, 8)),
+    (PlayerId.SEVEN, "horizontal", 128.5, 43.5, 64.5, 54.0, OtherInfo.CLIFF_DEFAULT_1.ID, (4, 5)),
+    (PlayerId.EIGHT, "horizontal", 128.5, 76.5, 97.5, 87.0, OtherInfo.CLIFF_DEFAULT_1.ID, (4, 5)),
+)
+
+PUBLIC_INSTRUCTIONS = (
+    "CBA HERO 4v4: RA\r\r"
+    "HOW TO PLAY\r"
+    "Units spawn automatically and march into the arena. Defeat enemy units to unlock "
+    "stronger heroes. Protect your four Castles and destroy every enemy Castle to win.\r\r"
+    "TEAMS\r"
+    "Blue, Red, Green, and Yellow face Teal, Purple, Gray, and Orange. Close any unused "
+    "slots, but keep at least one occupied color on each side.\r\r"
+    "TEAM ROUTES\r"
+    "Guarded rear team routes connect allies through wider sixteen-tile sections. "
+    "Gate entrances remain narrow. Enemy units entering these routes are killed, "
+    "even after a teammate is defeated. Use the central battlefield to attack.\r\r"
+    "POPULATION\r"
+    "Choose the shared population limit in the lobby before starting. "
+    "Armies, Heroes, builders and backup use normal population; full builder pairs "
+    "and six-Scorpion backup wait for enough free room. No in-game population chooser.\r\r"
+    "SPAWN CONTROLS\r"
+    "Sheep = Castle army range. Penguin = Hero range. Move each along its own road: "
+    "farther toward the arena sends new units farther. Snow is the end zone: Sheep on "
+    "snow = HOLD (new armies stay by your Castles); Penguin on snow = OFF (no new Heroes). "
+    "The road begins exactly where HOLD/OFF ends. The Penguin's first ON position "
+    "sends Heroes right in front of your Castles, like Army HOLD. Water keeps each "
+    "controller on its own track. New waves receive one automatic move order.\r\r"
+    "WALL WIPE\r"
+    "Delete the side switch gate to remove your side walls. Front gates/walls and the "
+    "University gate/enclosure stay. At 200 walls you get a warning; at 220 the wall-limit "
+    "wipe clears other walls once. Fixed barriers are excluded.\r\r"
+    "VOTE KICK\r"
+    "Delete the matching Vote Kick marker to vote against a teammate. Two occupied "
+    "teammates must vote. Voting is disabled when fewer than three colors remain on that "
+    "side, and closed slots never count as votes.\r\r"
+    "COMBAT HUD\r"
+    "The right-side Kills / Deaths / Razings list shows live combat totals for P1 through P8. "
+    "B = Scorpion Backup: 1 available, A active, 0 used.\r\r"
+    "SCORPION BACKUP\r"
+    "Move your Skorpion King to the marked side island to call six Scorpions for "
+    "50 seconds. Each player can use this backup once.\r\r"
+    "Resources stay "
+    "at zero; available units, buildings, upgrades, and repairs are free.\r\r"
+    "MIRRORED CIVILIZATIONS\r"
+    "For exact pairs, select the same civilization explicitly for P1/P5, P2/P6, P3/P7, "
+    "and P4/P8 in the lobby. The game resolves Mirror before the scenario starts; "
+    "this map cannot reassign those engine choices.\r\r"
+    "HERO MILESTONES\r"
+    "200 Robin Hood | 400 Theodoric | 600 Charles Martel\r"
+    "800 Harald Hardrada | 1000 Genghis | 1500 faster Genghis\r"
+    "2000 Super Genghis | 2501 rapid Super Genghis | 3001 SGK250\r"
+    "3500 faster SGK250 | 5000 dual SGK250. No adrenaline fire-rate multiplier."
+)
+
+WHITE_KING_KILL_COUNTERS = {
+    PlayerId.ONE: 48_301,
+    PlayerId.TWO: 42_394,
+    PlayerId.THREE: 42_395,
+    PlayerId.FOUR: 42_396,
+    PlayerId.FIVE: 42_397,
+    PlayerId.SIX: 42_398,
+    PlayerId.SEVEN: 42_399,
+    PlayerId.EIGHT: 42_400,
+}
+MIDDLE_TREBUCHET_MARKERS = {
+    PlayerId.ONE: 93_736,
+    PlayerId.TWO: 93_737,
+    PlayerId.THREE: 93_738,
+    PlayerId.FOUR: 93_739,
+    PlayerId.FIVE: 93_740,
+    PlayerId.SIX: 93_741,
+    PlayerId.SEVEN: 93_742,
+    PlayerId.EIGHT: 93_743,
+}
+HERO_MILESTONES = (
+    (200, HeroInfo.ROBIN_HOOD.ID),
+    (400, HeroInfo.THEODORIC_THE_GOTH.ID),
+    (600, HeroInfo.CHARLES_MARTEL.ID),
+    (800, HeroInfo.HARALD_HARDRADA.ID),
+    (1_000, HeroInfo.GENGHIS_KHAN.ID),
+    (2_000, HeroInfo.GENGHIS_KHAN.ID),
+)
+HERO_MILESTONE_UPPER_BOUNDS = {
+    200: 400,
+    400: 600,
+    600: 800,
+    800: 1_000,
+    1_000: 2_000,
+    2_000: 3_500,
+}
+HERO_MILESTONE_SPAWN_TILES = {
+    player: v2_cell_for_player(player, 16, 38)
+    for player in PLAYERS
+}
+#: Name prefixes of the three legacy hero-order template triggers, whose task effects
+#: are copied into every per-colour hero route. These were the imported scenario's
+#: Portuguese names ("Curto"/"Médio"/"Longo") until the ``scenario/`` layer became
+#: hand-maintained source; the triggers themselves are now named in English, so the
+#: build no longer depends on the source scenario's display language.
+HERO_ORDER_FAMILIES = ("Short", "Medium", "Long")
+# Each controller moves along one clean six-level lane on P3's canonical edge
+# island.  The transforms below keep L0 at the map edge and L5 toward the arena
+# for all eight colors.
+SOURCE_RANGE_ISLAND = (1, 60, 9, 66)
+# Two-tile-wide tracks leave a clear row beside the Signs. Three full water
+# rows separate them, including both end caps: no land bridge joins the lanes.
+# Each selector partitions only its own track. The snow/road boundary is also
+# exactly the L0/L1 trigger boundary, never a decorative approximation.
+SOURCE_ARMY_RANGE_LANE = (1, 60, 9, 61)
+SOURCE_HERO_RANGE_LANE = (1, 65, 9, 66)
+SOURCE_RANGE_LEVEL_SPANS = ((1, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 9))
+SOURCE_ARMY_RANGE_AREAS = tuple(
+    (x1, SOURCE_ARMY_RANGE_LANE[1], x2, SOURCE_ARMY_RANGE_LANE[3])
+    for x1, x2 in SOURCE_RANGE_LEVEL_SPANS
+)
+SOURCE_HERO_RANGE_AREAS = tuple(
+    (x1, SOURCE_HERO_RANGE_LANE[1], x2, SOURCE_HERO_RANGE_LANE[3])
+    for x1, x2 in SOURCE_RANGE_LEVEL_SPANS
+)
+SOURCE_ARMY_CONTROLLER_POSITION = (6.5, 61.5)
+SOURCE_HERO_CONTROLLER_POSITION = (6.5, 65.5)
+SOURCE_RANGE_SIGNS = (
+    ((2.5, 60.5), "HOLD - new armies stay home"),
+    ((9.5, 60.5), "FAR - army range"),
+    ((2.5, 66.5), "OFF - no new heroes"),
+    ((9.5, 66.5), "FAR - hero range"),
+)
+ARMY_CONTROLLER_LABEL = "Army range - snow = HOLD"
+HERO_CONTROLLER_LABEL = "Hero range - snow = OFF"
+
+# L0 deliberately parks each newly-created Castle wave one tile back toward its
+# own Castle. L1 and L5 retain the proven Short and Long endpoints; the three
+# intermediate levels interpolate monotonically through grounded arena cells.
+SOURCE_ARMY_RANGE_DESTINATIONS = (
+    ((21, 48), (21, 52), (21, 55), (21, 59)),
+    ((25, 49), (25, 50), (25, 54), (25, 55)),
+    ((30, 50), (30, 51), (30, 54), (30, 55)),
+    ((34, 51), (34, 52), (34, 54), (34, 54)),
+    ((38, 52), (38, 52), (38, 54), (38, 54)),
+    ((43, 53), (43, 53), (43, 54), (43, 54)),
+)
+# Hero L0 is production OFF. L1 shares Army HOLD, then L2-L5 progress toward battle,
+# avoiding the shore wall crossed by a naive straight-line interpolation.
+SOURCE_HERO_RANGE_DESTINATIONS = {
+    # First ON position shares the Army HOLD line immediately ahead of Castles.
+    1: (21, 54),
+    2: (30, 52),
+    3: (34, 52),
+    4: (38, 53),
+    5: (43, 53),
+}
+LEGACY_SELECTOR_FAMILIES = ("short", "med", "long")
+LEGACY_HERO_SELECTOR_FAMILIES = ("herospawnclose", "herospawnopen")
+SOURCE_EDGE_SELECTOR_SLOTS = {
+    OtherInfo.RELIC.ID: (
+        (1.5, 61.5),
+        (1.5, 63.5),
+        (1.5, 65.5),
+        (7.5, 61.5),
+        (7.5, 65.5),
+    ),
+    OtherInfo.RUGS.ID: (
+        (2.5, 61.5),
+        (2.5, 63.5),
+        (2.5, 65.5),
+        (6.5, 61.5),
+        (6.5, 65.5),
+    ),
+}
+SOURCE_SELECTOR_TORCH_POSITIONS = (
+    (4.0, 63.0),
+    (5.0, 63.0),
+    (4.0, 64.0),
+    (5.0, 64.0),
+)
+LEGACY_AGE_UP_NAME = re.compile(r"\d+ kills")
+
+
+def _assert_variable_ids_are_contiguous(ctx: BuildContext) -> None:
+    """Fail the build if the variable id space has a hole, a duplicate, or a collision.
+
+    Ids are handed out by several independent passes from separate bases, and a
+    condition or effect addresses a variable by id, not by name. A collision therefore
+    rewires trigger logic without changing a single visible field, and a hole means a
+    block silently moved. Both are cheap to assert and expensive to debug in a lobby.
+    """
+    variables = ctx.tm.variables
+    ids = [variable.variable_id for variable in variables]
+    duplicates = sorted({value for value in ids if ids.count(value) > 1})
+    if duplicates:
+        by_id = defaultdict(list)
+        for variable in variables:
+            by_id[variable.variable_id].append(variable.name)
+        raise RuntimeError(
+            "trigger variable id collision: "
+            + ", ".join(f"{value} -> {by_id[value]}" for value in duplicates)
+        )
+    expected = list(range(len(ids)))
+    if sorted(ids) != expected:
+        missing = sorted(set(expected) - set(ids))
+        raise RuntimeError(
+            f"trigger variable ids must be contiguous from 0; {len(ids)} declared, "
+            f"missing {missing[:10]}, highest {max(ids) if ids else -1}"
+        )
+
+
+def _unique_trigger(ctx: BuildContext, name: str):
+    matches = [trigger for trigger in ctx.tm.triggers if trigger.name == name]
+    if len(matches) != 1:
+        raise RuntimeError(f"expected one {name!r} trigger, found {len(matches)}")
+    return matches[0]
+
+
+def _reset_trigger(trigger) -> None:
+    trigger.description = ""
+    trigger.description_stid = 0
+    trigger.display_as_objective = 0
+    trigger.short_description = ""
+    trigger.short_description_stid = 0
+    trigger.display_on_screen = 0
+    trigger.description_order = 0
+    trigger.enabled = 0
+    trigger.looping = 0
+    trigger.execute_on_load = 0
+    trigger.header = 0
+    trigger.mute_objectives = 0
+    trigger.conditions = []
+    trigger.effects = []
+
+
+def _strip_trigger_references(ctx: BuildContext, trigger_ids: set[int]) -> None:
+    """Remove legacy graph edges before reusing triggers for new behavior."""
+    for trigger in ctx.tm.triggers:
+        trigger.conditions = [
+            condition
+            for condition in trigger.conditions
+            if not (
+                condition.condition_type == ConditionId.TRIGGER_ACTIVE
+                and condition.trigger_id in trigger_ids
+            )
+        ]
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if not (
+                effect.effect_type
+                in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+                and effect.trigger_id in trigger_ids
+            )
+        ]
+
+
+def _component_signature(component, factory_name, parameters):
+    """Return only the fields AoE2ScenarioParser serializes for a component."""
+    factory = factory_name(component)
+    return (
+        factory,
+        tuple(
+            (name, safe_get(component, name, None))
+            for name in parameters.get(factory, ())
+        ),
+    )
+
+
+def _trigger_signature(trigger):
+    """Build a stable, serialization-aware trigger signature for guarded deduping."""
+    return (
+        trigger.name,
+        tuple((name, safe_get(trigger, name, None)) for name in TRIGGER_PARAMS),
+        tuple(
+            _component_signature(
+                condition,
+                condition_factory_name,
+                CONDITION_PARAMS,
+            )
+            for condition in trigger.conditions
+        ),
+        tuple(
+            _component_signature(effect, effect_factory_name, EFFECT_PARAMS)
+            for effect in trigger.effects
+        ),
+    )
+
+
+def _rewrite_trigger_references(ctx: BuildContext, replacements: dict[int, int]) -> int:
+    """Repoint every trigger-reference field and return the number changed."""
+    changed = 0
+    for trigger in ctx.tm.triggers:
+        for condition in trigger.conditions:
+            if (
+                condition.condition_type == ConditionId.TRIGGER_ACTIVE
+                and condition.trigger_id in replacements
+            ):
+                condition.trigger_id = replacements[condition.trigger_id]
+                changed += 1
+        for effect in trigger.effects:
+            if (
+                effect.effect_type
+                in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+                and effect.trigger_id in replacements
+            ):
+                effect.trigger_id = replacements[effect.trigger_id]
+                changed += 1
+    return changed
+
+
+def _age_up_player(trigger) -> int:
+    """Infer the one player controlled by a legacy kill-based age-up trigger."""
+    players = set()
+    for component in (*trigger.conditions, *trigger.effects):
+        for field in (
+            "source_player",
+            "target_player",
+            "player_source",
+            "player_target",
+        ):
+            player = safe_get(component, field, -1)
+            if isinstance(player, int) and 1 <= int(player) <= 8:
+                players.add(int(player))
+    if len(players) != 1:
+        raise RuntimeError(
+            f"could not infer one player for legacy age-up trigger {trigger.name!r}: "
+            f"{sorted(players)}"
+        )
+    return players.pop()
+
+
+def _compact_legacy_trigger_graph(ctx: BuildContext) -> None:
+    """Remove proven no-op shells and merge byte-identical legacy age-up logic.
+
+    The decompiled source intentionally preserves the imported scenario as evidence.
+    This final pass runs after every name- and ID-based patch, rewires all references,
+    then lets ``TriggerManager.remove_triggers`` remap IDs and display order safely.
+    Exact baseline counts make a future upstream change fail closed instead of deleting
+    a newly meaningful trigger by accident.
+    """
+    age_triggers = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if LEGACY_AGE_UP_NAME.fullmatch(trigger.name)
+    ]
+    if len(age_triggers) != 288:
+        raise RuntimeError(
+            f"expected 288 imported age-up triggers, found {len(age_triggers)}"
+        )
+
+    signature_groups = defaultdict(list)
+    for trigger in age_triggers:
+        signature_groups[_trigger_signature(trigger)].append(trigger)
+    duplicate_groups = [
+        group for group in signature_groups.values() if len(group) > 1
+    ]
+    duplicate_triggers = [
+        duplicate for group in duplicate_groups for duplicate in group[1:]
+    ]
+    if len(duplicate_groups) != 70 or len(duplicate_triggers) != 189:
+        raise RuntimeError(
+            "legacy age-up graph changed: expected 70 duplicate groups and "
+            f"189 redundant triggers, found {len(duplicate_groups)} and "
+            f"{len(duplicate_triggers)}"
+        )
+
+    replacements = {
+        duplicate.trigger_id: group[0].trigger_id
+        for group in duplicate_groups
+        for duplicate in group[1:]
+    }
+    rewired = _rewrite_trigger_references(ctx, replacements)
+    if rewired != 346:
+        raise RuntimeError(
+            f"expected to rewire 346 legacy age-up activations, rewired {rewired}"
+        )
+    ctx.tm.remove_triggers([trigger.trigger_id for trigger in duplicate_triggers])
+
+    remaining_age_ups = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if LEGACY_AGE_UP_NAME.fullmatch(trigger.name)
+    ]
+    if len(remaining_age_ups) != 99:
+        raise RuntimeError(
+            f"expected 99 canonical age-up triggers, found {len(remaining_age_ups)}"
+        )
+
+    semantic_groups = defaultdict(list)
+    for trigger in remaining_age_ups:
+        semantic_groups[(trigger.name, _age_up_player(trigger))].append(trigger)
+    variant_groups = {
+        key: group for key, group in semantic_groups.items() if len(group) > 1
+    }
+    expected_variants = {
+        ("300 kills", 7),
+        ("600 kills", 7),
+        ("750 kills", 7),
+    }
+    if set(variant_groups) != expected_variants or any(
+        len(group) != 2 for group in variant_groups.values()
+    ):
+        raise RuntimeError(
+            "unexpected non-identical legacy age-up variants: "
+            f"{sorted((key, len(group)) for key, group in variant_groups.items())}"
+        )
+    for (name, player), group in semantic_groups.items():
+        if len(group) == 1:
+            group[0].name = f"{name} (p{player})"
+            continue
+        for variant, trigger in enumerate(group, start=1):
+            trigger.name = f"{name} (p{player}, legacy variant {variant})"
+
+    empty_triggers = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if not trigger.conditions and not trigger.effects
+    ]
+    if len(empty_triggers) != 842:
+        raise RuntimeError(
+            "expected 810 empty imported shells plus 32 retired Hay markers, "
+            f"found {len(empty_triggers)}"
+        )
+    empty_ids = {trigger.trigger_id for trigger in empty_triggers}
+    empty_by_id = {trigger.trigger_id: trigger for trigger in empty_triggers}
+    incoming_conditions = [
+        condition
+        for trigger in ctx.tm.triggers
+        for condition in trigger.conditions
+        if condition.condition_type == ConditionId.TRIGGER_ACTIVE
+        and condition.trigger_id in empty_ids
+    ]
+    incoming_effects = [
+        effect
+        for trigger in ctx.tm.triggers
+        for effect in trigger.effects
+        if effect.effect_type
+        in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+        and effect.trigger_id in empty_ids
+    ]
+    if incoming_conditions or len(incoming_effects) != 16 or any(
+        effect.effect_type != EffectId.DEACTIVATE_TRIGGER
+        or re.fullmatch(
+            r"(?:re )?no wall \(p[1-8]\)",
+            empty_by_id[effect.trigger_id].name,
+        )
+        is None
+        for effect in incoming_effects
+    ):
+        raise RuntimeError(
+            "empty trigger shells gained meaningful references: "
+            f"{len(incoming_conditions)} conditions and {len(incoming_effects)} effects"
+        )
+
+    for trigger in ctx.tm.triggers:
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if not (
+                effect.effect_type == EffectId.DEACTIVATE_TRIGGER
+                and effect.trigger_id in empty_ids
+            )
+        ]
+    ctx.tm.remove_triggers([trigger.trigger_id for trigger in empty_triggers])
+
+    # The builder appends the bundled ``XS SCRIPT`` trigger after ``build`` returns.
+    if len(ctx.tm.triggers) != 4_313:
+        raise RuntimeError(
+            f"expected 4,313 compact pre-XS triggers, found {len(ctx.tm.triggers):,}"
+        )
+    if any(
+        not trigger.conditions and not trigger.effects for trigger in ctx.tm.triggers
+    ):
+        raise RuntimeError("empty triggers remained after graph compaction")
+    names = [trigger.name for trigger in ctx.tm.triggers]
+    duplicate_names = sorted(
+        name for name in set(names) if names.count(name) > 1
+    )
+    if duplicate_names:
+        raise RuntimeError(
+            f"duplicate trigger names remained after compaction: {duplicate_names}"
+        )
+
+
+def _configure_equalizer(trigger, player: PlayerId) -> None:
+    """Keep stockpiles at zero after a real player is confirmed in the slot."""
+    _reset_trigger(trigger)
+    trigger.name = f"Resource Equalizer P{int(player)}"
+    trigger.looping = 1
+    trigger.new_condition.player_defeated(source_player=player, inverted=1)
+    trigger.new_condition.timer(timer=1)
+    for resource in RESOURCE_STOCKPILES:
+        trigger.new_effect.modify_resource(
+            quantity=0,
+            tribute_list=resource,
+            source_player=player,
+            operation=Operation.SET,
+        )
+    for attribute in (Attribute.RESEARCH_COST_MODIFIER, *SCORE_NEUTRAL_ATTRIBUTES):
+        trigger.new_effect.modify_resource(
+            quantity=0,
+            tribute_list=attribute,
+            source_player=player,
+            operation=Operation.SET,
+        )
+
+
+def _configure_free_costs(trigger, player: PlayerId) -> None:
+    """Make repair costs free; XS handles every runtime object's purchase cost."""
+    _reset_trigger(trigger)
+    trigger.name = f"Free Costs P{int(player)}"
+
+    for attribute in FREE_PLAYER_ATTRIBUTES:
+        trigger.new_effect.modify_resource(
+            quantity=0,
+            tribute_list=attribute,
+            source_player=player,
+            operation=Operation.SET,
+        )
+
+
+def _configure_combat_hud_header(trigger) -> None:
+    """Use DE's native right-side objective list without adding a full objective."""
+    _reset_trigger(trigger)
+    trigger.name = "Combat HUD Header"
+    trigger.short_description = "p# | k | d | r | b"
+    trigger.display_on_screen = 1
+    trigger.description_order = 19
+    trigger.enabled = 1
+    trigger.header = 0
+    trigger.mute_objectives = 1
+    trigger.new_condition.player_defeated(source_player=PlayerId.GAIA)
+
+
+def _reset_unsafe_vote_kick(ctx: BuildContext) -> None:
+    """Clear the legacy vote-kick path before rebuilding it safely.
+
+    During DE's first trigger pass, closed slots can briefly appear alive while
+    their missing vote markers satisfy the inverted area checks. In a sparse
+    lobby that can activate a ``Kick P#`` trigger and defeat a real player at
+    tick zero. The rebuilt path is added after color/runtime mapping and the V2
+    object transformation are complete.
+    """
+    vote_detectors = 0
+    kick_actions = 0
+    for trigger in ctx.tm.triggers:
+        if VOTE_KICK_NAME.fullmatch(trigger.name):
+            _reset_trigger(trigger)
+            vote_detectors += 1
+        elif re.fullmatch(r"Kick P[1-8]", trigger.name):
+            _reset_trigger(trigger)
+            kick_actions += 1
+    if vote_detectors != 24 or kick_actions != 8:
+        raise RuntimeError(
+            f"expected 24 vote-kick detectors and 8 kick actions, found {vote_detectors} and {kick_actions}"
+        )
+
+
+def _remove_legacy_edge_deletion_strips(ctx: BuildContext) -> None:
+    """Disable invisible strips that deleted every owned object at the map edges."""
+    removed = 0
+    for trigger in ctx.tm.triggers:
+        if not EDGE_KILL_ZONE_NAME.fullmatch(trigger.name):
+            continue
+        original_name = trigger.name
+        _reset_trigger(trigger)
+        trigger.name = f"Legacy Edge Delete Disabled ({original_name})"
+        removed += 1
+    if removed != 32:
+        raise RuntimeError(f"expected 32 legacy edge delete triggers, disabled {removed}")
+
+
+def _disable_legacy_no_wall_cleanup(ctx: BuildContext) -> None:
+    """Keep the complete symmetric side walls from being deleted at startup."""
+    disabled = 0
+    for trigger in ctx.tm.triggers:
+        if re.fullmatch(r"(?:re )?no wall \(p[1-8]\)", trigger.name) is None:
+            continue
+        _reset_trigger(trigger)
+        disabled += 1
+    if disabled != 16:
+        raise RuntimeError(
+            f"expected 16 legacy no-wall triggers, disabled {disabled}"
+        )
+
+
+def _remove_legacy_goth_palisade_bonus(ctx: BuildContext) -> None:
+    """Remove the hidden Elite-Huskarl Palisade HP mechanic.
+
+    The imported scenario waited for a Goth player to build a designated row of 12
+    Palisade Walls after researching Elite Huskarl, then added 2,750 HP to that row.
+    Ascendants has no need for this invisible, civilization-specific wall exception.
+    """
+    bonuses = []
+    for trigger in ctx.tm.triggers:
+        if re.fullmatch(r"hp \(p[1-8]\)", trigger.name) is None:
+            continue
+        if not any(
+            condition.condition_type == ConditionId.OBJECTS_IN_AREA
+            and condition.object_list == BuildingInfo.PALISADE_WALL.ID
+            for condition in trigger.conditions
+        ):
+            continue
+        bonuses.append(trigger)
+    if len(bonuses) != 8:
+        raise RuntimeError(
+            f"expected eight Goth Palisade bonus triggers, found {len(bonuses)}"
+        )
+    legacy_ids = {trigger.trigger_id for trigger in bonuses}
+    for trigger in bonuses:
+        _reset_trigger(trigger)
+        trigger.name = f"Legacy Goth Palisade Bonus Disabled #{trigger.trigger_id}"
+    for trigger in ctx.tm.triggers:
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if not (
+                effect.effect_type == EffectId.ACTIVATE_TRIGGER
+                and effect.trigger_id in legacy_ids
+            )
+        ]
+
+
+def _configure_sparse_goth_barracks_restriction(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> None:
+    """Keep the Anarchy Barracks restriction correct in compacted lobbies."""
+    legacy = {
+        family: {
+            color: _unique_trigger(ctx, f"goth {family} (p{int(color)})")
+            for color in PLAYERS
+        }
+        for family in ("barracks", "anarchy", "imp")
+    }
+    legacy_ids = {
+        trigger.trigger_id
+        for family in legacy.values()
+        for trigger in family.values()
+    }
+    for family, by_color in legacy.items():
+        for trigger in by_color.values():
+            old_id = trigger.trigger_id
+            _reset_trigger(trigger)
+            trigger.name = f"Legacy Goth {family.title()} Disabled #{old_id}"
+    for trigger in ctx.tm.triggers:
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if not (
+                effect.effect_type
+                in {EffectId.ACTIVATE_TRIGGER, EffectId.DEACTIVATE_TRIGGER}
+                and effect.trigger_id in legacy_ids
+            )
+        ]
+
+    whole_map = {"area_x1": 0, "area_y1": 0, "area_x2": 143, "area_y2": 143}
+    for color in PLAYERS:
+        for world_player in _possible_world_players():
+            restriction = ctx.tm.add_trigger(
+                f"Goth Barracks Restriction S{int(color)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+                enabled=0,
+                looping=1,
+            )
+            restriction.new_condition.timer(timer=1)
+            restriction.new_condition.research_technology(
+                source_player=world_player,
+                technology=TechInfo.IMPERIAL_AGE.ID,
+                inverted=1,
+            )
+            restriction.new_condition.objects_in_area(
+                quantity=1,
+                object_list=BuildingInfo.BARRACKS.ID,
+                source_player=world_player,
+                **whole_map,
+            )
+            restriction.new_effect.kill_object(
+                object_list_unit_id=BuildingInfo.BARRACKS.ID,
+                source_player=world_player,
+                **whole_map,
+            )
+            restriction.new_effect.send_chat(
+                source_player=world_player,
+                message="Goths cannot build Barracks until Imperial Age.",
+            )
+
+            anarchy = ctx.tm.add_trigger(
+                f"Goth Anarchy S{int(color)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+            )
+            anarchy.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            anarchy.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            anarchy.new_condition.research_technology(
+                source_player=world_player,
+                technology=TechInfo.ANARCHY.ID,
+            )
+            anarchy.new_condition.research_technology(
+                source_player=world_player,
+                technology=TechInfo.IMPERIAL_AGE.ID,
+                inverted=1,
+            )
+            anarchy.new_effect.activate_trigger(
+                trigger_id=restriction.trigger_id
+            )
+            anarchy.new_effect.send_chat(
+                source_player=world_player,
+                message=(
+                    "Anarchy researched: Barracks remain unavailable until "
+                    "Imperial Age."
+                ),
+            )
+
+            imperial = ctx.tm.add_trigger(
+                f"Goth Imperial S{int(color)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+            )
+            imperial.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            imperial.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            imperial.new_condition.research_technology(
+                source_player=world_player,
+                technology=TechInfo.IMPERIAL_AGE.ID,
+            )
+            imperial.new_effect.deactivate_trigger(
+                trigger_id=restriction.trigger_id
+            )
+            imperial.new_effect.deactivate_trigger(trigger_id=anarchy.trigger_id)
+
+
+def _disable_fixed_color_kill_announcements(ctx: BuildContext) -> None:
+    """Remove duplicate announcements that report runtime colors as map colors."""
+    disabled = 0
+    for trigger in ctx.tm.triggers:
+        has_legacy_kill_chat = any(
+            effect.effect_type == EffectId.SEND_CHAT
+            and re.match(r"<[^>]+> Kills:", effect.message or "")
+            for effect in trigger.effects
+        )
+        thresholds = {
+            condition.quantity
+            for condition in trigger.conditions
+            if condition.condition_type == ConditionId.ACCUMULATE_ATTRIBUTE
+            and condition.attribute == Attribute.UNITS_KILLED
+        }
+        if has_legacy_kill_chat and thresholds & {10, 20, 30, 2_000}:
+            original_id = trigger.trigger_id
+            _reset_trigger(trigger)
+            trigger.name = f"Legacy Fixed-Color Kill Notice Disabled #{original_id}"
+            disabled += 1
+    if disabled != 12:
+        raise RuntimeError(
+            f"expected 12 fixed-color kill notices, disabled {disabled}"
+        )
+
+
+def _optimize_legacy_polling(ctx: BuildContext) -> None:
+    """Throttle persistent checks and make one-shot legacy events truly one-shot."""
+    counts = {"hay": 0, "tc": 0, "goth imp": 0}
+    for trigger in ctx.tm.triggers:
+        family = next(
+            (
+                candidate
+                for candidate in counts
+                if re.fullmatch(
+                    rf"{re.escape(candidate)}[1-4]? \(p[1-8]\)",
+                    trigger.name,
+                )
+            ),
+            None,
+        )
+        if family is None:
+            continue
+        if not any(
+            condition.condition_type == ConditionId.TIMER
+            for condition in trigger.conditions
+        ):
+            trigger.new_condition.timer(timer=1)
+        if family in {"hay", "goth imp"}:
+            trigger.looping = 0
+        counts[family] += 1
+    expected = {"hay": 32, "tc": 8, "goth imp": 8}
+    if counts != expected:
+        raise RuntimeError(
+            f"unexpected legacy polling families: expected {expected}, found {counts}"
+        )
+
+
+def _mirror_legacy_anti_treb_zones(ctx: BuildContext) -> None:
+    """Keep legacy anti-Trebuchet effects away from the new rear routes."""
+    anti_treb_bounds = _mirrored_area_bounds(ANTI_TREB_SOURCE_AREA)
+    anti_treb_count = 0
+    for trigger in ctx.tm.triggers:
+        match = ANTI_TREB_NAME.fullmatch(trigger.name)
+        if match is None:
+            continue
+        kill_effects = [effect for effect in trigger.effects if effect.effect_type == EffectId.KILL_OBJECT]
+        if len(kill_effects) != 1:
+            raise RuntimeError(f"expected one anti-treb effect in {trigger.name!r}")
+        (
+            kill_effects[0].area_x1,
+            kill_effects[0].area_y1,
+            kill_effects[0].area_x2,
+            kill_effects[0].area_y2,
+        ) = anti_treb_bounds[int(match.group(1))]
+        if not any(
+            condition.condition_type == ConditionId.TIMER
+            for condition in trigger.conditions
+        ):
+            trigger.new_condition.timer(timer=1)
+        anti_treb_count += 1
+    if anti_treb_count != 64:
+        raise RuntimeError(f"expected 64 anti-treb triggers, adjusted {anti_treb_count}")
+
+
+def _clear_legacy_resource_score_triggers(ctx: BuildContext) -> None:
+    """Remove the remaining old 100k tribute loops that inflated score."""
+    for player in range(1, 9):
+        _reset_trigger(_unique_trigger(ctx, f"res (p{player})"))
+
+
+def _zero_starting_resources(ctx: BuildContext) -> None:
+    for player in PLAYERS:
+        settings = ctx.pm.players[player]
+        settings.food = 0
+        settings.wood = 0
+        settings.stone = 0
+        settings.gold = 0
+
+
+def _normalize_player_restrictions(ctx: BuildContext) -> None:
+    """Apply the same CBA roster to every color, preserving every existing ban.
+
+    The imported per-color lists omitted different units and buildings. A lobby
+    color must not decide whether a civilization can train an otherwise banned
+    unit. Civilization-specific availability still comes from the game's data.
+    """
+    for field in ("disabled_units", "disabled_buildings", "disabled_techs"):
+        shared = sorted({
+            value
+            for player in PLAYERS
+            for value in getattr(ctx.pm.players[player], field)
+        })
+        for player in PLAYERS:
+            setattr(ctx.pm.players[player], field, list(shared))
+
+
+def _disable_castle_trebuchets(ctx: BuildContext) -> None:
+    """Remove both Trebuchet forms from every player's trainable roster."""
+    trebuchets = (UnitInfo.TREBUCHET.ID, UnitInfo.TREBUCHET_PACKED.ID)
+    for player in PLAYERS:
+        disabled_units = ctx.pm.players[player].disabled_units
+        for unit_id in trebuchets:
+            if unit_id not in disabled_units:
+                disabled_units.append(unit_id)
+
+
+def _unit_family(unit_id: int) -> set[int]:
+    """Every trainable form of one unit: Elite/non-Elite and ranged/melee siblings.
+
+    Banning a single id is not enough. A Ratha or Immortal has separate ranged and
+    melee ids, and every unique unit has an Elite and a non-Elite form; a civilization
+    only needs one of them left open to train the unit the mode hands it for free.
+    """
+    by_id = {}
+    by_name = {}
+    for member in UnitInfo:
+        by_id.setdefault(member.ID, member.name)
+        by_name.setdefault(member.name, member.ID)
+
+    # Parser 0.8.4 predates these verified base/Elite pairs.
+    current_pairs = ({2705, 2706}, {2708, 2709}, {2711, 2712})
+    family = next((pair.copy() for pair in current_pairs if unit_id in pair), {unit_id})
+    name = by_id.get(unit_id)
+    if name is None:
+        return family
+
+    variants = {name}
+    variants.add(
+        name[len("ELITE_"):] if name.startswith("ELITE_") else f"ELITE_{name}"
+    )
+    for variant in tuple(variants):
+        for suffix, sibling in (("_RANGED", "_MELEE"), ("_MELEE", "_RANGED")):
+            if variant.endswith(suffix):
+                variants.add(variant[: -len(suffix)] + sibling)
+    for variant in variants:
+        if variant in by_name:
+            family.add(by_name[variant])
+    return family
+
+
+def _ban_auto_spawned_unique_units(ctx: BuildContext) -> None:
+    """Nobody may hand-train the unit their Castles already produce for free.
+
+    The imported per-colour lists covered the unique units of the civilizations that
+    existed when the source scenario was made, and ``_normalize_player_restrictions``
+    only takes their union — so every civilization added by a later DLC could queue its
+    own unique unit on top of the automatic army, for free, from four Castles. Deriving
+    the ban from ``CIV_SPAWN_RULES`` instead makes it self-maintaining: adding a
+    civilization to that table now also bans its unit.
+    """
+    banned = set()
+    for unit_id, _cap, _interval in CIV_SPAWN_RULES.values():
+        banned |= _unit_family(unit_id)
+
+    for player in PLAYERS:
+        disabled_units = ctx.pm.players[player].disabled_units
+        for unit_id in sorted(banned - set(disabled_units)):
+            disabled_units.append(unit_id)
+
+    for player in PLAYERS:
+        missing = banned - set(ctx.pm.players[player].disabled_units)
+        if missing:
+            raise RuntimeError(
+                f"P{int(player)} can still train auto-spawned units {sorted(missing)}"
+            )
+
+
+def _ban_castle_class_buildings(ctx: BuildContext) -> None:
+    """Ban the Krepost and Donjon alongside the Castle.
+
+    The imported building ban removed the Castle so nobody can add a fifth one, but it
+    predates both civilization-specific castle-class fortifications. With free stone,
+    Bulgarians and Sicilians could otherwise raise unlimited extra fortresses — and the
+    Donjon trains Serjeants — while the other 57 civilizations cannot build anything of
+    the kind.
+
+    The inherited list also carries id 621, which resolves to no building in the pinned
+    dataset. It is left in place deliberately: removing an entry from a ban list is a
+    live gameplay change, and a ban on an id the game does not have is inert anyway.
+    """
+    castle_class = (
+        BuildingInfo.CASTLE.ID,
+        BuildingInfo.KREPOST.ID,
+        BuildingInfo.DONJON.ID,
+    )
+    for player in PLAYERS:
+        disabled_buildings = ctx.pm.players[player].disabled_buildings
+        for building_id in castle_class:
+            if building_id not in disabled_buildings:
+                disabled_buildings.append(building_id)
+
+
+def _add_color_runtime_variables(ctx: BuildContext):
+    """Create the color-to-runtime state shared by sparse-safe systems."""
+    for player in PLAYERS:
+        ctx.tm.add_variable(
+            f"p{int(player)}xsidentity",
+            variable_id=COLOR_XS_VARIABLE_BASE + int(player) - 1,
+        )
+        ctx.tm.add_variable(
+            f"p{int(player)}coloroccupied",
+            variable_id=COLOR_OCCUPIED_VARIABLE_BASE + int(player) - 1,
+        )
+        ctx.tm.add_variable(
+            f"p{int(player)}colorcleaned",
+            variable_id=COLOR_CLEANED_VARIABLE_BASE + int(player) - 1,
+        )
+    active_variables = {
+        player: ctx.tm.add_variable(
+            f"p{int(player)}coloractive",
+            variable_id=COLOR_ACTIVE_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+    world_variables = {
+        player: ctx.tm.add_variable(
+            f"p{int(player)}worldplayer",
+            variable_id=COLOR_WORLD_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+    eliminated_variables = {
+        player: ctx.tm.add_variable(
+            f"p{int(player)}coloreliminated",
+            variable_id=COLOR_ELIMINATED_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+    match_ready_variable = ctx.tm.add_variable(
+        "colorsidesready",
+        variable_id=MATCH_READY_VARIABLE_ID,
+    ).variable_id
+    return (
+        active_variables,
+        world_variables,
+        eliminated_variables,
+        match_ready_variable,
+    )
+
+
+def _add_color_owner_detection(ctx: BuildContext, world_variables) -> None:
+    """Latch the trigger-side player selector that owns each Castle row.
+
+    Trigger player fields and XS player arguments are separate identity domains in
+    custom-scenario lobbies. These variables are intentionally consumed only by
+    trigger conditions/effects. The resource-token bridge translates that owner
+    into an independently stamped XS API index, without assuming numeric equality.
+
+    This detector deliberately does **not** write ``p#coloractive``. That variable has
+    exactly one writer, ``cbaUpdateColorRuntime`` in XS, which recomputes it every
+    second from native occupancy and elimination latches. A second writer was silently
+    reverted within one second unless it also wrote ``p#coloreliminated``, which made
+    every future defeat path depend on remembering a second, unrelated write.
+    """
+    configured = 0
+    for color in PLAYERS:
+        area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[color]
+        for world_player in _possible_world_players():
+            detector = ctx.tm.add_trigger(
+                f"Color Owner Detect S{int(color)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+                looping=1,
+            )
+            detector.new_condition.timer(timer=LOBBY_SETTLE_SECONDS)
+            detector.new_condition.player_defeated(source_player=world_player, inverted=1)
+            detector.new_condition.variable_value(
+                quantity=0,
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            detector.new_condition.objects_in_area(
+                quantity=1,
+                object_list=BuildingInfo.CASTLE.ID,
+                source_player=world_player,
+                area_x1=area_x1,
+                area_y1=area_y1,
+                area_x2=area_x2,
+                area_y2=area_y2,
+            )
+            detector.new_effect.change_variable(
+                quantity=int(world_player),
+                operation=Operation.SET,
+                variable=world_variables[color],
+            )
+            detector.new_effect.change_variable(
+                quantity=1, operation=Operation.SET,
+                variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
+            )
+            detector.new_effect.change_variable(
+                quantity=0, operation=Operation.SET,
+                variable=COLOR_CLEANED_VARIABLE_BASE + int(color) - 1,
+            )
+            detector.new_effect.deactivate_trigger(trigger_id=detector.trigger_id)
+
+            # XS stamps its own API player index into an unused resource. The
+            # *effect* reads it from the SAME trigger owner that proved Castle
+            # ownership, so the copied value crosses domains through shared player
+            # data rather than by assuming the two numbers agree. Since v1.0.1.0 the
+            # token *conditions* below are rewritten into XS guards by
+            # ``runtime_conditions``, so the gate does resolve through
+            # ``xsGetWorldPlayerId``; only the copied value is converter-independent.
+            # A late stamp is retried independently.
+            bridge = ctx.tm.add_trigger(
+                f"Color XS Identity S{int(color)} W{int(world_player)}", looping=1,
+            )
+            bridge.new_condition.timer(timer=1)
+            bridge.new_condition.variable_value(
+                quantity=int(world_player), variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            bridge.new_condition.variable_value(
+                quantity=0, variable=COLOR_XS_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            bridge.new_condition.accumulate_attribute(
+                quantity=XS_IDENTITY_TAG_BASE + 1, attribute=XS_IDENTITY_RESOURCE,
+                source_player=world_player,
+            )
+            bridge.new_condition.accumulate_attribute(
+                quantity=XS_IDENTITY_TAG_BASE + 9, attribute=XS_IDENTITY_RESOURCE,
+                source_player=world_player, inverted=1,
+            )
+            bridge.new_effect.modify_variable_by_resource(
+                tribute_list=XS_IDENTITY_RESOURCE, source_player=world_player,
+                operation=Operation.SET, variable=COLOR_XS_VARIABLE_BASE + int(color) - 1,
+            )
+            bridge.new_effect.deactivate_trigger(trigger_id=bridge.trigger_id)
+            configured += 1
+    expected = len(PLAYERS) ** 2
+    if configured != expected:
+        raise RuntimeError(
+            f"expected {expected} color-owner detectors, configured {configured}"
+        )
+
+
+def _purge_player_objects(trigger, world_player) -> None:
+    """Remove the resolved owner's objects, including protected fortifications.
+
+    No area, type, class, state, reference, or quantity filter: foundations, buildings,
+    units, and controllers all belong to the same elimination cleanup. Never use
+    a wildcard owner or a territory rectangle, which could affect other players.
+    """
+    trigger.new_effect.enable_object_deletion(
+        source_player=world_player,
+    )
+    trigger.new_effect.remove_object(
+        source_player=world_player,
+        object_state=-1,
+        max_units_affected=-1,
+    )
+
+
+def _configure_custom_team_victory(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+    eliminated_variables,
+    match_ready_variable,
+) -> None:
+    """Resolve defeat and victory through each occupied color's runtime player.
+
+    The XS-guarded Castle detector latches the trigger-side owner and participation.
+    Native effects preserve that occupancy after the starting objects disappear.
+    Occupancy remains true after elimination: active=0 must not prevent cleanup.
+
+    Victory requires inactive opponents AND confirmed empty owners. A timed purge
+    remains live after the one-shot defeat/resignation paths have run. Three
+    additional properties keep resolution independent of event/identity timing:
+
+    1. **Defeat is a map state, not an event.** Each resolver ships enabled and fires
+       from its own "no Castle of this owner in this colour's row" condition. It used to
+       ship disabled and depend on the one-shot ``castle (p#)`` chain, whose four
+       ``Destroy Object`` conditions can never become true if the Castles leave the map
+       any other way — a ``Remove Object``, a purge, an engine-cleaned closed slot.
+    2. **A row-empty fallback is independent of both identity domains.** Elimination
+       otherwise needs ``p#worldplayer``, latched in the *trigger* domain, while
+       aliveness comes from ``xsGetUnitOwner`` in the *XS player* domain. If those
+       disagree, all eight resolvers for a colour are unsatisfiable while the colour
+       still reads alive. ``Color Castle Row Empty S#`` asks only whether any candidate
+       owner still holds a Castle there, so it needs neither latch.
+    3. **Victory ships disabled** and is armed by the matching owner detector, so seven
+       of every eight candidates are never evaluated after start-up.
+    """
+
+    ctx.scenario.option_manager.victory_condition = VictoryCondition.CUSTOM
+    ctx.scenario.option_manager.victory_custom_conditions_required = False
+    ctx.scenario.sections["GlobalVictory"].retriever_map["conquest_required"].set_data(0)
+
+    legacy_cleanup_by_color = {
+        color: tuple(
+            _unique_trigger(ctx, f"{family} (p{int(color)})")
+            for family in ("units", "walls", "units2", "units3")
+        )
+        for color in PLAYERS
+    }
+    legacy_cleanup_ids = {
+        trigger.trigger_id
+        for triggers in legacy_cleanup_by_color.values()
+        for trigger in triggers
+    }
+    for _color, triggers in legacy_cleanup_by_color.items():
+        for trigger in triggers:
+            original_name = trigger.name
+            _reset_trigger(trigger)
+            trigger.name = original_name
+    for color in PLAYERS:
+        trigger = _unique_trigger(ctx, f"remove (p{int(color)})")
+        original_name = trigger.name
+        _reset_trigger(trigger)
+        trigger.name = original_name
+
+    sides = (PLAYERS[:4], PLAYERS[4:])
+    for color in PLAYERS:
+        castle_loss = _unique_trigger(ctx, f"castle (p{int(color)})")
+        area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[color]
+        castle_loss.effects = [
+            effect
+            for effect in castle_loss.effects
+            if not (
+                effect.effect_type == EffectId.ACTIVATE_TRIGGER
+                and effect.trigger_id in legacy_cleanup_ids
+            )
+        ]
+        for world_player in _possible_world_players():
+            # Enabled from the start: the Castle-row condition below is the whole
+            # defeat rule, so any way those Castles leave the map resolves the colour.
+            # ``castle (p#)`` remains wired as a redundant fast path.
+            defeat = ctx.tm.add_trigger(
+                f"Color Defeat Resolve S{int(color)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+            )
+            defeat.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            defeat.new_condition.variable_value(
+                quantity=1,
+                # Occupancy persists when XS/fallback clears the active bit.
+                variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            defeat.new_condition.variable_value(
+                quantity=1,
+                variable=match_ready_variable,
+                comparison=Comparison.EQUAL,
+            )
+            # A resolver activated by a stale or remapped reference must not be
+            # able to defeat a live player. Independently require that no Castle
+            # remains in that color's four-Castle objective row.
+            defeat.new_condition.objects_in_area(
+                quantity=1,
+                object_list=BuildingInfo.CASTLE.ID,
+                source_player=world_player,
+                area_x1=area_x1,
+                area_y1=area_y1,
+                area_x2=area_x2,
+                area_y2=area_y2,
+                inverted=1,
+            )
+            defeat.new_effect.change_variable(
+                quantity=1,
+                operation=Operation.SET,
+                variable=eliminated_variables[color],
+            )
+            _purge_player_objects(defeat, world_player)
+            defeat.new_effect.declare_victory(
+                source_player=world_player,
+                enabled=0,
+            )
+            castle_loss.new_effect.activate_trigger(trigger_id=defeat.trigger_id)
+
+            resigned = ctx.tm.add_trigger(
+                f"Color Runtime Defeated S{int(color)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+            )
+            resigned.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            resigned.new_condition.variable_value(
+                quantity=1,
+                variable=match_ready_variable,
+                comparison=Comparison.EQUAL,
+            )
+            resigned.new_condition.player_defeated(source_player=world_player)
+            resigned.new_condition.variable_value(
+                quantity=1,
+                variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            resigned.new_effect.change_variable(
+                quantity=1,
+                operation=Operation.SET,
+                variable=eliminated_variables[color],
+            )
+            _purge_player_objects(resigned, world_player)
+
+            # Elimination and removal are separate durable states. These passes
+            # must still work after active=0, and must never touch an unused color.
+            cleanup = ctx.tm.add_trigger(
+                f"Color Elimination Cleanup S{int(color)} W{int(world_player)}",
+                looping=1,
+            )
+            complete = ctx.tm.add_trigger(
+                f"Color Cleanup Complete S{int(color)} W{int(world_player)}",
+                looping=1,
+            )
+            for trigger in (cleanup, complete):
+                trigger.new_condition.timer(timer=1)
+                for variable, quantity in (
+                    (world_variables[color], int(world_player)),
+                    (COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1, 1),
+                    (eliminated_variables[color], 1),
+                    (match_ready_variable, 1),
+                ):
+                    trigger.new_condition.variable_value(
+                        quantity=quantity, variable=variable, comparison=Comparison.EQUAL,
+                    )
+            _purge_player_objects(cleanup, world_player)
+            # Count all owned objects, not just units or buildings in the base.
+            complete.new_condition.own_fewer_objects(quantity=1, source_player=world_player)
+            complete.new_effect.change_variable(
+                quantity=1, operation=Operation.SET,
+                variable=COLOR_CLEANED_VARIABLE_BASE + int(color) - 1,
+            )
+
+    # Fallback elimination does not need an owner latch: does *any* candidate
+    # owner still hold a Castle in that colour's row? It latches elimination only.
+    # Purging stays with the cached owner and persistent occupancy, and victory
+    # still waits for the separate empty-owner confirmation.
+    for color in PLAYERS:
+        area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[color]
+        row_empty = ctx.tm.add_trigger(
+            f"Color Castle Row Empty S{int(color)}",
+            description_stid=0,
+            short_description_stid=0,
+        )
+        row_empty.new_condition.timer(timer=LOBBY_SETTLE_SECONDS)
+        for world_player in _possible_world_players():
+            row_empty.new_condition.objects_in_area(
+                quantity=1,
+                object_list=BuildingInfo.CASTLE.ID,
+                source_player=world_player,
+                area_x1=area_x1,
+                area_y1=area_y1,
+                area_x2=area_x2,
+                area_y2=area_y2,
+                inverted=1,
+            )
+        row_empty.new_effect.change_variable(
+            quantity=1,
+            operation=Operation.SET,
+            variable=eliminated_variables[color],
+        )
+
+    # Latch only after at least one occupied color has been detected on each
+    # side. This prevents the three-second victory pass from ending a solo map
+    # inspection or racing ahead of sparse-lobby color discovery. Once latched,
+    # it remains set so normal elimination can still resolve the match.
+    for left_color in sides[0]:
+        for right_color in sides[1]:
+            ready = ctx.tm.add_trigger(
+                f"Color Match Ready L{int(left_color)} R{int(right_color)}",
+                description_stid=0,
+                short_description_stid=0,
+                looping=1,
+            )
+            ready.new_condition.timer(timer=LOBBY_SETTLE_SECONDS)
+            # The world-player mapping persists after a resignation, while the
+            # live-active bit correctly drops to zero.  Latch readiness from
+            # occupied mappings so an early resignation cannot leave both the
+            # defeat resolver and the opposing victory path blocked forever.
+            ready.new_condition.variable_value(
+                quantity=1,
+                variable=world_variables[left_color],
+                comparison=Comparison.LARGER_OR_EQUAL,
+            )
+            ready.new_condition.variable_value(
+                quantity=1,
+                variable=world_variables[right_color],
+                comparison=Comparison.LARGER_OR_EQUAL,
+            )
+            ready.new_effect.change_variable(
+                quantity=1,
+                operation=Operation.SET,
+                variable=match_ready_variable,
+            )
+            ready.new_effect.deactivate_trigger(trigger_id=ready.trigger_id)
+
+    # Only one of the eight candidates per colour can ever match, so the other seven
+    # are dead weight in the tick loop. Ship them disabled and let the matching owner
+    # detector arm exactly the right one; the redundant ``p#worldplayer`` condition
+    # stays so a stale activation still cannot declare the wrong winner.
+    armed = 0
+    for side, opponents in ((sides[0], sides[1]), (sides[1], sides[0])):
+        for color in side:
+            for world_player in _possible_world_players():
+                victory = ctx.tm.add_trigger(
+                    f"Color Team Victory S{int(color)} W{int(world_player)}",
+                    description_stid=0,
+                    short_description_stid=0,
+                    enabled=0,
+                )
+                detector = _unique_trigger(
+                    ctx,
+                    f"Color Owner Detect S{int(color)} W{int(world_player)}",
+                )
+                deactivations = [
+                    effect
+                    for effect in detector.effects
+                    if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
+                ]
+                if len(deactivations) != 1 or detector.effects[-1] is not deactivations[0]:
+                    raise RuntimeError(
+                        f"owner detector S{int(color)} W{int(world_player)} must end "
+                        "with exactly one self-deactivation"
+                    )
+                detector.new_effect.activate_trigger(trigger_id=victory.trigger_id)
+                # Keep the self-deactivation last so the detector cannot re-latch
+                # between the arming effect and its own shutdown.
+                detector.effects.append(detector.effects.pop(-2))
+                armed += 1
+                victory.new_condition.timer(timer=VICTORY_RESOLVE_SECONDS)
+                victory.new_condition.variable_value(
+                    quantity=1,
+                    variable=active_variables[color],
+                    comparison=Comparison.EQUAL,
+                )
+                victory.new_condition.variable_value(
+                    quantity=int(world_player),
+                    variable=world_variables[color],
+                    comparison=Comparison.EQUAL,
+                )
+                victory.new_condition.variable_value(
+                    quantity=1,
+                    variable=match_ready_variable,
+                    comparison=Comparison.EQUAL,
+                )
+                for opponent in opponents:
+                    victory.new_condition.variable_value(
+                        quantity=0,
+                        variable=active_variables[opponent],
+                        comparison=Comparison.EQUAL,
+                    )
+                    victory.new_condition.variable_value(
+                        quantity=1,
+                        variable=COLOR_CLEANED_VARIABLE_BASE + int(opponent) - 1,
+                        comparison=Comparison.EQUAL,
+                    )
+                victory.new_effect.declare_victory(
+                    source_player=world_player,
+                    enabled=1,
+                )
+
+    expected_armed = len(PLAYERS) ** 2
+    if armed != expected_armed:
+        raise RuntimeError(
+            f"expected {expected_armed} detector-armed victory triggers, armed {armed}"
+        )
+
+
+def _render_color_spawn_xs(ctx: BuildContext, population_xs: str = "") -> str:
+    # The XS arrays are indexed by civilization id, so they must be sized from the
+    # tables that fill them. These used to be a hardcoded 60 in five places: adding a
+    # civilization to CIV_SPAWN_RULES would have written past the end of a size-60
+    # array at runtime, which xs-check cannot see and no test would have caught.
+    max_civilization_id = max((*CIV_SPAWN_RULES, *CIV_BUILDER_RULES))
+    civilization_array_size = max_civilization_id + 1
+    if set(CIV_SPAWN_RULES) != set(CIV_BUILDER_RULES):
+        raise RuntimeError(
+            "civilization spawn and builder tables must cover the same ids; "
+            f"symmetric difference: {sorted(set(CIV_SPAWN_RULES) ^ set(CIV_BUILDER_RULES))}"
+        )
+
+    assignments = []
+    spawn_rules = balanced_spawn_rules(ctx, CIV_SPAWN_RULES)
+    for civilization, (unit_id, population_cap, interval) in spawn_rules.items():
+        assignments.extend(
+            (
+                f"    xsArraySetInt(gCbaUnitByCiv, {civilization}, {unit_id});",
+                f"    xsArraySetInt(gCbaCapByCiv, {civilization}, {population_cap});",
+                f"    xsArraySetInt(gCbaIntervalByCiv, {civilization}, {interval});",
+            )
+        )
+    for civilization, (name, threshold) in CIV_BUILDER_RULES.items():
+        assignments.extend(
+            (
+                f'    xsArraySetString(gCbaNameByCiv, {civilization}, "{name}");',
+                f"    xsArraySetInt(gCbaBuilderThresholdByCiv, {civilization}, {threshold});",
+            )
+        )
+
+    coordinate_branches = []
+    for index, (scenario_player, points) in enumerate(
+        SPAWN_WORLD_POSITIONS.items()
+    ):
+        prefix = "if" if index == 0 else "else if"
+        coordinate_branches.append(f"    {prefix} (scenarioPlayer == {int(scenario_player)}) {{")
+        castles = [u for u in ctx.um.units[scenario_player] if u.unit_const == BuildingInfo.CASTLE.ID]
+        bound_refs = set()
+        for slot, (x, y) in enumerate(points):
+            castle = min(castles, key=lambda u: (u.x - x) ** 2 + (u.y - y) ** 2)
+            ref = castle.reference_id
+            if ref in bound_refs:
+                raise RuntimeError(f"P{int(scenario_player)}: two spawn points share Castle {ref}")
+            bound_refs.add(ref)
+            coordinate_branches.extend((
+                f"        if (xsDoesUnitExist({ref}) && xsGetUnitHitpoints({ref}) > 0 && "
+                f"xsGetUnitOwner({ref}) == worldPlayer && cbaHasPopulationRoom(worldPlayer, unitId, 1)) {{",
+                f"            unitRef = xsCreateUnit(unitId, worldPlayer, "
+                f"vector({x}, {y}, -1), false, false, false);",
+                f"            cbaOrderArmyBirth(scenarioPlayer, {slot}, unitRef);",
+                "            if (unitRef >= 0) created = true;",
+                "        }",
+            ))
+        if len(bound_refs) != 4:
+            raise RuntimeError(f"P{int(scenario_player)}: expected four distinct Castle spawn bindings")
+        coordinate_branches.append("    }")
+
+    spawn_calls = "\n".join(f"    cbaSpawnColor({int(player)});" for player in PLAYERS)
+    builder_queue_calls = "\n".join(f"    cbaQueueColorBuilders({int(player)});" for player in PLAYERS)
+    combat_hud_calls = "\n".join(f"    cbaUpdateCombatRow({int(player)});" for player in PLAYERS)
+    color_runtime_calls = "\n".join(
+        f"    cbaUpdateColorRuntime({int(player)});" for player in PLAYERS
+    )
+    score_neutral_lines = "\n".join(
+        f"    xsSetPlayerAttribute(worldPlayer, {int(attribute)}, 0);"
+        for attribute in SCORE_NEUTRAL_ATTRIBUTES
+    )
+    birth_orders_xs = render_birth_orders(
+        players=PLAYERS, transform=v2_cell_for_player,
+        army_destinations=SOURCE_ARMY_RANGE_DESTINATIONS,
+        hero_destinations=SOURCE_HERO_RANGE_DESTINATIONS,
+        builder_destinations=BUILDER_DESTINATION_POINTS,
+        army_range_base=ARMY_RANGE_VARIABLE_BASE, hero_range_base=HERO_RANGE_VARIABLE_BASE,
+        eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE, occupied_base=COLOR_OCCUPIED_VARIABLE_BASE,
+        pending_base=PENDING_BUILDER_VARIABLE_BASE, builder_notice_base=BUILDER_MOVE_PENDING_VARIABLE_BASE,
+    )
+    identity_base = COLOR_XS_VARIABLE_BASE
+    selection_xs = render_unit_selection(ctx) + render_civilization_balance(ctx, CIV_SPAWN_RULES)
+    return f"""// Sparse-lobby color-aware army spawning.
+// Scenario colors and runtime lobby slots are different identity domains. Trigger
+// player fields use the trigger-side Castle resolver. A shared resource token
+// translates the detected owner into an XS API index (ASC-049).
+
+int gCbaNextSpawnByColor = -1;
+int gCbaUnitByCiv = -1;
+int gCbaCapByCiv = -1;
+int gCbaIntervalByCiv = -1;
+int gCbaNameByCiv = -1;
+int gCbaBuilderThresholdByCiv = -1;
+int gCbaEarnedBuilderPairsByColor = -1;
+
+int cbaWorldPlayerForColor(int scenarioPlayer = 0) {{
+    if (scenarioPlayer < 1 || scenarioPlayer > 8) return(0);
+    int worldPlayer = xsTriggerVariable({identity_base} + scenarioPlayer - 1) - {XS_IDENTITY_TAG_BASE};
+    if (worldPlayer < 1 || worldPlayer > 8) return(0);
+    return(worldPlayer);
+}}
+
+{population_xs}
+{birth_orders_xs}
+
+void cbaCreateWave(int scenarioPlayer = 0, int worldPlayer = 0, int unitId = -1) {{
+    int unitRef = -1;
+    bool created = false;
+{chr(10).join(coordinate_branches)}
+    if (created == false) return;
+    xsSetTriggerVariable(
+        {ARMY_MOVE_PENDING_VARIABLE_BASE} + scenarioPlayer - 1,
+        1
+    );
+}}
+
+void cbaSpawnColor(int scenarioPlayer = 0) {{
+    if (xsTriggerVariable({COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1) == 1) return;
+    if (xsTriggerVariable({COLOR_OCCUPIED_VARIABLE_BASE} + scenarioPlayer - 1) != 1) return;
+    int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
+    if (worldPlayer < 1) {{
+        return;
+    }}
+
+    int civilization = xsGetPlayerCivilization(worldPlayer);
+    if (civilization < 1 || civilization >= xsArrayGetSize(gCbaUnitByCiv)) {{
+        return;
+    }}
+    int unitId = xsArrayGetInt(gCbaUnitByCiv, civilization);
+    int populationCap = xsArrayGetInt(gCbaCapByCiv, civilization);
+    int interval = xsArrayGetInt(gCbaIntervalByCiv, civilization);
+    if (unitId < 0 || populationCap < 1 || interval < 1) {{
+        return;
+    }}
+
+    int now = xsGetGameTime();
+    int nextSpawn = xsArrayGetInt(gCbaNextSpawnByColor, scenarioPlayer);
+    if (nextSpawn == 0) {{
+        xsArraySetInt(gCbaNextSpawnByColor, scenarioPlayer, now + interval);
+        return;
+    }}
+    if (now < nextSpawn) {{
+        return;
+    }}
+    // Every live color owns exactly one military-class Penguin controller.  Exclude
+    // that non-combat object from the legacy army cap without depending on a
+    // post-load unit-data mutation, which is unreliable after object naming.
+    if ((xsPlayerAttribute(worldPlayer, cAttributeMilitaryPopulation) - 1) < populationCap) {{
+        cbaCreateWave(scenarioPlayer, worldPlayer, unitId);
+        xsArraySetInt(gCbaNextSpawnByColor, scenarioPlayer, now + interval);
+    }}
+}}
+
+void cbaQueueColorBuilders(int scenarioPlayer = 0) {{
+    if (xsTriggerVariable({COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1) == 1) return;
+    if (xsTriggerVariable({COLOR_OCCUPIED_VARIABLE_BASE} + scenarioPlayer - 1) != 1) return;
+    int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
+    if (worldPlayer < 1) {{
+        return;
+    }}
+
+    int civilization = xsGetPlayerCivilization(worldPlayer);
+    if (civilization < 1 || civilization >= xsArrayGetSize(gCbaBuilderThresholdByCiv)) {{
+        return;
+    }}
+    int threshold = xsArrayGetInt(gCbaBuilderThresholdByCiv, civilization);
+    if (threshold < 1) {{
+        return;
+    }}
+
+    int currentRazings = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeRazings));
+    int earnedPairs = currentRazings - threshold + 1;
+    if (earnedPairs < 0) {{
+        earnedPairs = 0;
+    }}
+    int previousEarnedPairs = xsArrayGetInt(gCbaEarnedBuilderPairsByColor, scenarioPlayer);
+    if (earnedPairs > previousEarnedPairs) {{
+        int pendingPairs = xsTriggerVariable({PENDING_BUILDER_VARIABLE_BASE} + scenarioPlayer - 1);
+        xsSetTriggerVariable(
+            {PENDING_BUILDER_VARIABLE_BASE} + scenarioPlayer - 1,
+            pendingPairs + earnedPairs - previousEarnedPairs
+        );
+        xsArraySetInt(gCbaEarnedBuilderPairsByColor, scenarioPlayer, earnedPairs);
+    }}
+}}
+
+void cbaAnnounceLocalBuilderGoal() {{
+    int localPlayer = xsUnsyncGetLocalPlayerId();
+    if (localPlayer < 1 || xsGetPlayerInGame(localPlayer) == false) {{
+        return;
+    }}
+
+    int civilization = xsGetPlayerCivilization(localPlayer);
+    // An unmapped civilization silently produced no army and no builder pairs at all,
+    // which reads in-game as "the mode is broken" rather than "this civ is unsupported".
+    // Every id in cbaUnitByCiv is filled from CIV_SPAWN_RULES, so an id past the end of
+    // the array is a civilization released after this build was made.
+    if (civilization < 1 || civilization >= xsArrayGetSize(gCbaBuilderThresholdByCiv)) {{
+        xsChatData(
+            "[CBA] Unsupported civilization (id " + civilization + "). This scenario "
+            + "maps ids 1-{max_civilization_id}; you will get no army. Pick another "
+            + "civilization, or update CIV_SPAWN_RULES and rebuild."
+        );
+        return;
+    }}
+    int threshold = xsArrayGetInt(gCbaBuilderThresholdByCiv, civilization);
+    string civilizationName = xsArrayGetString(gCbaNameByCiv, civilization);
+    if (threshold > 0) {{
+        xsChatData(
+            "[CBA] " + civilizationName + ": first builder pair after " + threshold +
+            " building razings; each later razing earns another pair."
+        );
+    }}
+}}
+
+void cbaRefreshCombatValues(int worldPlayer = 0) {{
+    // Combat score refresh must not write population, housing or unit-limit
+    // resources. DE owns the population selected by the host in the lobby.
+{score_neutral_lines}
+    int kills = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKills));
+    int deaths = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeKilledByOthers));
+    int razings = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeRazings));
+    int razed = xsCeilToInt(xsPlayerAttribute(worldPlayer, cAttributeRazedByOthers));
+    xsSetPlayerAttribute(worldPlayer, cAttributeTotalValueOfKills, kills * 100);
+    xsSetPlayerAttribute(worldPlayer, cAttributeValueKilledByOthers, deaths * 100);
+    xsSetPlayerAttribute(worldPlayer, cAttributeTotalValueOfRazings, razings * 500);
+    xsSetPlayerAttribute(worldPlayer, cAttributeValueRazedByOthers, razed * 500);
+}}
+
+void cbaUpdateCombatRow(int scenarioPlayer = 0) {{
+    int worldPlayer = cbaWorldPlayerForColor(scenarioPlayer);
+    if (worldPlayer < 1) {{
+        return;
+    }}
+    // Objective HUD counters are copied by native owner-resolved triggers.
+    cbaRefreshCombatValues(worldPlayer);
+}}
+
+// Sole writer of the color-active bit. Trigger systems read it; none of them write
+// it, because a second writer is reverted here within a second.
+//
+// Elimination is latched, not merely observed, so a departed color cannot become
+// active again. Persistent occupancy lets owner-resolved cleanup continue after
+// active becomes zero; victory also requires the empty-owner confirmation.
+void cbaUpdateColorRuntime(int scenarioPlayer = 0) {{
+    int activeFlag = 0;
+    int eliminatedFlag = xsTriggerVariable(
+        {COLOR_ELIMINATED_VARIABLE_BASE} + scenarioPlayer - 1
+    );
+    if (xsTriggerVariable({COLOR_OCCUPIED_VARIABLE_BASE} + scenarioPlayer - 1) == 1 && eliminatedFlag == 0) {{
+        activeFlag = 1;
+    }}
+    xsSetTriggerVariable(
+        {COLOR_ACTIVE_VARIABLE_BASE} + scenarioPlayer - 1,
+        activeFlag
+    );
+}}
+
+void main() {{
+    gCbaBirthOrderUnit = xsArrayCreateInt(1, -1, "cbaBirthOrderUnit");
+    gCbaBuilderMaleDelivered = xsArrayCreateInt(9, 0, "cbaBuilderMaleDelivered");
+    gCbaBuilderFemaleDelivered = xsArrayCreateInt(9, 0, "cbaBuilderFemaleDelivered");
+    for (scenarioPlayer = 1; <= 8) {{
+        xsSetTriggerVariable({COLOR_CLEANED_VARIABLE_BASE} + scenarioPlayer - 1, 1);
+    }}
+    gCbaNextSpawnByColor = xsArrayCreateInt(9, 0, "cbaNextSpawnByColor");
+    gCbaUnitByCiv = xsArrayCreateInt({civilization_array_size}, -1, "cbaUnitByCiv");
+    gCbaCapByCiv = xsArrayCreateInt({civilization_array_size}, 0, "cbaCapByCiv");
+    gCbaIntervalByCiv = xsArrayCreateInt({civilization_array_size}, 0, "cbaIntervalByCiv");
+    gCbaNameByCiv = xsArrayCreateString({civilization_array_size}, "Unknown civilization", "cbaNameByCiv");
+    gCbaBuilderThresholdByCiv = xsArrayCreateInt({civilization_array_size}, 0, "cbaBuilderThresholdByCiv");
+    gCbaEarnedBuilderPairsByColor = xsArrayCreateInt(
+        9, 0, "cbaEarnedBuilderPairsByColor"
+    );
+{chr(10).join(assignments)}
+    for (worldPlayer = 1; <= xsGetNumPlayers()) {{
+        xsSetPlayerAttribute(worldPlayer, {int(XS_IDENTITY_RESOURCE)}, {XS_IDENTITY_TAG_BASE} + worldPlayer);
+        int technologyCount = xsGetPlayerNumberOfTechs(worldPlayer);
+        for (technology = 0; < technologyCount) {{
+            xsEffectAmount(cModifyTech, technology, cAttrSetFoodCost, 0, worldPlayer);
+            xsEffectAmount(cModifyTech, technology, cAttrSetWoodCost, 0, worldPlayer);
+            xsEffectAmount(cModifyTech, technology, cAttrSetStoneCost, 0, worldPlayer);
+            xsEffectAmount(cModifyTech, technology, cAttrSetGoldCost, 0, worldPlayer);
+        }}
+        int objectCount = xsGetPlayerNumberOfObjects(worldPlayer);
+        for (objectId = 0; < objectCount) {{
+            xsEffectAmount(cSetAttribute, objectId, cFoodCost, 0, worldPlayer);
+            xsEffectAmount(cSetAttribute, objectId, cWoodCost, 0, worldPlayer);
+            xsEffectAmount(cSetAttribute, objectId, cStoneCost, 0, worldPlayer);
+            xsEffectAmount(cSetAttribute, objectId, cGoldCost, 0, worldPlayer);
+            // Run Pattern 255 makes double-click selection match the exact type,
+            // rather than a shared name/class or shared-selection group. Apply to
+            // the whole engine table, including future births and upgraded types.
+            xsEffectAmount(cSetAttribute, objectId, {int(ObjectAttribute.RUN_PATTERN)}, 255, worldPlayer);
+        }}
+{selection_xs}        cbaRefreshCombatValues(worldPlayer);
+    }}
+}}
+
+rule cbaColorArmySpawns
+    active
+    minInterval 1
+{{
+{spawn_calls}
+}}
+
+rule cbaCombatHudValues
+    active
+    minInterval 2
+{{
+{combat_hud_calls}
+}}
+
+rule cbaColorRuntimeState
+    active
+    minInterval 1
+{{
+{color_runtime_calls}
+}}
+
+rule cbaBuilderRewardQueue
+    active
+    minInterval 1
+{{
+{builder_queue_calls}
+}}
+
+rule cbaBuilderRewardInfo
+    active
+    minInterval 1
+{{
+    if (xsGetGameTime() >= 4) {{
+        cbaAnnounceLocalBuilderGoal();
+        xsDisableSelf();
+    }}
+}}
+"""
+
+
+def _replace_legacy_army_spawns(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> tuple[dict[PlayerId, int], dict[PlayerId, int]]:
+    """Spawn and route each color's waves through two six-level controls."""
+    move_pending_variables = {
+        player: ctx.tm.add_variable(
+            f"army_move_pending_p{int(player)}",
+            variable_id=ARMY_MOVE_PENDING_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+    army_range_variables = {
+        player: ctx.tm.add_variable(
+            f"army_range_p{int(player)}",
+            variable_id=ARMY_RANGE_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+    hero_range_variables = {
+        player: ctx.tm.add_variable(
+            f"hero_range_p{int(player)}",
+            variable_id=HERO_RANGE_VARIABLE_BASE + int(player) - 1,
+        ).variable_id
+        for player in PLAYERS
+    }
+
+    # The color-owner resolver runs before the first XS wave. Set both controls
+    # to their physical L3 starts there, avoiding a one-pass default-L0 race.
+    for scenario_player in PLAYERS:
+        for world_player in _possible_world_players():
+            detector = _unique_trigger(
+                ctx,
+                f"Color Owner Detect S{int(scenario_player)} W{int(world_player)}",
+            )
+            detector.new_effect.change_variable(
+                quantity=DEFAULT_RANGE_LEVEL,
+                operation=Operation.SET,
+                variable=army_range_variables[scenario_player],
+            )
+            detector.new_effect.change_variable(
+                quantity=DEFAULT_RANGE_LEVEL,
+                operation=Operation.SET,
+                variable=hero_range_variables[scenario_player],
+            )
+            self_deactivations = [
+                effect
+                for effect in detector.effects
+                if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
+                and effect.trigger_id == detector.trigger_id
+            ]
+            if len(self_deactivations) != 1:
+                raise RuntimeError(
+                    f"expected one self-deactivation in {detector.name!r}"
+                )
+            detector.effects.remove(self_deactivations[0])
+            detector.effects.append(self_deactivations[0])
+
+    def guard_new_wave(trigger, scenario_player, world_player, level) -> None:
+        """Let one selected range launch only the wave XS just created."""
+        trigger.new_condition.variable_value(
+            quantity=1,
+            variable=move_pending_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=1,
+            variable=active_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=int(world_player),
+            variable=world_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=level,
+            variable=army_range_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_effect.change_variable(
+            quantity=0,
+            operation=Operation.SET,
+            variable=move_pending_variables[scenario_player],
+        )
+
+    disabled = 0
+    legacy_ids = set()
+    for trigger in ctx.tm.triggers:
+        create_effects = [
+            effect for effect in trigger.effects if effect.effect_type == EffectId.CREATE_OBJECT
+        ]
+        is_army_loop = (
+            trigger.looping
+            and len(create_effects) == 4
+            and any(
+                condition.condition_type == ConditionId.OWN_FEWER_OBJECTS for condition in trigger.conditions
+            )
+            and any(condition.condition_type == ConditionId.TIMER for condition in trigger.conditions)
+        )
+        if not is_army_loop:
+            continue
+        original_id = trigger.trigger_id
+        legacy_ids.add(original_id)
+        _reset_trigger(trigger)
+        trigger.name = f"Legacy Army Spawn Disabled #{original_id}"
+        disabled += 1
+    if disabled != 59 * len(PLAYERS):
+        # The historical source has 59 loops per color; newer civs are XS-only.
+        raise RuntimeError(f"expected {59 * len(PLAYERS)} legacy army loops, disabled {disabled}")
+    for trigger in ctx.tm.triggers:
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if not (
+                effect.effect_type == EffectId.ACTIVATE_TRIGGER
+                and effect.trigger_id in legacy_ids
+            )
+        ]
+
+    canonical_tasks = deepcopy(
+        [
+            effect
+            for effect in _unique_trigger(ctx, "move (p3)").effects
+            if effect.effect_type == EffectId.TASK_OBJECT
+        ]
+    )
+    if len(canonical_tasks) != len(SOURCE_ARMY_SPAWN_POINTS):
+        raise RuntimeError("expected four canonical P3 army task effects")
+
+    reusable = [
+        _unique_trigger(ctx, f"{family} (p{int(player)})")
+        for player in PLAYERS
+        for family in ("move", "move short", "move long")
+    ]
+    reusable_ids = {trigger.trigger_id for trigger in reusable}
+    _strip_trigger_references(ctx, reusable_ids)
+    reusable_iter = iter(reusable)
+
+    for scenario_player in PLAYERS:
+        area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[scenario_player]
+        for world_player in _possible_world_players():
+            for level, source_destinations in enumerate(
+                SOURCE_ARMY_RANGE_DESTINATIONS
+            ):
+                target = next(reusable_iter, None)
+                if target is None:
+                    target = ctx.tm.add_trigger(
+                        f"Army Range L{level} S{int(scenario_player)} "
+                        f"W{int(world_player)}",
+                        description_stid=0,
+                        short_description_stid=0,
+                    )
+                _reset_trigger(target)
+                target.name = (
+                    f"Army Range L{level} S{int(scenario_player)} "
+                    f"W{int(world_player)}"
+                )
+                target.enabled = 1
+                target.looping = 1
+                target.new_condition.timer(timer=1)
+                target.new_condition.objects_in_area(
+                    quantity=1,
+                    object_list=BuildingInfo.CASTLE.ID,
+                    source_player=world_player,
+                    area_x1=area_x1,
+                    area_y1=area_y1,
+                    area_x2=area_x2,
+                    area_y2=area_y2,
+                )
+                guard_new_wave(
+                    target,
+                    scenario_player,
+                    world_player,
+                    level,
+                )
+                # The reset effect added by guard_new_wave must run last.
+                reset_pending = target.effects.pop(-1)
+                for source_effect, (spawn_x, spawn_y), source_destination in zip(
+                    canonical_tasks,
+                    SPAWN_POINTS[scenario_player],
+                    source_destinations,
+                    strict=True,
+                ):
+                    task = _copy_for_world_player(
+                        source_effect,
+                        PlayerId.THREE,
+                        world_player,
+                    )
+                    # XS creates all four units at this exact cell centre.  Keep
+                    # the one-shot capture on that cell so later pulses never
+                    # reselect an older L0-held wave one tile Castle-ward.
+                    task.area_x1 = task.area_x2 = spawn_x
+                    task.area_y1 = task.area_y2 = spawn_y
+                    task.location_x, task.location_y = v2_cell_for_player(
+                        scenario_player,
+                        *source_destination,
+                    )
+                    task.action_type = ActionType.MOVE
+                    target.effects.append(task)
+                target.effects.append(reset_pending)
+
+    if next(reusable_iter, None) is not None:
+        raise RuntimeError("not every legacy army route trigger was reused")
+
+    return army_range_variables, hero_range_variables
+
+
+def _transformed_v2_area(
+    player: PlayerId,
+    source_component,
+) -> tuple[int, int, int, int] | None:
+    coordinates = (
+        source_component.area_x1,
+        source_component.area_y1,
+        source_component.area_x2,
+        source_component.area_y2,
+    )
+    if any(coordinate < 0 for coordinate in coordinates):
+        return None
+    x1, y1, x2, y2 = coordinates
+    corners = (
+        v2_cell_for_player(player, x1, y1),
+        v2_cell_for_player(player, x1, y2),
+        v2_cell_for_player(player, x2, y1),
+        v2_cell_for_player(player, x2, y2),
+    )
+    return (
+        min(x for x, _y in corners),
+        min(y for _x, y in corners),
+        max(x for x, _y in corners),
+        max(y for _x, y in corners),
+    )
+
+
+def _copy_v2_component_geometry(
+    player: PlayerId,
+    source_component,
+    target_component,
+) -> None:
+    area = _transformed_v2_area(player, source_component)
+    if area is not None:
+        (
+            target_component.area_x1,
+            target_component.area_y1,
+            target_component.area_x2,
+            target_component.area_y2,
+        ) = area
+    if (
+        hasattr(source_component, "location_x")
+        and hasattr(source_component, "location_y")
+        and source_component.location_x >= 0
+        and source_component.location_y >= 0
+    ):
+        # Trigger locations address integer map cells.  Unit positions use a
+        # 144-wide continuous coordinate space, but cell reflections use 143.
+        # Mixing the two moves reflected effects one tile outward, which put
+        # hero blockers, selector tasks, and King cannons on water or walls.
+        target_component.location_x, target_component.location_y = v2_cell_for_player(
+            player,
+            source_component.location_x,
+            source_component.location_y,
+        )
+
+
+def _copy_v2_trigger_geometry(
+    player: PlayerId,
+    source_trigger,
+    target_trigger,
+) -> None:
+    if len(source_trigger.conditions) != len(target_trigger.conditions):
+        raise RuntimeError(
+            f"V2 condition mismatch between {source_trigger.name!r} and "
+            f"{target_trigger.name!r}"
+        )
+    if len(source_trigger.effects) != len(target_trigger.effects):
+        raise RuntimeError(
+            f"V2 effect mismatch between {source_trigger.name!r} and "
+            f"{target_trigger.name!r}"
+        )
+    for source, target in zip(
+        source_trigger.conditions,
+        target_trigger.conditions,
+        strict=True,
+    ):
+        if source.condition_type != target.condition_type:
+            raise RuntimeError(
+                f"V2 condition type mismatch in {target_trigger.name!r}"
+            )
+        _copy_v2_component_geometry(player, source, target)
+    for source, target in zip(
+        source_trigger.effects,
+        target_trigger.effects,
+        strict=True,
+    ):
+        if source.effect_type != target.effect_type:
+            raise RuntimeError(f"V2 effect type mismatch in {target_trigger.name!r}")
+        _copy_v2_component_geometry(player, source, target)
+
+
+def _remap_v2_trigger_geometry(ctx: BuildContext) -> None:
+    """Move the remaining King effects and retire blocking Hay markers."""
+    # King objects move with V2, but the legacy triggers retained eight
+    # different hand-authored island corners, cannon spawns, and buff areas.
+    # Blue watched one obsolete cell; several colors also spawned a cannon in
+    # water or against a wall. Copy all geometry from P3's complete grounded
+    # King layout while retaining each color's selected King ref and effects.
+    source_king = deepcopy(_unique_trigger(ctx, "P3 King"))
+    for player in PLAYERS:
+        target = _unique_trigger(ctx, f"P{int(player)} King")
+        _copy_v2_trigger_geometry(player, source_king, target)
+
+    hay_triggers = [
+        _unique_trigger(ctx, f"hay{hay_index} (p{int(player)})")
+        for player in PLAYERS
+        for hay_index in range(1, 5)
+    ]
+    if any(
+        sum(
+            effect.effect_type == EffectId.CREATE_OBJECT
+            and effect.object_list_unit_id == OtherInfo.HAY_STACK.ID
+            for effect in trigger.effects
+        )
+        != 1
+        for trigger in hay_triggers
+    ):
+        raise RuntimeError("unexpected imported Castle Hay marker graph")
+    _strip_trigger_references(
+        ctx,
+        {trigger.trigger_id for trigger in hay_triggers},
+    )
+    for trigger in hay_triggers:
+        original_id = trigger.trigger_id
+        _reset_trigger(trigger)
+        trigger.name = f"Legacy Castle Hay Marker Removed #{original_id}"
+
+
+def _configure_range_sliders(
+    ctx: BuildContext,
+    army_range_variables,
+    hero_range_variables,
+) -> None:
+    """Build one Castle-army Sheep lane and one Hero Penguin lane per color."""
+    unit_by_reference = {
+        unit.reference_id: unit
+        for units in ctx.um.units
+        for unit in units
+    }
+    water = {int(terrain) for terrain in TerrainId.water_terrains()}
+    legacy_selectors = []
+    sheep_by_player = {}
+
+    for player in PLAYERS:
+        suffix = "" if player == PlayerId.ONE else f" (p{int(player)})"
+        selector_names = (
+            *(f"{family} (p{int(player)})" for family in LEGACY_SELECTOR_FAMILIES),
+            *(f"{family}{suffix}" for family in LEGACY_HERO_SELECTOR_FAMILIES),
+        )
+        player_selectors = [_unique_trigger(ctx, name) for name in selector_names]
+        legacy_selectors.extend(player_selectors)
+        references = {
+            condition.unit_object
+            for trigger in player_selectors
+            for condition in trigger.conditions
+            if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
+            and condition.unit_object >= 0
+        }
+        if len(references) != 1:
+            raise RuntimeError(
+                f"expected one legacy selector mover for P{int(player)}, "
+                f"found {sorted(references)}"
+            )
+        reference_id = references.pop()
+        mover = unit_by_reference.get(reference_id)
+        if mover is None or mover.player != player:
+            raise RuntimeError(
+                f"missing owner-correct army controller {reference_id} "
+                f"for P{int(player)}"
+            )
+        if mover.unit_const != 159:
+            raise RuntimeError(
+                f"unexpected legacy mover unit {mover.unit_const} "
+                f"for P{int(player)}"
+            )
+        mover.unit_const = UnitInfo.SHEEP.ID
+        mover.x, mover.y = v2_position_for_player(
+            player,
+            *SOURCE_ARMY_CONTROLLER_POSITION,
+        )
+        sheep_by_player[player] = mover
+
+    selector_ids = {trigger.trigger_id for trigger in legacy_selectors}
+    _strip_trigger_references(ctx, selector_ids)
+
+    # Remove the collision-heavy five-point Relic/Rug layout and the four
+    # central Torches from every island before laying down continuous lanes.
+    removed_prop_references = set()
+    for unit_const, source_positions in SOURCE_EDGE_SELECTOR_SLOTS.items():
+        for player in PLAYERS:
+            for source_position in source_positions:
+                x, y = v2_position_for_player(player, *source_position)
+                matches = [
+                    unit
+                    for unit in ctx.um.units[PlayerId.GAIA]
+                    if unit.unit_const == unit_const
+                    and (unit.x, unit.y) == (x, y)
+                ]
+                if len(matches) != 1:
+                    raise RuntimeError(
+                        f"expected one P{int(player)} legacy selector prop "
+                        f"{unit_const} at ({x}, {y}), found {len(matches)}"
+                    )
+                removed_prop_references.add(matches[0].reference_id)
+                ctx.um.remove_unit(unit=matches[0])
+
+    for player in PLAYERS:
+        for source_position in SOURCE_SELECTOR_TORCH_POSITIONS:
+            x, y = v2_position_for_player(player, *source_position)
+            matches = [
+                unit
+                for unit in ctx.um.units[player]
+                if unit.unit_const == OtherInfo.TORCH_A.ID
+                and (unit.x, unit.y) == (x, y)
+            ]
+            if len(matches) != 1:
+                raise RuntimeError(
+                    f"expected one P{int(player)} selector Torch at "
+                    f"({x}, {y}), found {len(matches)}"
+                )
+            ctx.um.remove_unit(unit=matches[0])
+
+    for player in PLAYERS:
+        source_x1, source_y1, source_x2, source_y2 = SOURCE_RANGE_ISLAND
+        for source_y in range(source_y1, source_y2 + 1):
+            for source_x in range(source_x1, source_x2 + 1):
+                x, y = v2_cell_for_player(player, source_x, source_y)
+                tile = ctx.mm.get_tile(x=x, y=y)
+                if SOURCE_ARMY_RANGE_LANE[3] < source_y < SOURCE_HERO_RANGE_LANE[1]:
+                    tile.terrain_id = TerrainId.WATER_DEEP
+                elif source_x <= SOURCE_RANGE_LEVEL_SPANS[0][1]:
+                    tile.terrain_id = TerrainId.SNOW
+                elif source_y <= SOURCE_ARMY_RANGE_LANE[3]:
+                    tile.terrain_id = TerrainId.ROAD
+                else:
+                    tile.terrain_id = TerrainId.ROAD_GRAVEL
+                tile.elevation = 1
+                tile.layer = -1
+
+    penguin_by_player = {}
+    signs_by_player = {}
+    for player in PLAYERS:
+        penguin_x, penguin_y = v2_position_for_player(
+            player,
+            *SOURCE_HERO_CONTROLLER_POSITION,
+        )
+        penguin = ctx.um.add_unit(
+            player=player,
+            unit_const=UnitInfo.WAR_PENGUIN.ID,
+            x=penguin_x,
+            y=penguin_y,
+        )
+        penguin_by_player[player] = penguin
+        signs_by_player[player] = tuple(
+            ctx.um.add_unit(
+                player=PlayerId.GAIA,
+                unit_const=OtherInfo.SIGN.ID,
+                x=sign_x,
+                y=sign_y,
+            )
+            for sign_x, sign_y in (
+                v2_position_for_player(player, *source_position)
+                for source_position, _label in SOURCE_RANGE_SIGNS
+            )
+        )
+        _unique_trigger(ctx, f"Antidelete P{int(player)}").new_effect.disable_object_deletion(
+            # Set Objects is authoritative here; wildcard ownership keeps the
+            # protection valid when DE compacts a color into another world slot.
+            source_player=-1,
+            selected_object_ids=[
+                sheep_by_player[player].reference_id,
+                penguin.reference_id,
+            ],
+        )
+
+    controller_references = {
+        unit.reference_id
+        for unit in (*sheep_by_player.values(), *penguin_by_player.values())
+    }
+    legacy_controller_names = [
+        effect
+        for trigger in ctx.tm.triggers
+        for effect in trigger.effects
+        if effect.effect_type == EffectId.CHANGE_OBJECT_NAME
+        and controller_references.intersection(effect.selected_object_ids or ())
+    ]
+    if (
+        len(legacy_controller_names) != len(PLAYERS) * 2
+        or {effect.message for effect in legacy_controller_names}
+        != {
+            "Mova-me para selecionar o spawn",
+            "Move me to set spawn",
+        }
+        or any(
+            sum(
+                reference_id in (effect.selected_object_ids or ())
+                for effect in legacy_controller_names
+            )
+            != 2
+            for reference_id in (
+                unit.reference_id for unit in sheep_by_player.values()
+            )
+        )
+    ):
+        raise RuntimeError(
+            "unexpected imported controller-name effects: "
+            f"{len(legacy_controller_names)}"
+        )
+    legacy_controller_name_ids = {
+        id(effect) for effect in legacy_controller_names
+    }
+    for trigger in ctx.tm.triggers:
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if id(effect) not in legacy_controller_name_ids
+        ]
+
+    # Selected-object wildcard effects provide an immediate full-lobby path.
+    # The matching Castle-row resolver below repeats the setup with the exact
+    # runtime owner, making sparse and shuffled lobbies independent of how DE
+    # combines Source Player with Set Objects for each effect family.
+    for player in PLAYERS:
+        selected = [
+            sheep_by_player[player].reference_id,
+            penguin_by_player[player].reference_id,
+        ]
+        penguin_selected = [penguin_by_player[player].reference_id]
+        for world_player in _possible_world_players():
+            detector = _unique_trigger(
+                ctx,
+                f"Color Owner Detect S{int(player)} W{int(world_player)}",
+            )
+            self_deactivations = [
+                effect
+                for effect in detector.effects
+                if effect.effect_type == EffectId.DEACTIVATE_TRIGGER
+                and effect.trigger_id == detector.trigger_id
+            ]
+            if len(self_deactivations) != 1:
+                raise RuntimeError(
+                    f"expected one self-deactivation in {detector.name!r}"
+                )
+            detector.effects.remove(self_deactivations[0])
+            detector.new_effect.change_object_name(
+                source_player=world_player,
+                message=ARMY_CONTROLLER_LABEL,
+                selected_object_ids=[sheep_by_player[player].reference_id],
+            )
+            detector.new_effect.change_object_name(
+                source_player=world_player,
+                message=HERO_CONTROLLER_LABEL,
+                selected_object_ids=penguin_selected,
+            )
+            detector.new_effect.disable_object_deletion(
+                source_player=world_player,
+                selected_object_ids=selected,
+            )
+            detector.new_effect.change_object_stance(
+                attack_stance=AttackStance.NO_ATTACK_STANCE,
+                source_player=world_player,
+                selected_object_ids=penguin_selected,
+            )
+            detector.new_effect.change_object_attack(
+                armour_attack_quantity=0,
+                source_player=world_player,
+                selected_object_ids=penguin_selected,
+                operation=Operation.MULTIPLY,
+            )
+            detector.new_effect.disable_unit_attackable(
+                source_player=world_player,
+                selected_object_ids=selected,
+            )
+            detector.effects.append(self_deactivations[0])
+
+    reusable_iter = iter(legacy_selectors)
+
+    def transformed_area(player, source_area):
+        source_x1, source_y1, source_x2, source_y2 = source_area
+        corners = (
+            v2_cell_for_player(player, source_x1, source_y1),
+            v2_cell_for_player(player, source_x1, source_y2),
+            v2_cell_for_player(player, source_x2, source_y1),
+            v2_cell_for_player(player, source_x2, source_y2),
+        )
+        return (
+            min(x for x, _y in corners),
+            min(y for _x, y in corners),
+            max(x for x, _y in corners),
+            max(y for _x, y in corners),
+        )
+
+    selector_specs = (
+        (
+            "Army",
+            SOURCE_ARMY_RANGE_AREAS,
+            sheep_by_player,
+            army_range_variables,
+        ),
+        (
+            "Hero",
+            SOURCE_HERO_RANGE_AREAS,
+            penguin_by_player,
+            hero_range_variables,
+        ),
+    )
+    for public_name, source_areas, controllers, variables in selector_specs:
+        for player in PLAYERS:
+            for level, source_area in enumerate(source_areas):
+                trigger = next(reusable_iter, None)
+                if trigger is None:
+                    trigger = ctx.tm.add_trigger(
+                        f"{public_name} Range Select L{level} P{int(player)}",
+                        description_stid=0,
+                        short_description_stid=0,
+                    )
+                _reset_trigger(trigger)
+                trigger.name = (
+                    f"{public_name} Range Select L{level} P{int(player)}"
+                )
+                trigger.enabled = 1
+                trigger.looping = 1
+                trigger.new_condition.timer(timer=1)
+                area_x1, area_y1, area_x2, area_y2 = transformed_area(
+                    player,
+                    source_area,
+                )
+                trigger.new_condition.bring_object_to_area(
+                    unit_object=controllers[player].reference_id,
+                    area_x1=area_x1,
+                    area_y1=area_y1,
+                    area_x2=area_x2,
+                    area_y2=area_y2,
+                )
+                trigger.new_effect.change_variable(
+                    quantity=level,
+                    operation=Operation.SET,
+                    variable=variables[player],
+                )
+                if public_name == "Hero" and level == 0:
+                    # OFF can be selected between creation and the movement
+                    # pass. Do not retain a stale order until production resumes.
+                    trigger.new_effect.change_variable(
+                        quantity=0,
+                        operation=Operation.SET,
+                        variable=HERO_MOVE_PENDING_VARIABLE_BASE + int(player) - 1,
+                    )
+    if next(reusable_iter, None) is not None:
+        raise RuntimeError("not every legacy selector trigger was reused")
+
+    controller_labels = _unique_trigger(ctx, "Nome ---------------- ")
+    _reset_trigger(controller_labels)
+    controller_labels.name = "Range Controller Labels"
+    controller_labels.enabled = 1
+    controller_labels.new_condition.timer(timer=1)
+    for player in PLAYERS:
+        controller_labels.new_effect.change_object_name(
+            source_player=-1,
+            message=ARMY_CONTROLLER_LABEL,
+            selected_object_ids=[sheep_by_player[player].reference_id],
+        )
+        controller_labels.new_effect.change_object_name(
+            source_player=-1,
+            message=HERO_CONTROLLER_LABEL,
+            selected_object_ids=[penguin_by_player[player].reference_id],
+        )
+
+    endpoint_labels = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if trigger.name == "==Rename======" and not trigger.looping
+    ]
+    if len(endpoint_labels) != 1:
+        raise RuntimeError(
+            f"expected one legacy selector-label trigger, found {len(endpoint_labels)}"
+        )
+    endpoint_labels = endpoint_labels[0]
+    endpoint_labels.effects = [
+        effect
+        for effect in endpoint_labels.effects
+        if not (
+            effect.effect_type == EffectId.CHANGE_OBJECT_NAME
+            and removed_prop_references.intersection(
+                effect.selected_object_ids or ()
+            )
+        )
+    ]
+    for player in PLAYERS:
+        for sign, (_position, label) in zip(
+            signs_by_player[player], SOURCE_RANGE_SIGNS, strict=True
+        ):
+            endpoint_labels.new_effect.change_object_name(
+                source_player=PlayerId.GAIA,
+                message=label,
+                selected_object_ids=[sign.reference_id],
+            )
+
+    controller_safety = _unique_trigger(ctx, "herospawnrelic")
+    _reset_trigger(controller_safety)
+    controller_safety.name = "Range Controller Safety"
+    controller_safety.enabled = 1
+    controller_safety.new_condition.timer(timer=1)
+    for player in PLAYERS:
+        selected = [penguin_by_player[player].reference_id]
+        controller_safety.new_effect.change_object_stance(
+            attack_stance=AttackStance.NO_ATTACK_STANCE,
+            source_player=-1,
+            selected_object_ids=selected,
+        )
+        controller_safety.new_effect.change_object_attack(
+            armour_attack_quantity=0,
+            source_player=-1,
+            selected_object_ids=selected,
+            operation=Operation.MULTIPLY,
+        )
+        controller_safety.new_effect.disable_unit_attackable(
+            source_player=-1,
+            selected_object_ids=[
+                sheep_by_player[player].reference_id,
+                penguin_by_player[player].reference_id,
+            ],
+        )
+
+    forbidden_effects = {
+        EffectId.CHANGE_OWNERSHIP,
+        EffectId.DAMAGE_OBJECT,
+        EffectId.DISABLE_OBJECT_SELECTION,
+        EffectId.FREEZE_OBJECT,
+        EffectId.STOP_OBJECT,
+        EffectId.KILL_OBJECT,
+        EffectId.REMOVE_OBJECT,
+        EffectId.REPLACE_OBJECT,
+        EffectId.TASK_OBJECT,
+    }
+    conflicts = [
+        (trigger.name, effect.effect_type, sorted(selected))
+        for trigger in ctx.tm.triggers
+        for effect in trigger.effects
+        if (selected := controller_references.intersection(effect.selected_object_ids or ()))
+        and effect.effect_type in forbidden_effects
+    ]
+    if conflicts:
+        raise RuntimeError(f"range controllers have conflicting effects: {conflicts}")
+
+    # Do not use water_terrains() for confinement: it also includes the walkable
+    # WATER_2D_BRIDGE. These water terrains are blocked for both controller types
+    # (TerrainRestriction 7 in the installed DE data).
+    confinement_water = {
+        TerrainId.WATER_SHALLOW, TerrainId.WATER_MEDIUM, TerrainId.WATER_DEEP
+    }
+    for player in PLAYERS:
+        player_lanes = []
+        for family, source_areas, controllers, _variables in selector_specs:
+            covered = set()
+            for level, source_area in enumerate(source_areas):
+                area_x1, area_y1, area_x2, area_y2 = transformed_area(
+                    player, source_area
+                )
+                cells = {
+                    (x, y)
+                    for y in range(area_y1, area_y2 + 1)
+                    for x in range(area_x1, area_x2 + 1)
+                }
+                if cells & covered:
+                    raise RuntimeError(f"P{int(player)} {family} range bands overlap")
+                covered.update(cells)
+                for x, y in cells:
+                    terrain = ctx.mm.get_tile(x=x, y=y).terrain_id
+                    if terrain in water or (terrain == TerrainId.SNOW) != (level == 0):
+                        raise RuntimeError(
+                            f"P{int(player)} {family} L{level} has invalid terrain at ({x}, {y})"
+                        )
+            controller = controllers[player]
+            if (int(controller.x), int(controller.y)) not in covered:
+                raise RuntimeError(f"P{int(player)} {family} starts outside its range track")
+            perimeter = {
+                (x + dx, y + dy)
+                for x, y in covered
+                for dx in (-1, 0, 1)
+                for dy in (-1, 0, 1)
+                if (dx or dy) and (x + dx, y + dy) not in covered
+            }
+            for x, y in perimeter:
+                tile = ctx.mm.get_tile_safe(x=x, y=y)
+                if tile is not None and tile.terrain_id not in confinement_water:
+                    raise RuntimeError(
+                        f"P{int(player)} {family} can leave its range track at ({x}, {y})"
+                    )
+            player_lanes.append(covered)
+        if player_lanes[0] & player_lanes[1]:
+            raise RuntimeError(f"P{int(player)} controller tracks overlap")
+
+
+def _validate_army_spawn_geometry(ctx: BuildContext) -> None:
+    """Fail the build if any color's four wave pads are unsafe or misassigned."""
+    all_spawn_points = {
+        point
+        for points in SPAWN_POINTS.values()
+        for point in points
+    }
+    expected_count = len(PLAYERS) * len(SOURCE_ARMY_SPAWN_POINTS)
+    if len(all_spawn_points) != expected_count:
+        raise RuntimeError("army spawn points overlap between color territories")
+
+    water = {int(terrain) for terrain in TerrainId.water_terrains()}
+    static_occupants = defaultdict(list)
+    for units in ctx.um.units:
+        for unit in units:
+            cell = (int(unit.x), int(unit.y))
+            if cell in all_spawn_points:
+                static_occupants[cell].append(unit.reference_id)
+    if static_occupants:
+        raise RuntimeError(
+            f"army spawn points contain static objects: {dict(static_occupants)}"
+        )
+
+    trigger_occupants = defaultdict(list)
+    for trigger in ctx.tm.triggers:
+        for effect in trigger.effects:
+            if effect.effect_type != EffectId.CREATE_OBJECT:
+                continue
+            cell = (effect.location_x, effect.location_y)
+            if cell in all_spawn_points:
+                trigger_occupants[cell].append(trigger.name)
+    if trigger_occupants:
+        raise RuntimeError(
+            "army spawn points contain trigger-created objects: "
+            f"{dict(trigger_occupants)}"
+        )
+
+    castles_by_player = {
+        player: [
+            unit
+            for unit in ctx.um.units[player]
+            if unit.unit_const == BuildingInfo.CASTLE.ID
+        ]
+        for player in PLAYERS
+    }
+    if any(len(castles) != 4 for castles in castles_by_player.values()):
+        raise RuntimeError("expected four starting Castles beside every army row")
+
+    for player, spawn_points in SPAWN_POINTS.items():
+        own_castles = castles_by_player[player]
+        other_castles = [
+            castle
+            for other_player, castles in castles_by_player.items()
+            if other_player != player
+            for castle in castles
+        ]
+        for x, y in spawn_points:
+            if ctx.mm.get_tile(x=x, y=y).terrain_id in water:
+                raise RuntimeError(
+                    f"P{int(player)} army spawn ({x}, {y}) is on water"
+                )
+            own_distance = min(
+                (castle.x - x) ** 2 + (castle.y - y) ** 2
+                for castle in own_castles
+            )
+            other_distance = min(
+                (castle.x - x) ** 2 + (castle.y - y) ** 2
+                for castle in other_castles
+            )
+            if own_distance >= other_distance:
+                raise RuntimeError(
+                    f"P{int(player)} army spawn ({x}, {y}) is closer to "
+                    "another color's Castle row"
+                )
+
+
+def _configure_sparse_center_rewards(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> None:
+    """Award center control to the runtime player occupying each color."""
+    centered_area = {
+        "area_x1": 65,
+        "area_y1": 65,
+        "area_x2": 78,
+        "area_y2": 78,
+    }
+    unit_by_reference = {
+        unit.reference_id: unit
+        for units in ctx.um.units
+        for unit in units
+    }
+    originals = {}
+    for color in PLAYERS:
+        suffix = "" if color == PlayerId.ONE else f" (p{int(color)})"
+        originals[color, "Kills"] = _unique_trigger(ctx, f"Middle kills{suffix}")
+        originals[color, "Trebuchet"] = _unique_trigger(
+            ctx, f"Middle Trebuchet{suffix}"
+        )
+
+    for color in PLAYERS:
+        marker = unit_by_reference.get(MIDDLE_TREBUCHET_MARKERS[color])
+        if marker is None or marker.unit_const != OtherInfo.FLAG_A.ID:
+            raise RuntimeError(f"missing center reward marker for P{int(color)}")
+        marker_x, marker_y = int(marker.x), int(marker.y)
+        for world_player in _possible_world_players():
+            for family in ("Kills", "Trebuchet"):
+                if world_player == color:
+                    trigger = originals[color, family]
+                    _reset_trigger(trigger)
+                    trigger.name = (
+                        f"Center {family} S{int(color)} W{int(world_player)}"
+                    )
+                    trigger.enabled = 1
+                else:
+                    trigger = ctx.tm.add_trigger(
+                        f"Center {family} S{int(color)} W{int(world_player)}",
+                        description_stid=0,
+                        short_description_stid=0,
+                    )
+                trigger.looping = 1
+                trigger.new_condition.timer(
+                    timer=180 if family == "Kills" else 1800
+                )
+                trigger.new_condition.variable_value(
+                    quantity=1,
+                    variable=active_variables[color],
+                    comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=int(world_player),
+                    variable=world_variables[color],
+                    comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.objects_in_area(
+                    quantity=1,
+                    source_player=world_player,
+                    object_type=ObjectType.MILITARY,
+                    **centered_area,
+                )
+                if family == "Kills":
+                    trigger.new_effect.send_chat(
+                        source_player=world_player,
+                        message="Center control reward: +10 kills (3 minutes).",
+                    )
+                    trigger.new_effect.tribute(
+                        quantity=10,
+                        tribute_list=20,
+                        source_player=PlayerId.GAIA,
+                        target_player=world_player,
+                    )
+                    continue
+                trigger.new_effect.send_chat(
+                    source_player=world_player,
+                    message=(
+                        "Center control reward: a Trebuchet has arrived "
+                        "(30 minutes)."
+                    ),
+                )
+                # Wait for a clear reward pad instead of erasing a parked
+                # Trebuchet (or another packed unit) to make room.
+                trigger.new_condition.objects_in_area(
+                    quantity=1,
+                    source_player=world_player,
+                    object_group=ObjectClass.PACKED_UNIT,
+                    area_x1=marker_x,
+                    area_y1=marker_y,
+                    area_x2=marker_x,
+                    area_y2=marker_y,
+                    inverted=1,
+                )
+                trigger.new_effect.create_object(
+                    object_list_unit_id=UnitInfo.TREBUCHET_PACKED.ID,
+                    source_player=world_player,
+                    location_x=marker_x,
+                    location_y=marker_y,
+                    disable_sound=1,
+                )
+                trigger.new_effect.change_object_hp(
+                    quantity=200,
+                    object_list_unit_id=UnitInfo.TREBUCHET_PACKED.ID,
+                    source_player=world_player,
+                    object_group=ObjectClass.PACKED_UNIT,
+                    object_type=ObjectType.MILITARY,
+                    operation=Operation.ADD,
+                    area_x1=marker_x,
+                    area_y1=marker_y,
+                    area_x2=marker_x,
+                    area_y2=marker_y,
+                )
+
+
+def _retire_obsolete_public_loops(ctx: BuildContext) -> None:
+    """Remove obsolete every-pass effects and keep their useful labels once."""
+    for name in ("Hawk", "==Move Vils=====", "Nome Razing ----- "):
+        trigger = _unique_trigger(ctx, name)
+        _reset_trigger(trigger)
+        trigger.name = f"Legacy {name.strip()} Disabled"
+
+    looping_renames = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if trigger.name == "==Rename======" and trigger.looping
+    ]
+    if len(looping_renames) != 1:
+        raise RuntimeError(
+            f"expected one looping legacy rename trigger, found {len(looping_renames)}"
+        )
+    raze_rename = looping_renames[0]
+    original_effects = deepcopy(raze_rename.effects)
+    _reset_trigger(raze_rename)
+    raze_rename.name = "Razing Counter Labels"
+    raze_rename.enabled = 1
+    raze_rename.new_condition.timer(timer=1)
+    for effect in original_effects:
+        effect.message = "Razings - health shows the current total"
+        raze_rename.effects.append(effect)
+
+def _neutralize_fixed_color_tags(ctx: BuildContext) -> None:
+    """Let runtime-player chat coloring work after sparse color compaction."""
+    color_tag = re.compile(
+        r"<(?:BLUE|RED|GREEN|YELLOW|AQUA|PURPLE|GREY|ORANGE)>\s*",
+        re.IGNORECASE,
+    )
+    for trigger in ctx.tm.triggers:
+        for effect in trigger.effects:
+            if effect.message:
+                effect.message = color_tag.sub("", effect.message)
+
+def _copy_for_world_player(component, scenario_player: PlayerId, world_player: PlayerId):
+    copied = deepcopy(component)
+    if copied.source_player == scenario_player:
+        copied.source_player = world_player
+    if copied.target_player == scenario_player:
+        copied.target_player = world_player
+    return copied
+
+
+def _configure_sparse_center_views(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> None:
+    """Center each runtime player's camera on the color they selected."""
+    templates = {
+        color: deepcopy(_unique_trigger(ctx, f"Center View P{int(color)}"))
+        for color in PLAYERS
+    }
+    originals = {
+        color: _unique_trigger(ctx, f"Center View P{int(color)}")
+        for color in PLAYERS
+    }
+    for color in PLAYERS:
+        template_effects = [
+            effect
+            for effect in templates[color].effects
+            if effect.effect_type == EffectId.CHANGE_VIEW
+        ]
+        if len(template_effects) != 1:
+            raise RuntimeError(
+                f"expected one center-view effect for P{int(color)}"
+            )
+        for world_player in _possible_world_players():
+            if world_player == color:
+                trigger = originals[color]
+                _reset_trigger(trigger)
+                trigger.name = (
+                    f"Center View S{int(color)} W{int(world_player)}"
+                )
+                trigger.enabled = 1
+            else:
+                trigger = ctx.tm.add_trigger(
+                    f"Center View S{int(color)} W{int(world_player)}",
+                    description_stid=0,
+                    short_description_stid=0,
+                )
+            trigger.new_condition.timer(timer=1)
+            trigger.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            trigger.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            trigger.effects.append(
+                _copy_for_world_player(
+                    template_effects[0], color, world_player
+                )
+            )
+
+
+def _wall_wipe_areas(map_size: int, protected_cells: set[tuple[int, int]]):
+    """Partition the map minus fixed barrier footprints into disjoint rectangles.
+
+    Remove Object has no exclude-reference option. Cell-centred static walls
+    and four-cell gates supply the holes; merging identical row spans keeps the
+    one-shot wall-limit wipe small without ownership swaps or object recreation.
+    """
+    active = {}
+    completed = []
+    for y in range(map_size):
+        spans = []
+        start = None
+        for x in range(map_size + 1):
+            available = x < map_size and (x, y) not in protected_cells
+            if available and start is None:
+                start = x
+            elif not available and start is not None:
+                spans.append((start, x - 1))
+                start = None
+        current = {}
+        for span in spans:
+            current[span] = active.pop(span, y)
+        completed.extend((x1, y1, x2, y - 1) for (x1, x2), y1 in active.items())
+        active = current
+    completed.extend((x1, y1, x2, map_size - 1) for (x1, x2), y1 in active.items())
+    return tuple(sorted(completed))
+
+
+def _configure_sparse_wall_breaches(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> None:
+    """Restore side-wall and 220-wall wipes while retaining front/rear barriers."""
+    # Reuse the old warning/wipe shells, but rebuild their scope and owner
+    # guards. Antidelete alone cannot exempt a wall from a scripted Remove.
+    cap_triggers = {
+        (color, family): _unique_trigger(ctx, f"{family} (p{int(color)})")
+        for color in PLAYERS
+        for family in ("warn", "remove walls")
+    }
+    _strip_trigger_references(ctx, {trigger.trigger_id for trigger in cap_triggers.values()})
+    for trigger in cap_triggers.values():
+        _reset_trigger(trigger)
+
+    # Two front-row posts meet the shoreline once the long side walls vanish.
+    # Keeping side walls to plug that gap would defeat the requested wipe.
+    for color in PLAYERS:
+        source_front = [
+            unit for unit in ctx.um.units[color]
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
+            and (unit.x, unit.y) == v2_position_for_player(color, 39.5, 46.5)
+        ]
+        if len(source_front) != 1:
+            raise RuntimeError(f"P{int(color)} front end-wall anchor is missing")
+        for position in SOURCE_FRONT_WIPE_END_POSTS:
+            x, y = v2_position_for_player(color, *position)
+            if any((unit.x, unit.y) == (x, y) for unit in ctx.um.get_all_units()):
+                raise RuntimeError(f"P{int(color)} front wipe end-post slot is occupied")
+            ctx.um.add_unit(
+                player=color,
+                unit_const=source_front[0].unit_const,
+                x=x, y=y,
+                rotation=source_front[0].rotation,
+            )
+
+    protected_cells = set()
+    templates = {
+        color: deepcopy(_unique_trigger(ctx, f"Elimina Walls P{int(color)}"))
+        for color in PLAYERS
+    }
+    originals = {
+        color: _unique_trigger(ctx, f"Elimina Walls P{int(color)}")
+        for color in PLAYERS
+    }
+    for color in PLAYERS:
+        destroy_conditions = [
+            condition
+            for condition in templates[color].conditions
+            if condition.condition_type == ConditionId.DESTROY_OBJECT
+            and condition.unit_object >= 0
+        ]
+        removal_effects = [
+            effect
+            for effect in templates[color].effects
+            if effect.effect_type == EffectId.REMOVE_OBJECT
+            and effect.object_list_unit_id
+            in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
+        ]
+        if len(destroy_conditions) != 1 or len(removal_effects) != 2:
+            raise RuntimeError(
+                f"invalid wall-breach template for P{int(color)}"
+            )
+        player_units = ctx.um.units[color]
+        switch_reference = destroy_conditions[0].unit_object
+        switches = [unit for unit in player_units if unit.reference_id == switch_reference]
+        if len(switches) != 1 or (switches[0].x, switches[0].y) != v2_position_for_player(
+            color, 23.0, 43.5
+        ):
+            raise RuntimeError(f"P{int(color)} wall-breach switch moved or changed owner")
+        removable_positions = {
+            v2_position_for_player(color, *position)
+            for position in SOURCE_BREACH_REMOVABLE_WALL_POSITIONS
+        }
+        removable = {
+            unit.reference_id
+            for unit in player_units
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}
+            and (unit.x, unit.y) in removable_positions
+        }
+        expected_count = 44 if color in {
+            PlayerId.ONE, PlayerId.TWO, PlayerId.SEVEN, PlayerId.EIGHT
+        } else 48
+        if len(removable) != expected_count:
+            raise RuntimeError(
+                f"P{int(color)} expected {expected_count} removable side walls, "
+                f"found {len(removable)}"
+            )
+        permanent = sorted(
+            unit.reference_id
+            for unit in player_units
+            if unit.unit_const in {
+                BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID,
+                BuildingInfo.GATE_NORTHWEST_TO_SOUTHEAST.ID,
+                BuildingInfo.GATE_SOUTHWEST_TO_NORTHEAST.ID,
+            }
+            and unit.reference_id not in removable | {switch_reference}
+        )
+        for unit in player_units:
+            if unit.reference_id not in permanent:
+                continue
+            if unit.unit_const in {BuildingInfo.STONE_WALL.ID, BuildingInfo.FORTIFIED_WALL.ID}:
+                if unit.x % 1 != 0.5 or unit.y % 1 != 0.5:
+                    raise RuntimeError("fixed wall is not cell-centred")
+                protected_cells.add((int(unit.x), int(unit.y)))
+            elif unit.x % 1 == 0 and unit.y % 1 == 0.5:
+                protected_cells.update((int(unit.x) - 2 + dx, int(unit.y)) for dx in range(4))
+            elif unit.y % 1 == 0 and unit.x % 1 == 0.5:
+                protected_cells.update((int(unit.x), int(unit.y) - 2 + dy) for dy in range(4))
+            else:
+                raise RuntimeError("fixed gate has an unexpected footprint axis")
+        _unique_trigger(ctx, f"Antidelete P{int(color)}").new_effect.disable_object_deletion(
+            source_player=-1,
+            selected_object_ids=permanent,
+        )
+        for world_player in _possible_world_players():
+            if world_player == color:
+                trigger = originals[color]
+                _reset_trigger(trigger)
+                trigger.name = (
+                    f"Wall Breach S{int(color)} W{int(world_player)}"
+                )
+                trigger.enabled = 1
+            else:
+                trigger = ctx.tm.add_trigger(
+                    f"Wall Breach S{int(color)} W{int(world_player)}",
+                    description_stid=0,
+                    short_description_stid=0,
+                )
+            trigger.conditions.append(deepcopy(destroy_conditions[0]))
+            trigger.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            trigger.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            trigger.new_effect.remove_object(
+                source_player=world_player,
+                selected_object_ids=sorted(removable),
+            )
+            # Repeat exact-reference protection with the resolved owner. The
+            # wildcard handles a full lobby immediately; this path also works
+            # when DE compacts or shuffles the runtime player slots.
+            detector = _unique_trigger(
+                ctx, f"Color Owner Detect S{int(color)} W{int(world_player)}"
+            )
+            self_deactivation = detector.effects.pop(-1)
+            if (
+                self_deactivation.effect_type != EffectId.DEACTIVATE_TRIGGER
+                or self_deactivation.trigger_id != detector.trigger_id
+            ):
+                raise RuntimeError(f"unexpected resolver effect order in {detector.name}")
+            detector.new_effect.disable_object_deletion(
+                source_player=world_player,
+                selected_object_ids=permanent,
+            )
+            detector.effects.append(self_deactivation)
+
+    if len(protected_cells) != 368:
+        raise RuntimeError(f"expected 368 fixed-barrier cells, found {len(protected_cells)}")
+    wipe_areas = _wall_wipe_areas(ctx.mm.map_size, protected_cells)
+    for color in PLAYERS:
+        for world_player in _possible_world_players():
+            pair = {}
+            for family, public_name, threshold, enabled in (
+                ("warn", "Warn", 200, 1),
+                ("remove walls", "Wipe", 220, 0),
+            ):
+                trigger = (
+                    cap_triggers[color, family]
+                    if world_player == color
+                    else ctx.tm.add_trigger(
+                        f"Wall Cap {public_name} S{int(color)} W{int(world_player)}",
+                        description_stid=0, short_description_stid=0,
+                    )
+                )
+                trigger.name = f"Wall Cap {public_name} S{int(color)} W{int(world_player)}"
+                trigger.enabled = enabled
+                trigger.looping = 0
+                trigger.new_condition.timer(timer=1)
+                trigger.new_condition.variable_value(
+                    quantity=1, variable=active_variables[color], comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=int(world_player), variable=world_variables[color], comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.own_objects(
+                    quantity=threshold, source_player=world_player, object_group=ObjectClass.WALL,
+                )
+                pair[public_name] = trigger
+            pair["Warn"].new_effect.send_chat(
+                source_player=world_player,
+                message="Wall warning: wipe at 220 walls. Front and University barriers are kept.",
+            )
+            pair["Warn"].new_effect.activate_trigger(trigger_id=pair["Wipe"].trigger_id)
+            for x1, y1, x2, y2 in wipe_areas:
+                pair["Wipe"].new_effect.remove_object(
+                    source_player=world_player, object_group=ObjectClass.WALL,
+                    area_x1=x1, area_y1=y1, area_x2=x2, area_y2=y2,
+                )
+            pair["Wipe"].new_effect.send_chat(
+                source_player=world_player,
+                message="Wall limit reached: walls cleared. Front and University barriers are kept.",
+            )
+
+
+def _configure_sparse_king_islands(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> None:
+    """Award every color's island cannons to its compacted runtime player."""
+    legacy_cleanup = _unique_trigger(ctx, "sem cr")
+    _reset_trigger(legacy_cleanup)
+    legacy_cleanup.name = "Legacy Shared King Cleanup Disabled"
+
+    cleanups = {}
+    for color in PLAYERS:
+        for world_player in PLAYERS:
+            cleanup = ctx.tm.add_trigger(
+                f"King Island Cleanup S{int(color)} W{int(world_player)}",
+                description_stid=0, short_description_stid=0, enabled=0,
+            )
+            cleanup.new_condition.timer(timer=50)
+            cleanup.new_effect.remove_object(
+                object_list_unit_id=UnitInfo.SCORPION.ID, source_player=world_player,
+                area_x1=0, area_y1=0, area_x2=143, area_y2=143,
+            )
+            cleanup.new_effect.change_variable(
+                variable=BACKUP_VARIABLE_BASE + int(color) - 1,
+                quantity=BACKUP_SPENT, operation=Operation.SET,
+            )
+            cleanups[color, world_player] = cleanup
+
+    templates = {
+        color: deepcopy(_unique_trigger(ctx, f"P{int(color)} King"))
+        for color in PLAYERS
+    }
+    originals = {
+        color: _unique_trigger(ctx, f"P{int(color)} King")
+        for color in PLAYERS
+    }
+    for color in PLAYERS:
+        bring_conditions = [
+            condition
+            for condition in templates[color].conditions
+            if condition.condition_type == ConditionId.BRING_OBJECT_TO_AREA
+            and condition.unit_object >= 0
+        ]
+        cannon_creates = [
+            effect
+            for effect in templates[color].effects
+            if effect.effect_type == EffectId.CREATE_OBJECT
+            and effect.object_list_unit_id == UnitInfo.SCORPION.ID
+        ]
+        if len(bring_conditions) != 1 or len(cannon_creates) != 6:
+            raise RuntimeError(
+                f"invalid King-island template for P{int(color)}"
+            )
+        for world_player in _possible_world_players():
+            if world_player == color:
+                trigger = originals[color]
+                _reset_trigger(trigger)
+                trigger.name = (
+                    f"King Island S{int(color)} W{int(world_player)}"
+                )
+                trigger.enabled = 1
+            else:
+                trigger = ctx.tm.add_trigger(
+                    f"King Island S{int(color)} W{int(world_player)}",
+                    description_stid=0,
+                    short_description_stid=0,
+                )
+            trigger.conditions.append(deepcopy(bring_conditions[0]))
+            trigger.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            trigger.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            trigger.new_condition.variable_value(
+                quantity=BACKUP_AVAILABLE, variable=BACKUP_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            trigger.new_effect.change_variable(
+                variable=BACKUP_VARIABLE_BASE + int(color) - 1,
+                quantity=BACKUP_ACTIVE, operation=Operation.SET,
+            )
+            trigger.new_effect.activate_trigger(
+                trigger_id=cleanups[color, world_player].trigger_id
+            )
+            for source_effect in templates[color].effects:
+                if source_effect.effect_type == EffectId.ACTIVATE_TRIGGER:
+                    continue
+                effect = _copy_for_world_player(
+                    source_effect, color, world_player
+                )
+                if effect.effect_type == EffectId.DISPLAY_INSTRUCTIONS:
+                    effect.message = (
+                        f"P{int(color)} called Scorpion Backup! Active for 50 seconds."
+                    )
+                if (
+                    effect.effect_type == EffectId.CHANGE_OBJECT_HP
+                    and effect.operation == -1
+                ):
+                    effect.operation = Operation.ADD
+                trigger.effects.append(effect)
+
+
+def _configure_sparse_late_hero_boosts(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+    hero_move_pending_variables,
+    hero_range_variables,
+) -> None:
+    """Run the current 3500/5000 tier only while Hero production is on."""
+    legacy = [
+        trigger
+        for trigger in ctx.tm.triggers
+        if trigger.name.strip().startswith(("3500 ", "5000 "))
+    ]
+    if len(legacy) != 40:
+        raise RuntimeError(
+            f"expected 40 legacy late-hero triggers, found {len(legacy)}"
+        )
+    for trigger in legacy:
+        original_id = trigger.trigger_id
+        _reset_trigger(trigger)
+        trigger.name = f"Legacy Late Hero Boost Disabled #{original_id}"
+
+    def add_loop(
+        color: PlayerId,
+        world_player: PlayerId,
+        label: str,
+        timer: int,
+        location: tuple[int, int],
+        lower_kills: int,
+        upper_kills: int | None = None,
+    ):
+        trigger = ctx.tm.add_trigger(
+            f"Hero Boost {label} S{int(color)} W{int(world_player)}",
+            description_stid=0,
+            short_description_stid=0,
+            enabled=1,
+            looping=1,
+        )
+        trigger.new_condition.timer(timer=timer)
+        trigger.new_condition.own_fewer_objects(
+            # The player's one controller Penguin is a military object, so
+            # exclude it from the inherited gameplay-unit ceiling.
+            quantity=301,
+            source_player=world_player,
+            object_type=ObjectType.MILITARY,
+        )
+        trigger.new_condition.accumulate_attribute(
+            quantity=lower_kills,
+            attribute=Attribute.UNITS_KILLED,
+            source_player=world_player,
+        )
+        if upper_kills is not None:
+            trigger.new_condition.accumulate_attribute(
+                quantity=upper_kills,
+                attribute=Attribute.UNITS_KILLED,
+                source_player=world_player,
+                inverted=1,
+            )
+        trigger.new_condition.variable_value(
+            quantity=1,
+            variable=active_variables[color],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=int(world_player),
+            variable=world_variables[color],
+            comparison=Comparison.EQUAL,
+        )
+        trigger.new_condition.variable_value(
+            quantity=1,
+            variable=hero_range_variables[color],
+            comparison=Comparison.LARGER_OR_EQUAL,
+        )
+        x, y = location
+        # A returning Hero must never be removed or buffed again by a spawn.
+        # Wait until the pad is clear, then create and buff only the new Hero.
+        trigger.new_condition.objects_in_area(
+            quantity=1,
+            object_list=HeroInfo.GENGHIS_KHAN.ID,
+            source_player=world_player,
+            area_x1=x,
+            area_y1=y,
+            area_x2=x,
+            area_y2=y,
+            inverted=1,
+        )
+        trigger.new_effect.create_object(
+            object_list_unit_id=HeroInfo.GENGHIS_KHAN.ID,
+            source_player=world_player,
+            location_x=x,
+            location_y=y,
+        )
+        trigger.new_effect.change_object_attack(
+            armour_attack_quantity=25,
+            object_list_unit_id=HeroInfo.GENGHIS_KHAN.ID,
+            source_player=world_player,
+            area_x1=x,
+            area_y1=y,
+            area_x2=x,
+            area_y2=y,
+            operation=Operation.ADD,
+        )
+        trigger.new_effect.change_object_hp(
+            quantity=300,
+            object_list_unit_id=HeroInfo.GENGHIS_KHAN.ID,
+            source_player=world_player,
+            area_x1=x,
+            area_y1=y,
+            area_x2=x,
+            area_y2=y,
+            operation=Operation.ADD,
+        )
+        trigger.new_effect.change_variable(
+            quantity=1,
+            operation=Operation.SET,
+            variable=hero_move_pending_variables[color],
+        )
+        return trigger
+
+    for color in PLAYERS:
+        locations = {
+            "K3500": v2_cell_for_player(color, 16, 38),
+            "K5000A": v2_cell_for_player(color, 15, 38),
+            "K5000B": v2_cell_for_player(color, 17, 38),
+        }
+        for label, (x, y) in locations.items():
+            tile = ctx.mm.get_tile(x=x, y=y)
+            if tile.terrain_id in set(TerrainId.water_terrains()):
+                raise RuntimeError(
+                    f"P{int(color)} {label} hero spawn ({x}, {y}) is water"
+                )
+        for world_player in _possible_world_players():
+            add_loop(
+                color,
+                world_player,
+                "K3500",
+                3,
+                locations["K3500"],
+                3_500,
+                5_000,
+            )
+            add_loop(
+                color,
+                world_player,
+                "K5000A",
+                3,
+                locations["K5000A"],
+                5_000,
+            )
+            add_loop(
+                color,
+                world_player,
+                "K5000B",
+                4,
+                locations["K5000B"],
+                5_000,
+            )
+
+
+def _configure_sparse_hero_milestones(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+    match_ready_variable,
+    hero_range_variables,
+) -> dict[PlayerId, int]:
+    """Make every live hero tier and Penguin-selected route follow its color.
+
+    The legacy P5/P6 milestones created their heroes on rear Stone Walls after
+    the V2 perimeter was compacted.  They also read a fixed player number, so a
+    sparse Teal slot mapped to runtime P2 never saw Teal's kills.  Use P3's
+    complete milestone/order families as the semantic template, then bind each
+    color to every possible runtime player behind the shared color resolver.
+    Mutually exclusive kill bands let Hero OFF pause production without leaving
+    stale lower tiers armed for a catch-up burst when the Penguin moves forward.
+    """
+    hero_move_pending_variables = {
+        scenario_player: ctx.tm.add_variable(
+            f"hero_move_pending_p{int(scenario_player)}",
+            variable_id=(
+                HERO_MOVE_PENDING_VARIABLE_BASE + int(scenario_player) - 1
+            ),
+        ).variable_id
+        for scenario_player in PLAYERS
+    }
+
+    milestone_targets = {}
+    for scenario_player in PLAYERS:
+        for threshold, unit_id in HERO_MILESTONES:
+            matches = []
+            for trigger in ctx.tm.triggers:
+                creates = [
+                    effect
+                    for effect in trigger.effects
+                    if effect.effect_type == EffectId.CREATE_OBJECT
+                    and effect.source_player == scenario_player
+                    and effect.object_list_unit_id == unit_id
+                ]
+                kill_conditions = [
+                    condition
+                    for condition in trigger.conditions
+                    if condition.condition_type == ConditionId.ACCUMULATE_ATTRIBUTE
+                    and condition.source_player == scenario_player
+                    and condition.attribute == Attribute.UNITS_KILLED
+                    and condition.quantity == threshold
+                ]
+                if trigger.enabled and trigger.looping and len(creates) == 1 and len(kill_conditions) == 1:
+                    matches.append(trigger)
+            if len(matches) != 1:
+                raise RuntimeError(
+                    f"expected one live P{int(scenario_player)} {threshold}-kill "
+                    f"hero milestone, found {len(matches)}"
+                )
+            milestone_targets[scenario_player, threshold] = matches[0]
+
+    milestone_templates = {
+        threshold: deepcopy(milestone_targets[PlayerId.THREE, threshold])
+        for threshold, _unit_id in HERO_MILESTONES
+    }
+
+    order_targets = {}
+    for scenario_player in PLAYERS:
+        for source_name in HERO_ORDER_FAMILIES:
+            matches = []
+            for trigger in ctx.tm.triggers:
+                task_effects = [
+                    effect
+                    for effect in trigger.effects
+                    if effect.effect_type == EffectId.TASK_OBJECT
+                    and effect.source_player == scenario_player
+                ]
+                if (
+                    trigger.enabled
+                    and trigger.looping
+                    and trigger.name.strip().startswith(source_name)
+                    and len(task_effects) == 1
+                ):
+                    matches.append(trigger)
+            if len(matches) != 1:
+                raise RuntimeError(
+                    f"expected one live P{int(scenario_player)} {source_name} "
+                    f"hero order, found {len(matches)}"
+                )
+            order_targets[scenario_player, source_name] = matches[0]
+
+    order_templates = {
+        source_name: deepcopy(order_targets[PlayerId.THREE, source_name])
+        for source_name in HERO_ORDER_FAMILIES
+    }
+    canonical_order_tasks = [
+        effect
+        for effect in order_templates["Short"].effects
+        if effect.effect_type == EffectId.TASK_OBJECT
+    ]
+    if len(canonical_order_tasks) != 1:
+        raise RuntimeError("expected one canonical P3 hero task effect")
+    reusable_orders = list(order_targets.values())
+    _strip_trigger_references(
+        ctx,
+        {trigger.trigger_id for trigger in reusable_orders},
+    )
+    reusable_order_iter = iter(reusable_orders)
+
+    for scenario_player, (spawn_x, spawn_y) in HERO_MILESTONE_SPAWN_TILES.items():
+        tile = ctx.mm.get_tile(x=spawn_x, y=spawn_y)
+        if tile.terrain_id in {
+            TerrainId.WATER_SHALLOW,
+            TerrainId.WATER_DEEP,
+            TerrainId.WATER_MEDIUM,
+        }:
+            raise RuntimeError(
+                f"P{int(scenario_player)} hero milestone tile "
+                f"({spawn_x}, {spawn_y}) is water"
+            )
+        occupied = [
+            unit
+            for units in ctx.um.units
+            for unit in units
+            if int(unit.x) == spawn_x and int(unit.y) == spawn_y
+        ]
+        if occupied:
+            references = ", ".join(str(unit.reference_id) for unit in occupied)
+            raise RuntimeError(
+                f"P{int(scenario_player)} hero milestone tile "
+                f"({spawn_x}, {spawn_y}) is occupied by refs {references}"
+            )
+
+        for world_player in _possible_world_players():
+            for threshold, expected_unit_id in HERO_MILESTONES:
+                template = milestone_templates[threshold]
+                if world_player == scenario_player:
+                    trigger = milestone_targets[scenario_player, threshold]
+                    _reset_trigger(trigger)
+                    trigger.name = (
+                        f"Hero Milestone S{int(scenario_player)} "
+                        f"W{int(world_player)} K{threshold}"
+                    )
+                    trigger.enabled = 1
+                    trigger.looping = 1
+                else:
+                    trigger = ctx.tm.add_trigger(
+                        f"Hero Milestone S{int(scenario_player)} "
+                        f"W{int(world_player)} K{threshold}",
+                        description_stid=0,
+                        short_description_stid=0,
+                        enabled=1,
+                        looping=1,
+                    )
+
+                trigger.conditions.extend(
+                    _copy_for_world_player(condition, PlayerId.THREE, world_player)
+                    for condition in template.conditions
+                )
+                # Some imported milestones serialized their lower threshold as
+                # inverted.  State the active band explicitly: at least this
+                # threshold, but not yet the next threshold.
+                for condition in trigger.conditions:
+                    if (
+                        condition.condition_type
+                        == ConditionId.ACCUMULATE_ATTRIBUTE
+                        and condition.attribute == Attribute.UNITS_KILLED
+                        and condition.quantity == threshold
+                    ):
+                        condition.inverted = 0
+                    if (
+                        condition.condition_type == ConditionId.OWN_FEWER_OBJECTS
+                        and condition.object_type == ObjectType.MILITARY
+                    ):
+                        condition.quantity += 1
+                trigger.new_condition.accumulate_attribute(
+                    quantity=HERO_MILESTONE_UPPER_BOUNDS[threshold],
+                    attribute=Attribute.UNITS_KILLED,
+                    source_player=world_player,
+                    inverted=1,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=1,
+                    variable=active_variables[scenario_player],
+                    comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=int(world_player),
+                    variable=world_variables[scenario_player],
+                    comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=1,
+                    variable=hero_range_variables[scenario_player],
+                    comparison=Comparison.LARGER_OR_EQUAL,
+                )
+                creates = 0
+                for source_effect in template.effects:
+                    if source_effect.effect_type == EffectId.DEACTIVATE_TRIGGER:
+                        continue
+                    if source_effect.effect_type == EffectId.REMOVE_OBJECT:
+                        if source_effect.object_list_unit_id != expected_unit_id:
+                            raise RuntimeError("unexpected Hero spawn cleanup target")
+                        trigger.new_condition.objects_in_area(
+                            quantity=1,
+                            object_list=expected_unit_id,
+                            source_player=world_player,
+                            area_x1=spawn_x,
+                            area_y1=spawn_y,
+                            area_x2=spawn_x,
+                            area_y2=spawn_y,
+                            inverted=1,
+                        )
+                        continue
+                    effect = _copy_for_world_player(
+                        source_effect,
+                        PlayerId.THREE,
+                        world_player,
+                    )
+                    if effect.effect_type == EffectId.CREATE_OBJECT:
+                        if effect.object_list_unit_id != expected_unit_id:
+                            raise RuntimeError(
+                                f"unexpected hero {effect.object_list_unit_id} at "
+                                f"{threshold} kills"
+                            )
+                        effect.location_x = spawn_x
+                        effect.location_y = spawn_y
+                        creates += 1
+                    if (
+                        effect.effect_type
+                        in {EffectId.CHANGE_OBJECT_ATTACK, EffectId.CHANGE_OBJECT_HP}
+                        and effect.operation == -1
+                    ):
+                        effect.operation = Operation.ADD
+                    if min(
+                        effect.area_x1,
+                        effect.area_y1,
+                        effect.area_x2,
+                        effect.area_y2,
+                    ) >= 0:
+                        effect.area_x1 = effect.area_x2 = spawn_x
+                        effect.area_y1 = effect.area_y2 = spawn_y
+                    trigger.effects.append(effect)
+                if creates != 1:
+                    raise RuntimeError(
+                        f"invalid {threshold}-kill hero band for "
+                        f"S{int(scenario_player)} W{int(world_player)}"
+                    )
+                trigger.new_effect.change_variable(
+                    quantity=1,
+                    operation=Operation.SET,
+                    variable=hero_move_pending_variables[scenario_player],
+                )
+
+            for level, source_destination in SOURCE_HERO_RANGE_DESTINATIONS.items():
+                trigger = next(reusable_order_iter, None)
+                if trigger is None:
+                    trigger = ctx.tm.add_trigger(
+                        f"Hero Range L{level} S{int(scenario_player)} "
+                        f"W{int(world_player)}",
+                        description_stid=0,
+                        short_description_stid=0,
+                    )
+                _reset_trigger(trigger)
+                trigger.name = (
+                    f"Hero Range L{level} S{int(scenario_player)} "
+                    f"W{int(world_player)}"
+                )
+                trigger.enabled = 1
+                trigger.looping = 1
+                trigger.new_condition.timer(timer=1)
+                trigger.new_condition.variable_value(
+                    quantity=1,
+                    variable=active_variables[scenario_player],
+                    comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=int(world_player),
+                    variable=world_variables[scenario_player],
+                    comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=level,
+                    variable=hero_range_variables[scenario_player],
+                    comparison=Comparison.EQUAL,
+                )
+                trigger.new_condition.variable_value(
+                    quantity=1,
+                    variable=hero_move_pending_variables[scenario_player],
+                    comparison=Comparison.EQUAL,
+                )
+                task = _copy_for_world_player(
+                    canonical_order_tasks[0],
+                    PlayerId.THREE,
+                    world_player,
+                )
+                task.area_x1 = spawn_x - 1
+                task.area_y1 = spawn_y - 1
+                task.area_x2 = spawn_x + 1
+                task.area_y2 = spawn_y + 1
+                task.location_x, task.location_y = v2_cell_for_player(
+                    scenario_player,
+                    *source_destination,
+                )
+                task.action_type = ActionType.MOVE
+                trigger.effects.append(task)
+                trigger.new_effect.change_variable(
+                    quantity=0,
+                    operation=Operation.SET,
+                    variable=hero_move_pending_variables[scenario_player],
+                )
+
+    if next(reusable_order_iter, None) is not None:
+        raise RuntimeError("not every legacy hero order trigger was reused")
+
+    return hero_move_pending_variables
+
+
+def _add_sparse_feudal_upgrades(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> None:
+    """Apply the original timed upgrade package at the occupied color's Blacksmith."""
+    for scenario_player in PLAYERS:
+        original = _unique_trigger(ctx, f"feudal ups (p{int(scenario_player)})")
+        blacksmith_conditions = [
+            condition
+            for condition in original.conditions
+            if condition.condition_type == ConditionId.OBJECTS_IN_AREA
+            and condition.object_list == BuildingInfo.BLACKSMITH.ID
+        ]
+        if len(blacksmith_conditions) != 1:
+            raise RuntimeError(
+                f"expected one Blacksmith condition for P{int(scenario_player)}, "
+                f"found {len(blacksmith_conditions)}"
+            )
+        (
+            blacksmith_conditions[0].area_x1,
+            blacksmith_conditions[0].area_y1,
+            blacksmith_conditions[0].area_x2,
+            blacksmith_conditions[0].area_y2,
+        ) = BLACKSMITH_AREAS[scenario_player]
+        original.new_condition.variable_value(
+            quantity=1,
+            variable=active_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        original.new_condition.variable_value(
+            quantity=int(scenario_player),
+            variable=world_variables[scenario_player],
+            comparison=Comparison.EQUAL,
+        )
+        for world_player in _possible_world_players():
+            if world_player == scenario_player:
+                continue
+            remapped = ctx.tm.add_trigger(
+                f"Sparse Feudal S{int(scenario_player)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+            )
+            remapped.conditions.extend(
+                _copy_for_world_player(condition, scenario_player, world_player)
+                for condition in original.conditions
+                if not (
+                    condition.condition_type == ConditionId.VARIABLE_VALUE
+                    and condition.variable
+                    in {
+                        active_variables[scenario_player],
+                        world_variables[scenario_player],
+                    }
+                )
+            )
+            remapped.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[scenario_player],
+                comparison=Comparison.EQUAL,
+            )
+            remapped.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[scenario_player],
+                comparison=Comparison.EQUAL,
+            )
+            remapped.effects.extend(
+                _copy_for_world_player(effect, scenario_player, world_player) for effect in original.effects
+            )
+
+
+def _remap_raze_villagers(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+    match_ready_variable,
+) -> None:
+    """Create and reliably park builder pairs beside each color's Castles."""
+    pending_variables = {
+        scenario_player: ctx.tm.add_variable(
+            f"pending_builders_p{int(scenario_player)}",
+            variable_id=PENDING_BUILDER_VARIABLE_BASE + int(scenario_player) - 1,
+        ).variable_id
+        for scenario_player in PLAYERS
+    }
+    move_pending_variables = {
+        scenario_player: ctx.tm.add_variable(
+            f"builder_move_pending_p{int(scenario_player)}",
+            variable_id=(
+                BUILDER_MOVE_PENDING_VARIABLE_BASE + int(scenario_player) - 1
+            ),
+        ).variable_id
+        for scenario_player in PLAYERS
+    }
+
+    originals = {
+        scenario_player: _unique_trigger(ctx, f"1 raze (p{int(scenario_player)})")
+        for scenario_player in PLAYERS
+    }
+    template_effects = [
+        deepcopy(effect)
+        for effect in originals[PlayerId.THREE].effects
+        if (
+            effect.effect_type == EffectId.SEND_CHAT
+            or (
+                effect.effect_type == EffectId.CREATE_OBJECT
+                and effect.object_list_unit_id
+                in {UnitInfo.VILLAGER_MALE.ID, UnitInfo.VILLAGER_FEMALE.ID}
+            )
+        )
+    ]
+    if len(template_effects) != 3:
+        raise RuntimeError(
+            f"expected one chat and two canonical builder creates, found {len(template_effects)}"
+        )
+
+    legacy_stage_ids = set()
+    for scenario_player in PLAYERS:
+        for remaining in range(1, 6):
+            noun = "raze" if remaining == 1 else "razes"
+            trigger = _unique_trigger(ctx, f"{remaining} {noun} (p{int(scenario_player)})")
+            legacy_stage_ids.add(trigger.trigger_id)
+            original_id = trigger.trigger_id
+            _reset_trigger(trigger)
+            trigger.name = f"Legacy Raze Reward Disabled #{original_id}"
+
+    # Civilization selectors no longer need to activate a color-number-bound
+    # legacy chain; XS calculates the exact cumulative entitlement instead.
+    for trigger in ctx.tm.triggers:
+        trigger.effects = [
+            effect
+            for effect in trigger.effects
+            if not (effect.effect_type == EffectId.ACTIVATE_TRIGGER and effect.trigger_id in legacy_stage_ids)
+        ]
+
+    for scenario_player in PLAYERS:
+        for unit_id in (UnitInfo.VILLAGER_MALE.ID, UnitInfo.VILLAGER_FEMALE.ID):
+            for label, points in (
+                ("spawn", BUILDER_SPAWN_POINTS),
+                ("destination", BUILDER_DESTINATION_POINTS),
+            ):
+                x, y = points[scenario_player][unit_id]
+                tile = ctx.mm.get_tile(x=x, y=y)
+                if tile.terrain_id in {
+                    TerrainId.WATER_SHALLOW,
+                    TerrainId.WATER_DEEP,
+                    TerrainId.WATER_MEDIUM,
+                }:
+                    raise RuntimeError(
+                        f"P{int(scenario_player)} builder {label} ({x}, {y}) is water"
+                    )
+                occupied = [
+                    unit
+                    for units in ctx.um.units
+                    for unit in units
+                    if int(unit.x) == x and int(unit.y) == y
+                ]
+                if occupied:
+                    references = ", ".join(str(unit.reference_id) for unit in occupied)
+                    raise RuntimeError(
+                        f"P{int(scenario_player)} builder {label} ({x}, {y}) "
+                        f"is occupied by refs {references}"
+                    )
+
+        area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[scenario_player]
+        for world_player in _possible_world_players():
+            reward = ctx.tm.add_trigger(
+                f"Builder Reward S{int(scenario_player)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+                enabled=1,
+                looping=1,
+            )
+            reward.new_condition.timer(timer=1)
+            reward.new_condition.variable_value(
+                quantity=1,
+                inverted=-1,
+                variable=pending_variables[scenario_player],
+                comparison=Comparison.LARGER_OR_EQUAL,
+            )
+            reward.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[scenario_player],
+                comparison=Comparison.EQUAL,
+            )
+            reward.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[scenario_player],
+                comparison=Comparison.EQUAL,
+            )
+            reward.new_condition.objects_in_area(
+                quantity=1,
+                object_list=BuildingInfo.CASTLE.ID,
+                source_player=world_player,
+                area_x1=area_x1,
+                area_y1=area_y1,
+                area_x2=area_x2,
+                area_y2=area_y2,
+            )
+            for source_effect in template_effects:
+                effect = _copy_for_world_player(
+                    source_effect,
+                    PlayerId.THREE,
+                    world_player,
+                )
+                if effect.effect_type == EffectId.CREATE_OBJECT:
+                    effect.location_x, effect.location_y = BUILDER_SPAWN_POINTS[
+                        scenario_player
+                    ][effect.object_list_unit_id]
+                reward.effects.append(effect)
+            reward.new_effect.change_variable(
+                quantity=1,
+                operation=Operation.SET,
+                variable=move_pending_variables[scenario_player],
+            )
+            reward.new_effect.change_variable(
+                quantity=1,
+                operation=Operation.SUBTRACT,
+                variable=pending_variables[scenario_player],
+            )
+
+            mover = ctx.tm.add_trigger(
+                f"Builder Move S{int(scenario_player)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+                enabled=1,
+                looping=1,
+            )
+            mover.new_condition.timer(timer=1)
+            mover.new_condition.variable_value(
+                quantity=1,
+                variable=move_pending_variables[scenario_player],
+                comparison=Comparison.EQUAL,
+            )
+            mover.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[scenario_player],
+                comparison=Comparison.EQUAL,
+            )
+            mover.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[scenario_player],
+                comparison=Comparison.EQUAL,
+            )
+            for unit_id in (
+                UnitInfo.VILLAGER_MALE.ID,
+                UnitInfo.VILLAGER_FEMALE.ID,
+            ):
+                spawn_x, spawn_y = BUILDER_SPAWN_POINTS[scenario_player][unit_id]
+                destination_x, destination_y = BUILDER_DESTINATION_POINTS[
+                    scenario_player
+                ][unit_id]
+                mover.new_effect.task_object(
+                    object_list_unit_id=unit_id,
+                    source_player=world_player,
+                    location_x=destination_x,
+                    location_y=destination_y,
+                    area_x1=spawn_x - 1,
+                    area_y1=spawn_y - 1,
+                    area_x2=spawn_x + 1,
+                    area_y2=spawn_y + 1,
+                    action_type=ActionType.MOVE,
+                )
+            mover.new_effect.change_variable(
+                quantity=0,
+                operation=Operation.SET,
+                variable=move_pending_variables[scenario_player],
+            )
+
+
+def _relocate_builder_spawn_flags(ctx: BuildContext) -> None:
+    """Move only the two old builder flags onto the widened rear causeway."""
+    water = {int(terrain) for terrain in TerrainId.water_terrains()}
+    for player in PLAYERS:
+        for source_position, target_position in zip(
+            SOURCE_BUILDER_FLAG_POSITIONS,
+            SOURCE_BUILDER_FLAG_TARGETS,
+            strict=True,
+        ):
+            old_x, old_y = v2_position_for_player(player, *source_position)
+            new_x, new_y = v2_position_for_player(player, *target_position)
+            flags = [
+                unit
+                for unit in ctx.um.units[player]
+                if unit.unit_const == OtherInfo.FLAG_A.ID
+                and (unit.x, unit.y) == (old_x, old_y)
+            ]
+            if len(flags) != 1:
+                raise RuntimeError(
+                    f"expected one P{int(player)} builder flag at "
+                    f"({old_x}, {old_y}), found {len(flags)}"
+                )
+            if any(
+                (unit.x, unit.y) == (new_x, new_y)
+                for units in ctx.um.units
+                for unit in units
+                if unit is not flags[0]
+            ):
+                raise RuntimeError(
+                    f"occupied P{int(player)} builder-flag target at "
+                    f"({new_x}, {new_y})"
+                )
+            if ctx.mm.get_tile(x=int(new_x), y=int(new_y)).terrain_id in water:
+                raise RuntimeError(
+                    f"P{int(player)} builder-flag target ({new_x}, {new_y}) is water"
+                )
+            flags[0].x = new_x
+            flags[0].y = new_y
+
+
+def _remove_remaining_ice_decorations(ctx: BuildContext) -> None:
+    """Remove the legacy ice objects that obstruct otherwise buildable shore."""
+    ice_objects = [
+        unit
+        for units in ctx.um.units
+        for unit in units
+        if unit.unit_const == OtherInfo.ICE_NAVIGABLE.ID
+    ]
+    if len(ice_objects) != 20:
+        raise RuntimeError(
+            f"expected 20 remaining legacy ice decorations, found {len(ice_objects)}"
+        )
+    for unit in ice_objects:
+        ctx.um.remove_unit(unit=unit)
+
+
+def _remove_corner_staging_objects(ctx: BuildContext) -> None:
+    """Remove obsolete underwater Palisade/Saboteur staging art.
+
+    The imported scenario carried one Saboteur and seven Palisade Walls per color in
+    the four extreme map corners. Nothing references them; they are visible leftovers,
+    not gameplay markers.
+    """
+    expected_counts = {
+        BuildingInfo.PALISADE_WALL.ID: 56,
+        HeroInfo.SABOTEUR.ID: 8,
+    }
+    staging_objects = [
+        unit
+        for units in ctx.um.units
+        for unit in units
+        if unit.unit_const in expected_counts
+    ]
+    actual_counts = {
+        unit_id: sum(unit.unit_const == unit_id for unit in staging_objects)
+        for unit_id in expected_counts
+    }
+    if actual_counts != expected_counts:
+        raise RuntimeError(
+            "unexpected corner staging-object counts: "
+            f"expected {expected_counts}, found {actual_counts}"
+        )
+
+    water = {int(terrain) for terrain in TerrainId.water_terrains()}
+    for unit in staging_objects:
+        near_x_edge = unit.x < 16 or unit.x > 128
+        near_y_edge = unit.y < 16 or unit.y > 128
+        terrain = ctx.mm.get_tile(x=int(unit.x), y=int(unit.y)).terrain_id
+        if not (near_x_edge and near_y_edge and terrain in water):
+            raise RuntimeError(
+                "refusing to remove non-corner Palisade/Saboteur object "
+                f"{unit.reference_id} at ({unit.x}, {unit.y})"
+            )
+        ctx.um.remove_unit(unit=unit)
+
+
+def _force_bombard_tower_unlock(ctx: BuildContext) -> None:
+    """Grant Bombard Towers through the confirmed color-to-runtime mapping."""
+    legacy = _unique_trigger(ctx, "BT -------------------- By: System")
+    _reset_trigger(legacy)
+    legacy.name = "Legacy Bombard Tower Unlock Disabled"
+
+    configured = 0
+    for color in PLAYERS:
+        for world_player in _possible_world_players():
+            occupied = _unique_trigger(
+                ctx,
+                f"Occupied Slot S{int(color)} W{int(world_player)}",
+            )
+            occupied.new_effect.research_technology(
+                source_player=world_player,
+                technology=TechInfo.BOMBARD_TOWER.ID,
+                force_research_technology=1,
+            )
+            occupied.new_effect.enable_disable_object(
+                object_list_unit_id=BuildingInfo.BOMBARD_TOWER.ID,
+                source_player=world_player,
+                enabled=1,
+            )
+            configured += 1
+    expected = len(PLAYERS) ** 2
+    if configured != expected:
+        raise RuntimeError(
+            f"expected {expected} mapped Bombard Tower grants, configured {configured}"
+        )
+
+
+def _stop_eliminated_color_production(ctx: BuildContext) -> None:
+    """Do not create rewards between the elimination latch and the next XS tick."""
+    creation_effects = {
+        EffectId.CREATE_OBJECT, EffectId.CREATE_GARRISONED_OBJECT,
+        EffectId.TRAIN_UNIT, EffectId.PLACE_FOUNDATION,
+    }
+    for trigger in ctx.tm.triggers:
+        if not any(effect.effect_type in creation_effects for effect in trigger.effects):
+            continue
+        colors = {
+            condition.variable - COLOR_ACTIVE_VARIABLE_BASE + 1
+            for condition in trigger.conditions
+            if condition.condition_type == ConditionId.VARIABLE_VALUE
+            and COLOR_ACTIVE_VARIABLE_BASE <= condition.variable < COLOR_ACTIVE_VARIABLE_BASE + 8
+            and condition.comparison == Comparison.EQUAL and condition.quantity == 1
+        }
+        for color in sorted(colors):
+            trigger.new_condition.variable_value(
+                quantity=0, variable=COLOR_ELIMINATED_VARIABLE_BASE + color - 1,
+                comparison=Comparison.EQUAL,
+            )
+
+
+def _finalize_occupied_slot_gates(ctx: BuildContext) -> None:
+    """Retry occupied-color setup until its owner is known, then stop it."""
+    configured = 0
+    for color in PLAYERS:
+        for world_player in _possible_world_players():
+            gate = _unique_trigger(
+                ctx,
+                f"Occupied Slot S{int(color)} W{int(world_player)}",
+            )
+            gate.looping = 1
+            gate.new_effect.deactivate_trigger(trigger_id=gate.trigger_id)
+            configured += 1
+    expected = len(PLAYERS) ** 2
+    if configured != expected:
+        raise RuntimeError(
+            f"expected {expected} retrying occupied-slot gates, configured {configured}"
+        )
+
+
+def _add_rear_enclosures(ctx: BuildContext) -> None:
+    """Close every base's rear edge while leaving the allied route open."""
+    # The decompiled source places explicit legacy IDs and therefore leaves the
+    # blank scenario's generator at zero. Resume after the real maximum so new
+    # buildings and trigger selections cannot collide with existing units.
+    ctx.um.reference_id_generator = create_id_generator(ctx.um.find_highest_reference_id() + 1)
+
+    protected_by_player = {player: [] for player in PLAYERS}
+    for player, gate_x, placeholder_ys, adjacent_wall_y, gate_y in REAR_SIDE_GATES:
+        for placeholder_y in placeholder_ys:
+            matches = [
+                unit
+                for unit in ctx.um.units[player]
+                if unit.unit_const == OtherInfo.ICE_NAVIGABLE.ID
+                and (unit.x, unit.y) == (gate_x, placeholder_y)
+            ]
+            if len(matches) != 1:
+                raise RuntimeError(
+                    f"expected one rear side-gate placeholder for P{int(player)} "
+                    f"at ({gate_x}, {placeholder_y}), found {len(matches)}"
+                )
+            ctx.um.remove_unit(unit=matches[0])
+
+        adjacent_walls = [
+            unit
+            for unit in ctx.um.units[player]
+            if unit.unit_const == BuildingInfo.STONE_WALL.ID and (unit.x, unit.y) == (gate_x, adjacent_wall_y)
+        ]
+        if len(adjacent_walls) != 1:
+            raise RuntimeError(
+                f"expected one wall beside rear side gate for P{int(player)} "
+                f"at ({gate_x}, {adjacent_wall_y}), found {len(adjacent_walls)}"
+            )
+        ctx.um.remove_unit(unit=adjacent_walls[0])
+
+        side_gate = ctx.um.add_unit(
+            player=player,
+            unit_const=BuildingInfo.GATE_NORTHWEST_TO_SOUTHEAST.ID,
+            x=gate_x,
+            y=gate_y,
+        )
+        protected_by_player[player].append(side_gate.reference_id)
+
+    for player, axis, line, start, end in REAR_END_CONNECTORS:
+        rotation = 0 if axis == "horizontal" else 1
+        for position in (start + offset for offset in range(int(end - start) + 1)):
+            x, y = (position, line) if axis == "horizontal" else (line, position)
+            existing = [
+                unit
+                for unit in ctx.um.units[player]
+                if unit.unit_const == BuildingInfo.STONE_WALL.ID and (unit.x, unit.y) == (x, y)
+            ]
+            if existing:
+                raise RuntimeError(
+                    f"unexpected existing rear connector wall for P{int(player)} at ({x}, {y})"
+                )
+            connector = ctx.um.add_unit(
+                player=player,
+                unit_const=BuildingInfo.STONE_WALL.ID,
+                x=x,
+                y=y,
+                rotation=rotation,
+            )
+            protected_by_player[player].append(connector.reference_id)
+
+    for player, axis, line, positions in FRONT_GATE_END_EXTENSIONS:
+        rotation = 0 if axis == "horizontal" else 1
+        for position in positions:
+            x, y = (position, line) if axis == "horizontal" else (line, position)
+            tile = ctx.mm.get_tile(x=int(x), y=int(y))
+            if tile.terrain_id in {
+                TerrainId.WATER_SHALLOW,
+                TerrainId.WATER_DEEP,
+                TerrainId.WATER_MEDIUM,
+            }:
+                tile.terrain_id = TerrainId.BEACH
+            existing = [
+                unit
+                for unit in ctx.um.units[player]
+                if unit.unit_const == BuildingInfo.STONE_WALL.ID
+                and (unit.x, unit.y) == (x, y)
+            ]
+            if existing:
+                raise RuntimeError(
+                    f"unexpected existing front-gate extension for P{int(player)} "
+                    f"at ({x}, {y})"
+                )
+            extension = ctx.um.add_unit(
+                player=player,
+                unit_const=BuildingInfo.STONE_WALL.ID,
+                x=x,
+                y=y,
+                rotation=rotation,
+            )
+            protected_by_player[player].append(extension.reference_id)
+
+    for player, axis, line, wall_segments, gate_axis, tower_positions in REAR_ENCLOSURES:
+        protected_ids = protected_by_player[player]
+        wall_rotation = 0 if axis == "horizontal" else 1
+        for start, end in wall_segments:
+            for position in (start + offset for offset in range(int(end - start) + 1)):
+                x, y = (position, line) if axis == "horizontal" else (line, position)
+                wall = ctx.um.add_unit(
+                    player=player,
+                    unit_const=BuildingInfo.STONE_WALL.ID,
+                    x=x,
+                    y=y,
+                    rotation=wall_rotation,
+                )
+                protected_ids.append(wall.reference_id)
+
+        gate_x, gate_y = (gate_axis, line) if axis == "horizontal" else (line, gate_axis)
+        gate_const = (
+            BuildingInfo.GATE_SOUTHWEST_TO_NORTHEAST.ID
+            if axis == "horizontal"
+            else BuildingInfo.GATE_NORTHWEST_TO_SOUTHEAST.ID
+        )
+        gate = ctx.um.add_unit(
+            player=player,
+            unit_const=gate_const,
+            x=gate_x,
+            y=gate_y,
+        )
+        protected_ids.append(gate.reference_id)
+
+        for tower_x, tower_y in tower_positions:
+            tower = ctx.um.add_unit(
+                player=player,
+                unit_const=BuildingInfo.BOMBARD_TOWER.ID,
+                x=tower_x,
+                y=tower_y,
+                rotation=2,
+            )
+            protected_ids.append(tower.reference_id)
+
+        _unique_trigger(ctx, f"Antidelete P{int(player)}").new_effect.disable_object_deletion(
+            source_player=player,
+            selected_object_ids=protected_ids,
+        )
+
+
+def _open_rear_technology_paths(ctx: BuildContext) -> None:
+    """Open two-tile causeways from each rear gate to its technology island."""
+    for player, (x1, y1, x2, y2), cliff_specs in REAR_TECH_PATHS:
+        for y in range(y1, y2 + 1):
+            for x in range(x1, x2 + 1):
+                tile = ctx.mm.get_tile(x=x, y=y)
+                actual = (tile.terrain_id, tile.elevation, tile.layer)
+                expected_terrains = {TerrainId.WATER_MEDIUM, TerrainId.BEACH_ICE}
+                if tile.terrain_id not in expected_terrains or tile.elevation != 1 or tile.layer != -1:
+                    raise RuntimeError(
+                        f"unexpected rear path tile for P{int(player)} at ({x}, {y}): "
+                        f"expected water/beach at elevation 1, found {actual}"
+                    )
+                tile.terrain_id = TerrainId.SNOW
+
+        for reference_id, unit_const, x, y in cliff_specs:
+            matches = [
+                unit
+                for unit in ctx.um.units[PlayerId.GAIA]
+                if unit.reference_id == reference_id
+                and unit.unit_const == unit_const
+                and (unit.x, unit.y) == (x, y)
+            ]
+            if len(matches) != 1:
+                raise RuntimeError(
+                    f"expected one rear-path cliff for P{int(player)} at ({x}, {y}), found {len(matches)}"
+                )
+            ctx.um.remove_unit(unit=matches[0])
+
+
+def _finish_rear_perimeters(ctx: BuildContext) -> None:
+    """Join each cliff gate cleanly, with dry land inside and water outside."""
+    allowed_terrain = {
+        TerrainId.WATER_DEEP,
+        TerrainId.WATER_MEDIUM,
+        TerrainId.BEACH_ICE,
+        TerrainId.SNOW,
+        TerrainId.ICE,
+    }
+    causeway_tiles = {
+        (x, y)
+        for _player, (x1, y1, x2, y2), _cliff_specs in REAR_TECH_PATHS
+        for y in range(y1, y2 + 1)
+        for x in range(x1, x2 + 1)
+    }
+    for player, apron, outside_water in REAR_LAND_APRONS:
+        for rectangle, terrain_id in (
+            (apron, TerrainId.SNOW),
+            (outside_water, TerrainId.WATER_MEDIUM),
+        ):
+            x1, y1, x2, y2 = rectangle
+            for y in range(y1, y2 + 1):
+                for x in range(x1, x2 + 1):
+                    if terrain_id == TerrainId.WATER_MEDIUM and (x, y) in causeway_tiles:
+                        continue
+                    tile = ctx.mm.get_tile(x=x, y=y)
+                    if tile.terrain_id not in allowed_terrain or tile.elevation != 1 or tile.layer != -1:
+                        raise RuntimeError(
+                            f"unexpected rear perimeter tile for P{int(player)} at ({x}, {y}): "
+                            f"found {(tile.terrain_id, tile.elevation, tile.layer)}"
+                        )
+                    tile.terrain_id = terrain_id
+
+        x1, y1, x2, y2 = apron
+        for y in range(y1, y2 + 1):
+            for x in range(x1, x2 + 1):
+                tile = ctx.mm.get_tile(x=x, y=y)
+                if tile.terrain_id != TerrainId.SNOW:
+                    raise RuntimeError(
+                        f"non-land tile remains inside P{int(player)} rear perimeter at ({x}, {y})"
+                    )
+
+    for player, cap_rectangles in REAR_WATER_END_CAPS:
+        for x1, y1, x2, y2 in cap_rectangles:
+            for y in range(y1, y2 + 1):
+                for x in range(x1, x2 + 1):
+                    tile = ctx.mm.get_tile(x=x, y=y)
+                    if (
+                        tile.terrain_id not in allowed_terrain
+                        or tile.elevation != 1
+                        or tile.layer != -1
+                    ):
+                        raise RuntimeError(
+                            f"unexpected rear water-cap tile for P{int(player)} at "
+                            f"({x}, {y}): found "
+                            f"{(tile.terrain_id, tile.elevation, tile.layer)}"
+                        )
+                    tile.terrain_id = TerrainId.WATER_MEDIUM
+
+    default_cliffs = {getattr(OtherInfo, f"CLIFF_DEFAULT_{index}").ID for index in range(1, 10)}
+    expected_cleanup_counts = {
+        PlayerId.ONE: 11,
+        PlayerId.TWO: 11,
+        PlayerId.THREE: 11,
+        PlayerId.FOUR: 10,
+        PlayerId.FIVE: 13,
+        PlayerId.SIX: 10,
+        PlayerId.SEVEN: 11,
+        PlayerId.EIGHT: 9,
+    }
+    for player, (x1, y1, x2, y2) in REAR_CLIFF_CLEANUP_AREAS:
+        obsolete = [
+            unit
+            for unit in ctx.um.units[PlayerId.GAIA]
+            if unit.unit_const in default_cliffs and x1 <= unit.x <= x2 and y1 <= unit.y <= y2
+        ]
+        if len(obsolete) != expected_cleanup_counts[player]:
+            raise RuntimeError(
+                f"unexpected old rear cliff count for P{int(player)}: "
+                f"expected {expected_cleanup_counts[player]}, found {len(obsolete)}"
+            )
+        for unit in obsolete:
+            ctx.um.remove_unit(unit=unit)
+
+    for player, axis, line, start, end, gate_axis, unit_const, rotations in REAR_CLIFF_PERIMETERS:
+        expected_positions = set()
+        positions = (start + 3 * offset for offset in range(int((end - start) / 3) + 1))
+        for index, position in enumerate(positions):
+            if abs(position - gate_axis) < 2:
+                continue
+            x, y = (position, line) if axis == "horizontal" else (line, position)
+            ctx.um.add_unit(
+                player=PlayerId.GAIA,
+                unit_const=unit_const,
+                x=x,
+                y=y,
+                rotation=rotations[index % len(rotations)],
+            )
+            expected_positions.add((x, y))
+
+        actual_positions = {
+            (unit.x, unit.y)
+            for unit in ctx.um.units[PlayerId.GAIA]
+            if unit.unit_const == unit_const and (unit.x, unit.y) in expected_positions
+        }
+        if actual_positions != expected_positions:
+            raise RuntimeError(
+                f"unexpected rebuilt rear cliff perimeter for P{int(player)}: "
+                f"expected {sorted(expected_positions)}, found {sorted(actual_positions)}"
+            )
+
+
+def _rewrite_public_messages(ctx: BuildContext) -> None:
+    messages = ctx.message_manager
+    messages.instructions = PUBLIC_INSTRUCTIONS
+    messages.history = (
+        f"{ctx.spec.name} v{ctx.spec.version}.\r"
+        "Automatic armies earn stronger heroes through combat. Guard four Castles, support "
+        "your allies through the protected team routes, and destroy every enemy Castle."
+    )
+    messages.hints = (
+        "Defeat enemy units to ascend through eleven hero tiers. Protect all four Castles, "
+        "move the Sheep to set Castle-army travel, move the Penguin to control Hero "
+        "production and travel, and use the rear gates to reinforce your allies."
+    )
+    messages.scouts = (
+        "Blue/Red/Green/Yellow face Teal/Purple/Gray/Orange. Close unused slots while keeping "
+        "both color teams represented. Every territory has equal mirrored terrain and "
+        "defenses."
+    )
+    messages.victory = (
+        "\rRA VICTORY\rYour team destroyed every enemy Castle."
+    )
+    messages.loss = (
+        "\rDEFEAT\rYour Castles have fallen. Return to the map to watch the battle."
+    )
+
+
+def _sanitize_serialized_labels(ctx: BuildContext) -> None:
+    """Remove obsolete identity and attribution text after all name-based passes."""
+    for trigger in ctx.tm.triggers:
+        for attribute in ("name", "description", "short_description"):
+            value = getattr(trigger, attribute, "") or ""
+            value = re.sub(r"Reforged", "Ascendants", value, flags=re.IGNORECASE)
+            value = re.sub(
+                r"Evolution Alpha",
+                "Ascendants",
+                value,
+                flags=re.IGNORECASE,
+            )
+            value = re.sub(
+                r"\s*By:\s*System\s*",
+                " ",
+                value,
+                flags=re.IGNORECASE,
+            ).strip()
+            setattr(trigger, attribute, value)
+
+
+def _add_sparse_lobby_scoreboard(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+) -> None:
+    """Build a compact right-side combat HUD and guard the zero-resource economy."""
+    tm = ctx.tm
+
+    equalizers = {PlayerId.ONE: _unique_trigger(ctx, "Resource Equalizer")}
+    _configure_equalizer(equalizers[PlayerId.ONE], PlayerId.ONE)
+    for player in PLAYERS[1:]:
+        equalizer = tm.add_trigger(f"Resource Equalizer P{int(player)}")
+        _configure_equalizer(equalizer, player)
+        equalizers[player] = equalizer
+
+    header = _unique_trigger(ctx, "Kills and Deaths")
+    _configure_combat_hud_header(header)
+
+    divider = tm.add_trigger(
+        "Combat HUD Team Divider",
+        description_stid=0,
+        short_description="----------------",
+        short_description_stid=0,
+        display_on_screen=1,
+        description_order=14,
+        enabled=1,
+        mute_objectives=1,
+    )
+    divider.new_condition.player_defeated(source_player=PlayerId.GAIA)
+
+    live_rows = {}
+    for player in PLAYERS:
+        player_number = int(player)
+        variable_base = COMBAT_ROW_VARIABLE_BASE + (
+            (player_number - 1) * COMBAT_ROW_VARIABLE_STRIDE
+        )
+        variable_names = (
+            f"p{player_number}k",
+            f"p{player_number}d",
+            f"p{player_number}r",
+        )
+        for offset, name in enumerate(variable_names):
+            tm.add_variable(name, variable_id=variable_base + offset)
+
+        display_order = (
+            19 - player_number
+            if player_number <= 4
+            else 18 - player_number
+        )
+        kills_name, deaths_name, razings_name = variable_names
+        live = tm.add_trigger(
+            f"Combat HUD Live P{player_number}",
+            description_stid=0,
+            short_description=(
+                f"p{player_number} | <{kills_name}> | "
+                f"<{deaths_name}> | <{razings_name}>"
+            ),
+            short_description_stid=0,
+            display_on_screen=1,
+            description_order=display_order,
+            enabled=0,
+            header=0,
+            mute_objectives=1,
+        )
+        live.new_condition.player_defeated(source_player=PlayerId.GAIA)
+        live_rows[player] = live
+
+    free_costs = {}
+    for player in PLAYERS:
+        trigger = _unique_trigger(ctx, f"resources (p{int(player)})")
+        _configure_free_costs(trigger, player)
+        free_costs[player] = trigger
+
+    for color in PLAYERS:
+        for world_player in _possible_world_players():
+            gate = tm.add_trigger(
+                f"Occupied Slot S{int(color)} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+            )
+            gate.new_condition.timer(timer=LOBBY_SETTLE_SECONDS)
+            gate.new_condition.variable_value(
+                quantity=1,
+                variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            gate.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            gate.new_effect.activate_trigger(
+                trigger_id=equalizers[world_player].trigger_id
+            )
+            gate.new_effect.activate_trigger(
+                trigger_id=free_costs[world_player].trigger_id
+            )
+            gate.new_effect.activate_trigger(trigger_id=live_rows[color].trigger_id)
+
+            values = tm.add_trigger(
+                f"Color Combat Values S{int(color)} W{int(world_player)}", looping=1,
+            )
+            values.new_condition.timer(timer=2)
+            values.new_condition.variable_value(
+                quantity=int(world_player), variable=world_variables[color],
+                comparison=Comparison.EQUAL,
+            )
+            values.new_condition.variable_value(
+                quantity=1, variable=COLOR_OCCUPIED_VARIABLE_BASE + int(color) - 1,
+                comparison=Comparison.EQUAL,
+            )
+            resources = (Attribute.UNITS_KILLED, Attribute.KILLED_BY_OTHERS, Attribute.RAZINGS)
+            for offset, resource in enumerate(resources):
+                values.new_effect.modify_variable_by_resource(
+                    tribute_list=resource, source_player=world_player, operation=Operation.SET,
+                    variable=(COMBAT_ROW_VARIABLE_BASE
+                              + (int(color) - 1) * COMBAT_ROW_VARIABLE_STRIDE + offset),
+                )
+
+
+def _add_live_white_king_kill_counters(ctx: BuildContext) -> None:
+    """Show every color's live kill total on its white selector King.
+
+    Trigger-variable tokens are expanded in objective text but are printed
+    literally by Change Object Name. Keep the name static and publish the
+    exact live value through the King's displayed sword/attack statistic.
+    """
+    counter_references = set(WHITE_KING_KILL_COUNTERS.values())
+    removed_legacy_effects = 0
+    for trigger in ctx.tm.triggers:
+        retained_effects = []
+        for effect in trigger.effects:
+            selected_references = set(effect.selected_object_ids or ())
+            if (
+                effect.effect_type == EffectId.CHANGE_OBJECT_NAME
+                and selected_references & counter_references
+            ):
+                removed_legacy_effects += 1
+                continue
+            retained_effects.append(effect)
+        trigger.effects = retained_effects
+    if removed_legacy_effects != 12:
+        raise RuntimeError(
+            "expected 12 legacy white-King kill labels, removed "
+            f"{removed_legacy_effects}"
+        )
+
+    configured = 0
+    for color, reference_id in WHITE_KING_KILL_COUNTERS.items():
+        color_number = int(color)
+        kills_variable = 8 + ((color_number - 1) * 3)
+        for world_player in _possible_world_players():
+            live_counter = ctx.tm.add_trigger(
+                f"White King Kills S{color_number} W{int(world_player)}",
+                description_stid=0,
+                short_description_stid=0,
+                enabled=0,
+                looping=1,
+            )
+            live_counter.new_condition.timer(timer=1)
+            live_counter.new_effect.change_object_name(
+                source_player=world_player,
+                message=f"P{color_number} Kills",
+                selected_object_ids=[reference_id],
+            )
+            live_counter.new_effect.modify_object_attribute_by_variable(
+                source_player=world_player,
+                object_attributes=ObjectAttribute.SHOWN_ATTACK,
+                selected_object_ids=[reference_id],
+                operation=Operation.SET,
+                variable=kills_variable,
+            )
+            occupied = _unique_trigger(
+                ctx,
+                f"Occupied Slot S{color_number} W{int(world_player)}",
+            )
+            occupied.new_effect.activate_trigger(trigger_id=live_counter.trigger_id)
+            configured += 1
+    expected = len(PLAYERS) ** 2
+    if configured != expected:
+        raise RuntimeError(
+            f"expected {expected} mapped White King counters, configured {configured}"
+        )
+
+
+def _configure_sparse_vote_kick(
+    ctx: BuildContext,
+    active_variables,
+    world_variables,
+    eliminated_variables,
+    match_ready_variable,
+) -> None:
+    """Require two occupied teammates to delete their target vote markers.
+
+    Castle-row detection establishes each color's runtime owner, and XS keeps
+    its activity flag current. Requiring the target and both distinct voters to
+    be active means a side needs at least three live colors before a vote can
+    resolve. Closed slots therefore cannot create startup votes, and a side
+    reduced to two colors cannot kick again.
+    """
+    unit_by_reference = {
+        unit.reference_id: (PlayerId(player), unit)
+        for player, units in enumerate(ctx.um.units)
+        for unit in units
+    }
+    color_by_name = {name: player for player, name in PLAYER_COLOR_NAMES.items()}
+    rename_triggers = [
+        trigger for trigger in ctx.tm.triggers if trigger.name == "==Rename======"
+    ]
+    if len(rename_triggers) != 2:
+        raise RuntimeError(
+            f"expected two legacy rename triggers, found {len(rename_triggers)}"
+        )
+    vote_markers = {}
+    for effect in (
+        effect for trigger in rename_triggers for effect in trigger.effects
+    ):
+        if (
+            effect.effect_type != EffectId.CHANGE_OBJECT_NAME
+            or not (effect.message or "").startswith("Delete Vote Kick ")
+        ):
+            continue
+        target_name = effect.message.removeprefix("Delete Vote Kick ")
+        target = color_by_name.get(target_name)
+        if target is None or len(effect.selected_object_ids) != 1:
+            raise RuntimeError(f"invalid vote marker rename effect: {effect.message!r}")
+        reference_id = effect.selected_object_ids[0]
+        voter, marker = unit_by_reference[reference_id]
+        if marker.unit_const != BuildingInfo.OUTPOST.ID:
+            raise RuntimeError(
+                f"vote marker {reference_id} is unit {marker.unit_const}, not an Outpost"
+            )
+        key = (target, voter)
+        if key in vote_markers:
+            raise RuntimeError(
+                f"duplicate P{int(voter)} vote marker for P{int(target)}"
+            )
+        vote_markers[key] = marker
+
+    expected_marker_keys = {
+        (target, voter)
+        for team in (PLAYERS[:4], PLAYERS[4:])
+        for target in team
+        for voter in team
+        if voter != target
+    }
+    if vote_markers.keys() != expected_marker_keys:
+        missing = expected_marker_keys - vote_markers.keys()
+        extra = vote_markers.keys() - expected_marker_keys
+        raise RuntimeError(
+            f"unexpected vote-marker mapping; missing={sorted(missing)}, extra={sorted(extra)}"
+        )
+
+    # An enemy must not cast a vote by destroying somebody else's marker.
+    # Attack protection leaves the owner's explicit Delete action available.
+    safety = _unique_trigger(ctx, "Range Controller Safety")
+    safety.new_effect.disable_unit_attackable(
+        source_player=-1,
+        selected_object_ids=sorted(marker.reference_id for marker in vote_markers.values()),
+    )
+    for voter in PLAYERS:
+        references = sorted(
+            marker.reference_id
+            for (_target, owner), marker in vote_markers.items()
+            if owner == voter
+        )
+        for world_player in _possible_world_players():
+            detector = _unique_trigger(
+                ctx, f"Color Owner Detect S{int(voter)} W{int(world_player)}"
+            )
+            self_deactivation = detector.effects.pop(-1)
+            detector.new_effect.disable_unit_attackable(
+                source_player=world_player,
+                selected_object_ids=references,
+            )
+            detector.effects.append(self_deactivation)
+
+    # Each target-colored flag labels the matching Outpost on a teammate's
+    # vote island. The old layout scattered flags horizontally regardless of
+    # the island's orientation, putting several in water or even on top of a
+    # marker. Align every flag parallel to its three Outposts on existing land.
+    flag_unit_const = OtherInfo.CIV_FLAG_ACHAEMENIDS_2.ID
+    flags_by_target = {
+        target: [
+            unit
+            for unit in ctx.um.units[target]
+            if unit.unit_const == flag_unit_const
+        ]
+        for target in PLAYERS
+    }
+    if any(len(flags) != 3 for flags in flags_by_target.values()):
+        counts = {
+            int(target): len(flags)
+            for target, flags in flags_by_target.items()
+        }
+        raise RuntimeError(f"expected three vote flags per color, found {counts}")
+    original_flag_positions = {
+        flag.reference_id: (flag.x, flag.y)
+        for flags in flags_by_target.values()
+        for flag in flags
+    }
+    assigned_flags = set()
+    water = {int(terrain) for terrain in TerrainId.water_terrains()}
+    for target, voter in sorted(
+        expected_marker_keys,
+        key=lambda key: (int(key[0]), int(key[1])),
+    ):
+        marker = vote_markers[target, voter]
+        candidates = [
+            flag
+            for flag in flags_by_target[target]
+            if flag.reference_id not in assigned_flags
+        ]
+        flag = min(
+            candidates,
+            key=lambda candidate: (
+                (original_flag_positions[candidate.reference_id][0] - marker.x) ** 2
+                + (original_flag_positions[candidate.reference_id][1] - marker.y) ** 2,
+                candidate.reference_id,
+            ),
+        )
+        offset_x, offset_y = VOTE_FLAG_OFFSETS[voter]
+        flag.x = marker.x + offset_x
+        flag.y = marker.y + offset_y
+        assigned_flags.add(flag.reference_id)
+        if ctx.mm.get_tile(x=int(flag.x), y=int(flag.y)).terrain_id in water:
+            raise RuntimeError(
+                f"vote flag {flag.reference_id} for P{int(target)} remains on water"
+            )
+    if len(assigned_flags) != 24:
+        raise RuntimeError(f"expected 24 aligned vote flags, found {len(assigned_flags)}")
+
+    ordered_marker_keys = sorted(
+        expected_marker_keys,
+        key=lambda key: (int(key[0]), int(key[1])),
+    )
+    vote_variables = {
+        key: ctx.tm.add_variable(
+            f"votekickp{int(key[0])}byp{int(key[1])}",
+            variable_id=VOTE_MARKER_VARIABLE_BASE + index,
+        ).variable_id
+        for index, key in enumerate(ordered_marker_keys)
+    }
+    for target, voter in ordered_marker_keys:
+        marker = vote_markers[target, voter]
+        marker_x = math.floor(marker.x)
+        marker_y = math.floor(marker.y)
+        for world_player in _possible_world_players():
+            deleted = ctx.tm.add_trigger(
+                f"Vote Marker Deleted P{int(target)} V{int(voter)} W{world_player}",
+                description_stid=0,
+                short_description_stid=0,
+            )
+            deleted.new_condition.timer(timer=LOBBY_SETTLE_SECONDS + 1)
+            deleted.new_condition.variable_value(
+                quantity=1,
+                variable=match_ready_variable,
+                comparison=Comparison.EQUAL,
+            )
+            deleted.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[voter],
+                comparison=Comparison.EQUAL,
+            )
+            deleted.new_condition.variable_value(
+                quantity=world_player,
+                variable=world_variables[voter],
+                comparison=Comparison.EQUAL,
+            )
+            deleted.new_condition.objects_in_area(
+                quantity=1,
+                object_list=BuildingInfo.OUTPOST.ID,
+                source_player=world_player,
+                area_x1=marker_x,
+                area_y1=marker_y,
+                area_x2=marker_x,
+                area_y2=marker_y,
+                inverted=1,
+            )
+            deleted.new_effect.change_variable(
+                quantity=1,
+                operation=Operation.SET,
+                variable=vote_variables[target, voter],
+            )
+
+    resolvers = {}
+    for target in PLAYERS:
+        area_x1, area_y1, area_x2, area_y2 = BASE_CASTLE_AREAS[target]
+        target_resolvers = []
+        for world_player in _possible_world_players():
+            if world_player == target:
+                resolver = _unique_trigger(ctx, f"Kick P{int(target)}")
+            else:
+                resolver = ctx.tm.add_trigger(
+                    f"Vote Kick Resolve P{int(target)} W{int(world_player)}",
+                    description_stid=0,
+                    short_description_stid=0,
+                    enabled=0,
+                )
+            _reset_trigger(resolver)
+            resolver.name = (
+                f"Vote Kick Resolve P{int(target)} W{int(world_player)}"
+            )
+            resolver.new_condition.variable_value(
+                quantity=1,
+                variable=match_ready_variable,
+                comparison=Comparison.EQUAL,
+            )
+            resolver.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[target],
+                comparison=Comparison.EQUAL,
+            )
+            resolver.new_condition.variable_value(
+                quantity=int(world_player),
+                variable=world_variables[target],
+                comparison=Comparison.EQUAL,
+            )
+            resolver.new_condition.objects_in_area(
+                quantity=1,
+                object_list=BuildingInfo.CASTLE.ID,
+                source_player=world_player,
+                area_x1=area_x1,
+                area_y1=area_y1,
+                area_x2=area_x2,
+                area_y2=area_y2,
+            )
+            resolver.new_effect.send_chat(
+                source_player=-1,
+                message=f"{PLAYER_COLOR_NAMES[target]} has been vote-kicked.",
+            )
+            # Only the elimination bit is written here. XS owns ``p#coloractive`` and
+            # recomputes it from this variable within a second.
+            resolver.new_effect.change_variable(
+                quantity=1,
+                operation=Operation.SET,
+                variable=eliminated_variables[target],
+            )
+            _purge_player_objects(resolver, world_player)
+            resolver.new_effect.declare_victory(
+                source_player=world_player,
+                enabled=0,
+            )
+            target_resolvers.append(resolver)
+        resolvers[target] = tuple(target_resolvers)
+
+    configured = 0
+    for trigger in ctx.tm.triggers:
+        match = VOTE_KICK_NAME.fullmatch(trigger.name)
+        if not match:
+            continue
+        target, first_voter, second_voter = (
+            PlayerId(int(value)) for value in match.groups()
+        )
+        original_name = trigger.name
+        _reset_trigger(trigger)
+        trigger.name = original_name
+        trigger.enabled = 1
+        trigger.new_condition.timer(timer=LOBBY_SETTLE_SECONDS + 1)
+        trigger.new_condition.variable_value(
+            quantity=1,
+            variable=match_ready_variable,
+            comparison=Comparison.EQUAL,
+        )
+        for participant in (target, first_voter, second_voter):
+            trigger.new_condition.variable_value(
+                quantity=1,
+                variable=active_variables[participant],
+                comparison=Comparison.EQUAL,
+            )
+        for voter in (first_voter, second_voter):
+            trigger.new_condition.variable_value(
+                quantity=1,
+                variable=vote_variables[target, voter],
+                comparison=Comparison.EQUAL,
+            )
+        for resolver in resolvers[target]:
+            trigger.new_effect.activate_trigger(trigger_id=resolver.trigger_id)
+        configured += 1
+
+    if configured != 24:
+        raise RuntimeError(f"expected 24 safe vote-kick detectors, configured {configured}")
+    nonlooping_rename = [trigger for trigger in rename_triggers if not trigger.looping]
+    if len(nonlooping_rename) != 1:
+        raise RuntimeError("expected one combined range/vote label trigger")
+    nonlooping_rename[0].name = "Range And Vote Marker Labels"
+
+
+def build(ctx: BuildContext) -> None:
+    # The pinned checker predates the engine rename; keep validation enabled.
+    ctx.xm.xs_check.additional_args.extend([
+        "--extra-prelude-path", str(ctx.mode_dir / "xs-check-185872.xs"),
+    ])
+    apply_scenario_source(ctx)
+
+    _reset_unsafe_vote_kick(ctx)
+    _remove_legacy_edge_deletion_strips(ctx)
+    _disable_legacy_no_wall_cleanup(ctx)
+    _optimize_legacy_polling(ctx)
+    _mirror_legacy_anti_treb_zones(ctx)
+    _clear_legacy_resource_score_triggers(ctx)
+    _zero_starting_resources(ctx)
+    _normalize_player_restrictions(ctx)
+    _disable_castle_trebuchets(ctx)
+    _ban_auto_spawned_unique_units(ctx)
+    _ban_castle_class_buildings(ctx)
+    (
+        active_variables,
+        world_variables,
+        eliminated_variables,
+        match_ready_variable,
+    ) = _add_color_runtime_variables(ctx)
+    _add_color_owner_detection(ctx, world_variables)
+    _remove_legacy_goth_palisade_bonus(ctx)
+    _configure_sparse_goth_barracks_restriction(
+        ctx,
+        active_variables,
+        world_variables,
+    )
+    _configure_custom_team_victory(
+        ctx,
+        active_variables,
+        world_variables,
+        eliminated_variables,
+        match_ready_variable,
+    )
+    army_range_variables, hero_range_variables = _replace_legacy_army_spawns(
+        ctx,
+        active_variables,
+        world_variables,
+    )
+    _add_sparse_feudal_upgrades(ctx, active_variables, world_variables)
+    _add_rear_enclosures(ctx)
+    _open_rear_technology_paths(ctx)
+    _finish_rear_perimeters(ctx)
+    _rewrite_public_messages(ctx)
+    _add_sparse_lobby_scoreboard(ctx, active_variables, world_variables)
+    _force_bombard_tower_unlock(ctx)
+    _add_live_white_king_kill_counters(ctx)
+    _disable_fixed_color_kill_announcements(ctx)
+    _configure_sparse_center_views(ctx, active_variables, world_variables)
+
+    v2_report = apply_v2_map(ctx)
+    _remap_v2_trigger_geometry(ctx)
+    protect_team_routes(ctx, active_variables, world_variables, match_ready_variable)
+    _configure_range_sliders(
+        ctx,
+        army_range_variables,
+        hero_range_variables,
+    )
+    _configure_sparse_center_rewards(ctx, active_variables, world_variables)
+    _configure_sparse_wall_breaches(ctx, active_variables, world_variables)
+    _configure_sparse_king_islands(ctx, active_variables, world_variables)
+    _relocate_builder_spawn_flags(ctx)
+    _remove_remaining_ice_decorations(ctx)
+    _remove_corner_staging_objects(ctx)
+    _remap_raze_villagers(
+        ctx,
+        active_variables,
+        world_variables,
+        match_ready_variable,
+    )
+    hero_move_pending_variables = _configure_sparse_hero_milestones(
+        ctx,
+        active_variables,
+        world_variables,
+        match_ready_variable,
+        hero_range_variables,
+    )
+    _configure_sparse_late_hero_boosts(
+        ctx,
+        active_variables,
+        world_variables,
+        hero_move_pending_variables,
+        hero_range_variables,
+    )
+    configure_extra_hero_tiers(ctx)
+    _configure_sparse_vote_kick(
+        ctx,
+        active_variables,
+        world_variables,
+        eliminated_variables,
+        match_ready_variable,
+    )
+    _finalize_occupied_slot_gates(ctx)
+    configure_backup_hud(
+        ctx, occupied_base=COLOR_OCCUPIED_VARIABLE_BASE,
+        eliminated_base=COLOR_ELIMINATED_VARIABLE_BASE,
+    )
+    _stop_eliminated_color_production(ctx)
+    population_xs = configure_population_setup(ctx)
+    birth_wrappers = configure_birth_orders(
+        ctx, identity_base=COLOR_XS_VARIABLE_BASE, identity_tag=XS_IDENTITY_TAG_BASE,
+    )
+    _retire_obsolete_public_loops(ctx)
+    _neutralize_fixed_color_tags(ctx)
+    _sanitize_serialized_labels(ctx)
+    _validate_army_spawn_geometry(ctx)
+    for player, reference_ids in v2_report.new_wall_ids.items():
+        protections = [
+            effect
+            for effect in _unique_trigger(ctx, f"Antidelete P{int(player)}").effects
+            if effect.effect_type == EffectId.DISABLE_OBJECT_DELETION
+            and effect.selected_object_ids
+        ]
+        if not protections:
+            raise RuntimeError(f"missing Antidelete protection for P{int(player)}")
+        protections[-1].selected_object_ids = sorted(
+            set(protections[-1].selected_object_ids) | set(reference_ids)
+        )
+
+    _compact_legacy_trigger_graph(ctx)
+    ctx.add_xs(
+        configure_runtime_conditions(
+            ctx, identity_resource=XS_IDENTITY_RESOURCE, identity_tag=XS_IDENTITY_TAG_BASE,
+        ),
+        label="sparse-lobby runtime conditions",
+    )
+    _assert_variable_ids_are_contiguous(ctx)
+    ctx.add_xs(_render_color_spawn_xs(ctx, population_xs), label="color-aware army spawning")
+    ctx.add_xs(birth_wrappers, label="exact-reference Hero and builder births")
+
+    ctx.log(
+        f"rebuilt from source — {len(ctx.tm.triggers)} triggers, "
+        f"{sum(len(units) for units in ctx.um.units)} units; "
+        f"Excel V2 moved {v2_report.moved_units} objects and changed "
+        f"{v2_report.terrain_changes} terrain squares"
+    )
+
+    configure_mixed_content(ctx)
+    configure_center_hill(ctx)
+    configure_center_control(ctx, spawn_positions=SPAWN_WORLD_POSITIONS)
+    configure_backup_audio(ctx)
+    configure_center_audio(ctx)
+    configure_team_signals(ctx)
+    configure_civilization_leaders(ctx)
+    configure_leader_selection(ctx)
+    _assert_variable_ids_are_contiguous(ctx)

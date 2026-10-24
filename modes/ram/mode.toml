@@ -1,0 +1,194 @@
+[mode]
+id = "ram"
+name = "CBA Hero 4v4: RAM"
+version = "0.9.0"
+description = "4v4 arena battles with center control, reinforcements, hero progression and custom voice announcements, including private team signals."
+authors = []
+tags = ["cba", "hero", "arena", "4v4"]
+
+[scenario]
+# Ascendants is code-defined: no `base` and no `reference`. The Python under
+# scenario/ plus build.py IS the scenario, and dist/*.aoe2scenario is its build
+# product. There is nothing to decompile from and nothing to verify back against,
+# so `aoe2modes verify`/`decompile` do not apply to this mode. The structural
+# check is `aoe2modes audit` on the built file — see docs/ascendants-development.md.
+version = "1.58"
+filename = "CBA Hero 4v4 RAM v{version}"
+
+# Applied before build.py, then overridden by scenario/setup.py. Kept in sync so
+# `aoe2modes info` tells the truth about the mode.
+[map]
+size = 144
+terrain = "GRASS_1"
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "FEUDAL_AGE"
+# Stock fallback; multiplayer population is selected in the lobby for everyone.
+population_cap = 200
+
+# Empty on purpose, and `aoe2modes info` will show no XS for this mode. Ascendants
+# does not bundle .xs files from disk: build.py generates its whole XS runtime inline
+# (`_render_color_spawn_xs`) and hands it to the builder via ctx.add_xs, because the
+# civ/spawn tables that drive it are Python data. The build still lints it with
+# xs-check like any other mode.
+[xs]
+include = []
+scripts = []
+
+# Additional Adrenaline Rush heroes/levels, without its fire-rate multiplier.
+# The base ladder starts at 200 kills, with Harald Hardrada at 800.
+[[hero_progression.extra_tiers]]
+kills = 1500
+hero = "GENGHIS_KHAN"
+interval = 3
+
+[[hero_progression.extra_tiers]]
+kills = 2501
+hero = "GENGHIS_KHAN"
+interval = 2
+attack_bonus = 25
+hp_bonus = 300
+
+[[hero_progression.extra_tiers]]
+kills = 3001
+hero = "GENGHIS_KHAN"
+interval = 5
+attack_bonus = 250
+hp_bonus = 300
+range = 10
+
+# Later 3500/5000 tiers retain SGK250 strength and improve production speed.
+[hero_progression.late_stats]
+attack_bonus = 250
+hp_bonus = 300
+range = 10
+
+# Mixed-content delivery includes an original chime; center rules are below.
+[ram_mod]
+title = "CBA Hero 4v4 RAM"
+sound_name = "ram_startup_v1"
+sound_delay_seconds = 8
+sound_sample_rate = 48000
+sound_note_seconds = 0.20
+sound_gap_seconds = 0.08
+sound_frequencies = [523.25, 659.25, 783.99]
+sound_amplitude = 0.20
+
+[center]
+enabled = true
+payout_seconds = 180
+credit_cap = 25
+# Neutral to full control; reversing an enemy's full control takes twice this.
+capture_seconds = 60
+# Full control to 50/50. Any enemy presence contests, regardless of army size.
+equalize_seconds = 300
+empty_reset_seconds = 300
+reinforcement_seconds = 120
+reinforcement_units = 4
+x1 = 65
+y1 = 65
+x2 = 79
+y2 = 79
+
+# A broad plateau with ordinary engine-generated slopes on all eight approaches.
+[center_hill]
+enabled = true
+plateau_half_width = 10
+rise = 3
+slope_step_width = 3
+approach_width = 5
+
+[backup_audio]
+enabled = true
+sound_prefix = "ram_scorpion_p"
+sound_suffix = "_v3"
+queue_gap_seconds = 1
+# Sound duration is wall time; native timers advance in faster game time.
+audio_game_time_scale = 2
+
+[team_signals]
+enabled = true
+cooldown_seconds = 12
+queue_gap_seconds = 1
+audio_game_time_scale = 2
+pad_x1 = 1
+pad_x2 = 6
+pad_y1 = 15
+pad_y2 = 27
+post_x = 1
+post_y = 16
+column_spacing = 4
+row_spacing = 3
+
+[center_audio]
+enabled = true
+queue_gap_seconds = 1
+status_cooldown_seconds = 12
+audio_game_time_scale = 2
+
+[selection]
+enabled = true
+villager_group = 1
+genghis_army_group = 2
+leader_group = 3
+
+[selection_audio]
+enabled = true
+
+# First conservative balance pass. Preserve each civilization's actual unit,
+# counter matchups, weapons, movement and attack animation.
+[civilization_balance]
+enabled = true
+
+[[civilization_balance.adjustments]]
+civilization = 35
+army_cap = 64
+hit_points_bonus = 8
+reason = "A modest durability and field-strength increase for Lithuanian elite cavalry."
+
+[[civilization_balance.adjustments]]
+civilization = 43
+spawn_seconds = 9
+reason = "Reduce the heavy Centurion replacement rate slightly; retain its native armour and cavalry role."
+
+[[civilization_balance.adjustments]]
+civilization = 61
+army_cap = 72
+spawn_seconds = 9
+reason = "Fast ranged-melee Jarls should not receive the same mass and replacement rate as ordinary infantry."
+
+[civilization_leaders]
+enabled = true
+# A separate per-civilization unit definition keeps every placed leader reference
+# intact, without changing the ordinary hero units unlocked later in the match.
+unit_id = 2750
+
+[civilization_leaders.profiles.infantry]
+hit_points = 450
+attack = 35
+reload_seconds = 2.0
+melee_armour = 3
+pierce_armour = 3
+
+[civilization_leaders.profiles.melee_cavalry]
+hit_points = 420
+attack = 35
+reload_seconds = 2.0
+melee_armour = 3
+pierce_armour = 3
+
+[civilization_leaders.profiles.ranged]
+hit_points = 300
+attack = 25
+reload_seconds = 2.0
+melee_armour = 2
+pierce_armour = 2
+
+[civilization_leaders.profiles.ranged_cavalry]
+hit_points = 300
+attack = 25
+reload_seconds = 2.0
+melee_armour = 2
+pierce_armour = 2

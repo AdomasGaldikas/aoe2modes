@@ -1,0 +1,6 @@
+Vilnius University, Vytautas Magnus University, and Institute of the Lithuanian Language. 2026. Large Lithuanian language speech corpus (LIEPA-3). CLARIN-LT https://hdl.handle.net/20.500.11821/101. Public resampled/punctuated derivative by Digisensus.
+https://huggingface.co/datasets/Digisensus/lithuanian-dialect-speech-liepa-3-100h-punctuated
+CC BY 4.0
+https://clarin-repo.lt/items/0a04648e-ba4e-4e6f-9161-a2d01e8e9fdb/full
+
+Regional reference recording used for synthetic local voice auditions. The anonymous source speaker is not represented as the game's actor or as endorsing it. Regional metadata is not a historical-pronunciation certification.

@@ -1,0 +1,94 @@
+{
+  "service": "Age of Empires Mods",
+  "mod_id": 551448,
+  "url": "https://www.ageofempires.com/mods/details/551448/",
+  "publisher": "Wiorius",
+  "visibility": "Unlisted",
+  "game": "Age of Empires II: Definitive Edition",
+  "title": "CBA Hero 4v4 RAM v0.9.0",
+  "payload_version": "0.9.0",
+  "archive": "RAM-v0.9.0-mixed-content.zip",
+  "archive_sha256": "1023d7b67542622a8c2cd5514ef0c6585e37b45e47b91a4cffe60cc7ce9fc014",
+  "tags": [
+    "Data Mod",
+    "Scenarios",
+    "Sounds",
+    "Speech"
+  ],
+  "discussion_enabled": false,
+  "second_client_download_verified": false,
+  "description": "RAM is a 4v4 arena battle where teamwork and control of the center shape the fight. Hold your ground, build momentum, and call for backup when your team needs it.\n\nIncludes center bonuses, reinforcements, custom voice announcements, and private team signals.\n\nTo play, select RAM as the Data Mod when creating the lobby, then choose the RAM custom scenario.",
+  "previous_release": {
+    "title": "CBA Hero 4v4 RAM v0.8.0",
+    "payload_version": "0.8.0",
+    "archive": "RAM-v0.8.0-mixed-content.zip",
+    "archive_sha256": "277dca68e651fec8dfdda0db686a4f4c548b663b9978e6440378452d81ff3bd5",
+    "service_version": "1.5"
+  },
+  "service_version": "1.7",
+  "published_on": "2026-10-24",
+  "scenario_sha256": "af84b19c47342ba092d6aa3eb96cb5681fd72da3804a24652434e9cfe1e23d5c",
+  "archive_bytes": 73410442,
+  "live_selection_verified": false,
+  "second_client_team_audio_verified": false,
+  "release_history": [
+    {
+      "title": "CBA Hero 4v4 RAM v0.3.0",
+      "payload_version": "0.3.0",
+      "archive": "RAM-v0.3.0-mixed-content.zip",
+      "archive_sha256": "54ad2690aadbe52d1c725b1464ba1bd1eed744acc8b05870391457b44cdca173"
+    },
+    {
+      "title": "CBA Hero 4v4 RAM v0.4.0",
+      "payload_version": "0.4.0",
+      "archive": "RAM-v0.4.0-mixed-content.zip",
+      "archive_sha256": "612ad004166da326bb19a5cea40575f746cdc585f385bad4f388b7baef2eb2bc",
+      "scenario_sha256": "d52fb14c762a0716c012dd3216dd67ecbeb441a48f5e586489fe7970af3256f9",
+      "service_version": "1.2"
+    },
+    {
+      "title": "CBA Hero 4v4 RAM v0.5.0",
+      "payload_version": "0.5.0",
+      "archive": "RAM-v0.5.0-mixed-content.zip",
+      "archive_sha256": "e98fd742647aa5d6edbe3ea5770ea538a1228f204e4c65ed2870f873f0263b1e",
+      "scenario_sha256": "83041796aa79064fc9c052dda34b0cf4c1c9d57b97cdd138171b6969f599af48",
+      "service_version": "1.3"
+    },
+    {
+      "title": "CBA Hero 4v4 RAM v0.6.0",
+      "payload_version": "0.6.0",
+      "archive": "RAM-v0.6.0-mixed-content.zip",
+      "archive_sha256": "7dfe71213368114351ba601401e2d886b386277610ccde804e526f0d210b6b08",
+      "scenario_sha256": "4bbf55afa3d0f39104bc87b2342a272430dc77eb3e596420585ab074e754a038",
+      "service_version": "1.4"
+    },
+    {
+      "title": "CBA Hero 4v4 RAM v0.8.0",
+      "payload_version": "0.8.0",
+      "archive": "RAM-v0.8.0-mixed-content.zip",
+      "archive_sha256": "277dca68e651fec8dfdda0db686a4f4c548b663b9978e6440378452d81ff3bd5",
+      "service_version": "1.5"
+    }
+  ],
+  "live_center_gameplay_verified": false,
+  "audio_style": "Energetic event announcer and civilization-language male military selection replies",
+  "speech_clips": 254,
+  "audio_uses_new_event_names": true,
+  "selection_groups": {
+    "villagers_and_work_forms": 1,
+    "spawned_genghis_armies": 2,
+    "starting_civilization_leaders": 3
+  },
+  "automated_ram_tests_passed": 74,
+  "announcer_speech_clips": 62,
+  "selection_speech_clips": 192,
+  "civilization_leader_count": 62,
+  "leader_reserved_unit_id": 2750,
+  "leader_population_cost": 1,
+  "native_leader_gameplay_verified": false,
+  "strict_audit": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "preview_image_retained": true
+}

@@ -1,0 +1,25 @@
+RAM center, Scorpion Backup and private team announcements
+
+Text: "Player one/two/three/four/five/six/seven/eight called Scorpion backup!"
+Center lines cover exact one-to-twenty-five kill awards, Team 1/2 capture,
+contested/neutral status, and delivered center reinforcements. Exact text for
+every clip is recorded in manifest.json and modes/ram/voice_lines.py.
+Team lines cover each player's Help request, Attack target and Don't feed warning.
+These are newly synthesized clips, not recordings copied from a game or film.
+
+Generation tool: Piper 1.3.0, an open-source GPL-3.0 text-to-speech engine.
+https://github.com/OHF-Voice/piper1-gpl
+The engine and voice weights are build tools only; neither is shipped in RAM.
+
+Voice: en_US-joe-medium from rhasspy/piper-voices (repository metadata: MIT).
+Its published model card lists the Joe recording dataset as CC0:
+https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/joe/medium/MODEL_CARD
+https://github.com/OHF-Voice/voice-datasets
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Style: an original playful game-show announcer, without a celebrity reference.
+Post-processing: FFmpeg with Rubber Band, pitch factor 1.15, brisk 0.90 length
+scale, modest clarity EQ,
+normalized to -18 LUFS/-2 dB true peak, mono 48 kHz signed 16-bit PCM WAV, canonical fmt/data-only RIFF container.
+Exact model/config hashes, synthesis settings, text and output hashes are in
+manifest.json. See modes/ram/generate_backup_audio.py for regeneration.

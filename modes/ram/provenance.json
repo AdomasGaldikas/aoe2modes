@@ -1,0 +1,48 @@
+{
+  "source_mode": "evolution_alpha",
+  "source_name": "CBA Hero 4v4: RA",
+  "source_version": "1.9",
+  "source_commit": "fabc08d028d2fc3e3618cdda7d93d74500854a99",
+  "source_files_sha256": {
+    "birth_orders.py": "bb96b49e9ca5bb194975e7f0e0c8646047eebe451c8db05d13a2244c52a79293",
+    "build.py": "dc9ef97617da148891d1fea9062a8665ee8659b36d723ae290c5f2ced669793c",
+    "hero_progression.py": "c2781d19a4d9eb7ec8da278dfd0dcc3a006361a8b41474c845a139165e1d287b",
+    "mode.toml": "6a0607b7943693d4f12ceb0022eea79817d4e91ac081819ce6fd521456290bf1",
+    "population_setup.py": "423283b8bf035630abf5aa2106e6b6c3f3d95f347a7a3c2a3c3a17ff706e56b9",
+    "runtime_conditions.py": "9b3086b0873c5d71fa9cc3ecbe293e8496523909ffe509f732b41b2095bdb555",
+    "scenario/__init__.py": "ccf973047e705ff703018707f90136b70dce16862870fb657adc887fd23a85d5",
+    "scenario/setup.py": "3c90f64f0903ebba0bae8b9fbd23d03d4a303332f8e7f72bc784433728fe37e5",
+    "scenario/terrain.py": "97e77cb285dc72a5d629ba079afc5b2cbf607dccb0d0ad64cdb75407ccbfc3e1",
+    "scenario/triggers/__init__.py": "aecc603e5068ad8d2321606ee3ca5b8b61d2b50a6987148303a9d8a044ce3a88",
+    "scenario/triggers/part_000.py": "1d303998a5a5877a65631ab744cfb035cf812b233c5c6cc6e584c7e4e8d015f5",
+    "scenario/triggers/part_001.py": "f4be3431c6132f2bccaf53a3f896cb3544813bff7ed7f3f6b69f0c6019b46f11",
+    "scenario/triggers/part_002.py": "7683ae9a311b3ef10ca22728ec3fabc900c8582a4fd1c6680196159272d63816",
+    "scenario/triggers/part_003.py": "bd784b431810cf1e1ad1689315dbf0952263fcbbce0a80c7f3808352fc301d20",
+    "scenario/triggers/part_004.py": "83b4d178db8097db4e4982bf61d253f5673ec03e781a63452f1ff144ddfc19f4",
+    "scenario/triggers/part_005.py": "5f6ae95dedae195591dcc68aadfc1777b19786bee42f68f53025ebc844b07db9",
+    "scenario/triggers/part_006.py": "6509bb7c16c204d589b7dce60a49620a1027ab85ef89d395ceda951aae0863ad",
+    "scenario/triggers/part_007.py": "dd103583e60ae2b9284342853cb8f75159aa2aa7abbc231eac21840a3a343b7b",
+    "scenario/units.py": "7ac7b3a9a2032612b457cbfdc5541feda333f9ab51b48325f1c071c30023085c",
+    "scorpion_backup.py": "a21d73e9b1307cb0e2bc6221c6aa3bdea6df565b32f1512bbd8a0c07d530c315",
+    "team_routes.py": "1f32f71b919152cdfe1bda7bf715e5d50ecdf9e267906e7a4bbb9065577f9c1f",
+    "v2_map.py": "eda816a255dbe736a604d6aee4b9c0ec11d5e232f3ce32ca5ffcf5c6acc75613",
+    "xs-check-185872.xs": "03d5b5b53980642a734fb0b8b5512cd3c273b8277a7d3ba6b2db7719875b982c"
+  },
+  "intentional_changes": [
+    "RAM name/version and victory heading",
+    "One timed startup chime and listening instructions",
+    "RAM v0.2 center control, presence-only escalating Hero credit, bounded civ army reinforcements and visual indicators",
+    "Queued spoken Scorpion Backup announcements, generated with Piper Joe and bundled with source credits",
+    "Mixed-content packaging; unchanged installed game dataset copied only into build output",
+    "RAM v0.2.1: native kill payouts, two team flags with old center flags/fires removed, native all-player speech queue and canonical PCM voice files"
+  ],
+  "normal_ra_messages": {
+    "instructions": "CBA HERO 4v4: RA\r\rHOW TO PLAY\rUnits spawn automatically and march into the arena. Defeat enemy units to unlock stronger heroes. Protect your four Castles and destroy every enemy Castle to win.\r\rTEAMS\rBlue, Red, Green, and Yellow face Teal, Purple, Gray, and Orange. Close any unused slots, but keep at least one occupied color on each side.\r\rTEAM ROUTES\rGuarded rear team routes connect allies through wider sixteen-tile sections. Gate entrances remain narrow. Enemy units entering these routes are killed, even after a teammate is defeated. Use the central battlefield to attack.\r\rPOPULATION\rChoose the shared population limit in the lobby before starting. Armies, Heroes, builders and backup use normal population; full builder pairs and six-Scorpion backup wait for enough free room. No in-game population chooser.\r\rSPAWN CONTROLS\rSheep = Castle army range. Penguin = Hero range. Move each along its own road: farther toward the arena sends new units farther. Snow is the end zone: Sheep on snow = HOLD (new armies stay by your Castles); Penguin on snow = OFF (no new Heroes). The road begins exactly where HOLD/OFF ends. The Penguin's first ON position sends Heroes right in front of your Castles, like Army HOLD. Water keeps each controller on its own track. New waves receive one automatic move order.\r\rWALL WIPE\rDelete the side switch gate to remove your side walls. Front gates/walls and the University gate/enclosure stay. At 200 walls you get a warning; at 220 the wall-limit wipe clears other walls once. Fixed barriers are excluded.\r\rVOTE KICK\rDelete the matching Vote Kick marker to vote against a teammate. Two occupied teammates must vote. Voting is disabled when fewer than three colors remain on that side, and closed slots never count as votes.\r\rCOMBAT HUD\rThe right-side Kills / Deaths / Razings list shows live combat totals for P1 through P8. B = Scorpion Backup: 1 available, A active, 0 used.\r\rSCORPION BACKUP\rMove your Skorpion King to the marked side island to call six Scorpions for 50 seconds. Each player can use this backup once.\r\rResources stay at zero; available units, buildings, upgrades, and repairs are free.\r\rMIRRORED CIVILIZATIONS\rFor exact pairs, select the same civilization explicitly for P1/P5, P2/P6, P3/P7, and P4/P8 in the lobby. The game resolves Mirror before the scenario starts; this map cannot reassign those engine choices.\r\rHERO MILESTONES\r200 Robin Hood | 400 Theodoric | 600 Charles Martel\r800 Harald Hardrada | 1000 Genghis | 1500 faster Genghis\r2000 Super Genghis | 2501 rapid Super Genghis | 3001 SGK250\r3500 faster SGK250 | 5000 dual SGK250. No adrenaline fire-rate multiplier.",
+    "hints": "Defeat enemy units to ascend through eleven hero tiers. Protect all four Castles, move the Sheep to set Castle-army travel, move the Penguin to control Hero production and travel, and use the rear gates to reinforce your allies.",
+    "history": "CBA Hero 4v4: RA v1.9.\rAutomatic armies earn stronger heroes through combat. Guard four Castles, support your allies through the protected team routes, and destroy every enemy Castle.",
+    "loss": "\rDEFEAT\rYour Castles have fallen. Return to the map to watch the battle.",
+    "scouts": "Blue/Red/Green/Yellow face Teal/Purple/Gray/Orange. Close unused slots while keeping both color teams represented. Every territory has equal mirrored terrain and defenses.",
+    "victory": "\rRA VICTORY\rYour team destroyed every enemy Castle."
+  },
+  "normal_ra_gameplay_sha256": "78d335322d8babac9675302bdbe6ba255bf617691f38e95138e9fb02b1b729ce"
+}

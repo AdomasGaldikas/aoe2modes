@@ -1,0 +1,561 @@
+{
+  "wav_container": "Canonical RIFF PCM with fmt and data chunks only; no LIST metadata",
+  "engine": "Piper 1.3.0 (GPL-3.0); generation tool only, not shipped with the mod",
+  "voice": "en_US-joe-medium",
+  "style": "Original playful game-show announcer; brighter pitch and brisk delivery",
+  "model_card": "https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/joe/medium/MODEL_CARD",
+  "dataset_license": "CC0, as stated in the model card",
+  "model_sha256": "58afce0321b8d9c46d7cdf9c16500cc55a793b4220212dba6b70fb788b3baf06",
+  "model_config_sha256": "3d6d5410b3795cb1950595247ef8f06190719e6fdbfa3a2356d8ec368e1aad33",
+  "synthesis": {
+    "length_scale": 0.9,
+    "noise_scale": 0,
+    "noise_w_scale": 0
+  },
+  "ffmpeg_filters": "rubberband=pitch=1.15,highpass=f=100,equalizer=f=2800:t=q:w=0.7:g=2,loudnorm=I=-18:TP=-2:LRA=7,afade=t=in:st=0:d=0.015,apad=pad_dur=0.15,aresample=48000",
+  "clips": {
+    "ram_scorpion_p1_v3.wav": {
+      "kind": "backup",
+      "color": 1,
+      "text": "Player one called Scorpion backup!",
+      "seconds": 2.0540416666666665,
+      "sha256": "8679456400e35c67f846cf6f38ab3a7cee907ec8ea54d87a17090bf5126bdf29",
+      "pcm_sha256": "3e5dbb1bba7665af89d396bcecb66523c3e1007a02a7f0e2dba65c404e9326b2"
+    },
+    "ram_scorpion_p2_v3.wav": {
+      "kind": "backup",
+      "color": 2,
+      "text": "Player two called Scorpion backup!",
+      "seconds": 2.0308125,
+      "sha256": "18aa6c414e2d34f3370b0406cf0bc78d49b26d9d2227267353584f24fca50c4b",
+      "pcm_sha256": "cf4319459fd8400f22941e37e0a0a9d39707f1dc154860bf4277c51bc0fb0b61"
+    },
+    "ram_scorpion_p3_v3.wav": {
+      "kind": "backup",
+      "color": 3,
+      "text": "Player three called Scorpion backup!",
+      "seconds": 2.0772708333333334,
+      "sha256": "3533116b3ed897c71da93d6c6649aa8c0be01b1d6bc715ecb723276c09979ae7",
+      "pcm_sha256": "91307b6355e0565879f516fe1550d90296c9ecc51f4660911be667564464f048"
+    },
+    "ram_scorpion_p4_v3.wav": {
+      "kind": "backup",
+      "color": 4,
+      "text": "Player four called Scorpion backup!",
+      "seconds": 2.146916666666667,
+      "sha256": "921ca3a76d7b01e4bfc9a46410a7df4ce765d68d41bb5d7683c39d966e02868b",
+      "pcm_sha256": "b266262ba7ccd4ef644f31932653f834d0bce05cdf58d4d4bd354209e56e61dd"
+    },
+    "ram_scorpion_p5_v3.wav": {
+      "kind": "backup",
+      "color": 5,
+      "text": "Player five called Scorpion backup!",
+      "seconds": 2.170145833333333,
+      "sha256": "738b23bcbc67592a73c34a311b78f7cc5369842393ae620e5a70ffa778b558e9",
+      "pcm_sha256": "87812cbeacf3cb67a81e0fef22bbd0cb3fd42b2924aa9b9b51e3df561cad234a"
+    },
+    "ram_scorpion_p6_v3.wav": {
+      "kind": "backup",
+      "color": 6,
+      "text": "Player six called Scorpion backup!",
+      "seconds": 2.0540416666666665,
+      "sha256": "45e51fba738f948f9e9782a563af5ba8d59ef61cc1f575c2398c208a02afdfe4",
+      "pcm_sha256": "8fa660cdc1164b80333819cbfa1376f208c43a0ac9d0c08eb970511291e6b3cc"
+    },
+    "ram_scorpion_p7_v3.wav": {
+      "kind": "backup",
+      "color": 7,
+      "text": "Player seven, called Scorpion backup!",
+      "seconds": 2.2281875,
+      "sha256": "fadc3aac0b5133282d24792f19d117efa24283037eced750e25d2775b11985b0",
+      "pcm_sha256": "5aa21e69a677e98b52b0316752dcc6e28f17bcdac4acc5d8e60f08a786e4cc00"
+    },
+    "ram_scorpion_p8_v3.wav": {
+      "kind": "backup",
+      "color": 8,
+      "text": "Player eight called Scorpion backup!",
+      "seconds": 2.1237083333333335,
+      "sha256": "e442ed72bc07635712e0360023cb95fb9a9608559c78b16680c90aeac4fdcbee",
+      "pcm_sha256": "484b0aec6623c29fffe39fb0480ed1d1c57e5a2d3fb704fae7d65c7c63f1a57a"
+    },
+    "ram_center_kills_01_v2.wav": {
+      "kind": "center_kills",
+      "amount": 1,
+      "text": "You earned one bonus kill at the center!",
+      "seconds": 2.170145833333333,
+      "sha256": "3d400bae88b26ae1dff4babee1314fbcf57dd434bfe25a5d5d4bc1b3cd242445",
+      "pcm_sha256": "4ebd1c7681d1c2ee7d411300c26d3e0aef96276b853a508b3774cc91e660c433"
+    },
+    "ram_center_kills_02_v2.wav": {
+      "kind": "center_kills",
+      "amount": 2,
+      "text": "Two extra kills for center control!",
+      "seconds": 2.18175,
+      "sha256": "c1c3b3d9c2714e781384a4ac9d22be551b6ddd6f3a7ab5c4820e6e22b941efb7",
+      "pcm_sha256": "1517bc678c4490429c755fc906c10d17a2e198e447649c91a3a89776117757e9"
+    },
+    "ram_center_kills_03_v2.wav": {
+      "kind": "center_kills",
+      "amount": 3,
+      "text": "You earned three bonus kills at the center!",
+      "seconds": 2.274625,
+      "sha256": "835d447950749d31b780c51e21298df92f2da4e113741e3fe2e0cb45e3050550",
+      "pcm_sha256": "ed4bb255edc2baacf40d49eab52949c8283ec7af249da65f378c4a2cda0c65c8"
+    },
+    "ram_center_kills_04_v2.wav": {
+      "kind": "center_kills",
+      "amount": 4,
+      "text": "You earned four bonus kills at the center!",
+      "seconds": 2.18175,
+      "sha256": "7f2354336d108b97a68cccb3b5d237847866c40387685370f1fb0ec45f0758c5",
+      "pcm_sha256": "d6408b484b109bbec5c40f36df6c95ea7e9061bc18d2806355eb7a91d04cec43"
+    },
+    "ram_center_kills_05_v2.wav": {
+      "kind": "center_kills",
+      "amount": 5,
+      "text": "You earned five bonus kills at the center!",
+      "seconds": 2.274625,
+      "sha256": "1366c046a9e07d28c08d9ae1bbb5c7eb4f21d8e17b98d6219de36e37f229bc0c",
+      "pcm_sha256": "ec12bcbcacc5b6873d260516b76d71ea54cbb8a4f0ff9c5b367b1786dbcb32dd"
+    },
+    "ram_center_kills_06_v2.wav": {
+      "kind": "center_kills",
+      "amount": 6,
+      "text": "You earned six bonus kills at the center!",
+      "seconds": 2.242875,
+      "sha256": "eeb2b3a25aaa9e28238aea8c85654371690c309dccb455146a4eb73d4bfe4664",
+      "pcm_sha256": "5e462de93e153471f31ec6f33c078b899bd34d9db2767d5914e1ccb90272fafc"
+    },
+    "ram_center_kills_07_v2.wav": {
+      "kind": "center_kills",
+      "amount": 7,
+      "text": "You earned seven bonus kills at the center!",
+      "seconds": 2.2978541666666668,
+      "sha256": "f883171642e8a573240e70e165f30a916abdc5d2f8619177f38882f43872063d",
+      "pcm_sha256": "165e1f843206627b491634dde117733113d69d05d82e641ad8ed48fdb62c2f9c"
+    },
+    "ram_center_kills_08_v2.wav": {
+      "kind": "center_kills",
+      "amount": 8,
+      "text": "Eight extra kills for center control!",
+      "seconds": 2.18175,
+      "sha256": "5d7ac2758d5089fa41e1ec4934af7d62701a37a357e44a2fc5d871f0d02940bd",
+      "pcm_sha256": "5b7221567b3cc2d70f4c87ad470fb4b53cc70ed639568836a67b0a2580e847cc"
+    },
+    "ram_center_kills_09_v2.wav": {
+      "kind": "center_kills",
+      "amount": 9,
+      "text": "You earned nine bonus kills at the center!",
+      "seconds": 2.146916666666667,
+      "sha256": "a181af3d62a5f54b6e7c70473e9f4a608c1c266f71efca6388d7514d1d3d60d0",
+      "pcm_sha256": "685b2988fbfcb86c197978d791cb315875f610a2b8011c04a53a1197d1f95193"
+    },
+    "ram_center_kills_10_v2.wav": {
+      "kind": "center_kills",
+      "amount": 10,
+      "text": "You earned ten bonus kills at the center!",
+      "seconds": 2.1933541666666665,
+      "sha256": "cfabb83d46a8a123bd8aeadedc3253e7b9d23578f9fc250aa52ec3f6b733618c",
+      "pcm_sha256": "b832b027ed21699940036578db5e6b107288587cd35209881359e7a2a3d75d4c"
+    },
+    "ram_center_kills_11_v2.wav": {
+      "kind": "center_kills",
+      "amount": 11,
+      "text": "You earned eleven bonus kills at the center!",
+      "seconds": 2.309458333333333,
+      "sha256": "926e9937abdc5fb0b8b9aeab19601a796e06b85fffc7170717c36fd0be43c42d",
+      "pcm_sha256": "ac4af98f5d3a9611ea72fb9b9316a1cbfff6ba06d273733dfc53d6d976427b9b"
+    },
+    "ram_center_kills_12_v2.wav": {
+      "kind": "center_kills",
+      "amount": 12,
+      "text": "You earned twelve bonus kills at the center!",
+      "seconds": 2.242875,
+      "sha256": "6eff1a8aae457e8147ace973452a8907aad35ff9259169efcc8df68f304dcdc0",
+      "pcm_sha256": "eeb79d7656b94b033d8ecf54fc42eeba958de9885dd2e70f1dfe9d40b2388025"
+    },
+    "ram_center_kills_13_v2.wav": {
+      "kind": "center_kills",
+      "amount": 13,
+      "text": "You earned thirteen bonus kills at the center!",
+      "seconds": 2.4023333333333334,
+      "sha256": "53c5757148b6eb7ca61d692d5b2a42d0b4d1a835fc25a24d545a05bbd26cf29e",
+      "pcm_sha256": "f04f259702f246322e9881fdc8d8e8077f4f7c19cae3ab1b76a9cab51a7fe4eb"
+    },
+    "ram_center_kills_14_v2.wav": {
+      "kind": "center_kills",
+      "amount": 14,
+      "text": "You earned fourteen bonus kills at the center!",
+      "seconds": 2.3558958333333333,
+      "sha256": "c12492ea5b547efd17406edf118cb4e8da63ec97a13b8b0ba28ccf220668db7f",
+      "pcm_sha256": "818dfabad7ff42c3235ca281c8b7654c7338446ada31462f21384c07c603f9d3"
+    },
+    "ram_center_kills_15_v2.wav": {
+      "kind": "center_kills",
+      "amount": 15,
+      "text": "You earned fifteen bonus kills at the center!",
+      "seconds": 2.3326875,
+      "sha256": "c09b670c8b9b9502a4e40c2ff2f0ea7d1740b66084204b6068535949ebe907db",
+      "pcm_sha256": "afa9e19adce03145dbec6933abd45243a6a1aa85fb15ec65f4e8241b224adae7"
+    },
+    "ram_center_kills_16_v2.wav": {
+      "kind": "center_kills",
+      "amount": 16,
+      "text": "You earned sixteen bonus kills at the center!",
+      "seconds": 2.4371666666666667,
+      "sha256": "1f28fa4ab9ba7cd96c14e4664d891e4bb02d684b6c1e710f9b357701b3c1d9f6",
+      "pcm_sha256": "516f565b568cd395b46e4a50a1fe3f371f72d5373fb747aa8c1bfaf06ae09869"
+    },
+    "ram_center_kills_17_v2.wav": {
+      "kind": "center_kills",
+      "amount": 17,
+      "text": "You earned seventeen bonus kills at the center!",
+      "seconds": 2.5532708333333334,
+      "sha256": "076cbea5ef037107683ba5e7be37a80a542743490dc510a00a996d6d6b7fbb54",
+      "pcm_sha256": "a83a4a545f6fd32aaa54a4dab265f2466815df75d5ec02c61be861cb1cb6d58c"
+    },
+    "ram_center_kills_18_v2.wav": {
+      "kind": "center_kills",
+      "amount": 18,
+      "text": "You earned eighteen bonus kills at the center!",
+      "seconds": 2.344291666666667,
+      "sha256": "237311c8bf7c580d9cd6375bbcbbd766e2dc506ad1c7d7c4630ff8e1fa6c958a",
+      "pcm_sha256": "d60ad147a29cbfc8cb8c22b81ae1dc3c54af59a3178d7a22f770d7e30e50bd48"
+    },
+    "ram_center_kills_19_v2.wav": {
+      "kind": "center_kills",
+      "amount": 19,
+      "text": "You earned nineteen bonus kills at the center!",
+      "seconds": 2.3558958333333333,
+      "sha256": "14ad3387f652c4a8d417f9587b00bb24e858d46fae6cbb0ea1d6a26152c41a18",
+      "pcm_sha256": "4bb2d35cd6a6bffa57000493640e68dcf8e028a88f96c5c031de1358b6fc145a"
+    },
+    "ram_center_kills_20_v2.wav": {
+      "kind": "center_kills",
+      "amount": 20,
+      "text": "You earned twenty bonus kills at the center!",
+      "seconds": 2.28625,
+      "sha256": "6e7398609e7a2f41b79e94258bc8346710b2dc285f7ccbb902dcf3c6cc2c4160",
+      "pcm_sha256": "f64b23a2fa2d47159a3a866305bf5bf573dd98b580598a3efe69f0e8e3001547"
+    },
+    "ram_center_kills_21_v2.wav": {
+      "kind": "center_kills",
+      "amount": 21,
+      "text": "You earned twenty one bonus kills at the center!",
+      "seconds": 2.5881041666666667,
+      "sha256": "c44b819f521e1be4e19c6e5093a1dab05cce5631699c52bf04c847f257b680b5",
+      "pcm_sha256": "50fe212b97aedfca2fef9410d8056ad5dd1c0e3f35921bf853cd9f296f23f747"
+    },
+    "ram_center_kills_22_v2.wav": {
+      "kind": "center_kills",
+      "amount": 22,
+      "text": "You earned twenty two bonus kills at the center!",
+      "seconds": 2.51,
+      "sha256": "6f69fc7a455ef479d88b72f41ec3b84fc766a0470f732fa6935be888cad29ed0",
+      "pcm_sha256": "2d56bbf669cd59bdd1d974e4bb8e12a923b75820affb51b886f7894f4efc35f6"
+    },
+    "ram_center_kills_23_v2.wav": {
+      "kind": "center_kills",
+      "amount": 23,
+      "text": "You earned twenty three bonus kills at the center!",
+      "seconds": 2.646145833333333,
+      "sha256": "fec4f1facc5425cfaa536447c908c8389e5931804ec2f0ce05c4e137c525fa27",
+      "pcm_sha256": "e47be4b23648183af159ee38b382faea85bde75824307c458f2e80b5fef976a3"
+    },
+    "ram_center_kills_24_v2.wav": {
+      "kind": "center_kills",
+      "amount": 24,
+      "text": "You earned twenty four bonus kills at the center!",
+      "seconds": 2.5532708333333334,
+      "sha256": "2e200d7df460e442473a8767a4746a0bdd43b232d563cd1fd99c3888543eb07d",
+      "pcm_sha256": "0162f3116ab7880239d9feaba3c276a0dea5e1a1c57ee2604f4dbf1b2bb2ec57"
+    },
+    "ram_center_kills_25_v2.wav": {
+      "kind": "center_kills",
+      "amount": 25,
+      "text": "You earned twenty five bonus kills at the center!",
+      "seconds": 2.6113125,
+      "sha256": "e2cc31b92f01e10fb6fdb066318963e2f509f0768567d2ef0cca42afd4292e1d",
+      "pcm_sha256": "3edac84492a57b8544141099ccff78d015e3fe4265f81722425c1734c7cf4072"
+    },
+    "ram_center_reinforcements_v2.wav": {
+      "kind": "center_reinforcements",
+      "text": "Center reinforcements have arrived!",
+      "seconds": 2.1004791666666667,
+      "sha256": "6e7cc89d1bbebaa0f0d50e9c147639df665cd239ebd7cf969db38b261236c1d0",
+      "pcm_sha256": "ff628add7e0a55a9c1a889dde168783a448fd1d43c3e70aa93c8aaab064c63bb"
+    },
+    "ram_center_team1_v2.wav": {
+      "kind": "center_status",
+      "state": 1,
+      "text": "Team number one controls the center!",
+      "seconds": 2.0772708333333334,
+      "sha256": "e0c8d1d21dcb451335856be8df04ae3e3e4da83f2a2f23e1a0633d615c6dcb10",
+      "pcm_sha256": "979d140d862e62c00ecdeef8cb7e4a04b0ab34d0bc4d63841bf2466902108c2d"
+    },
+    "ram_center_team2_v2.wav": {
+      "kind": "center_status",
+      "state": 2,
+      "text": "Team number two controls the center!",
+      "seconds": 2.0308125,
+      "sha256": "4fe05752c566f15fc64c2a2117cc779f2f4ebd55225a8606de59409be9c706ec",
+      "pcm_sha256": "5bdf60fc41ba48fe53ab153e1d277741d32fe0a3cefd4f265e5e3de465c4fde5"
+    },
+    "ram_center_contested_v2.wav": {
+      "kind": "center_status",
+      "state": 3,
+      "text": "The center is contested!",
+      "seconds": 1.6128541666666667,
+      "sha256": "40a628dd3b691133969783bba40ae9659e5d75bb8b2807b6b89f0bb0025cb492",
+      "pcm_sha256": "a36fed8862984c2ee6266000af8a820632ac399d42072ce879b754688ec60dec"
+    },
+    "ram_center_neutral_v2.wav": {
+      "kind": "center_status",
+      "state": 4,
+      "text": "The center is neutral.",
+      "seconds": 1.3806666666666667,
+      "sha256": "e78730237dd87ffdd81b04847a2ae3335c0471a10b35fcc6883965893c2809cd",
+      "pcm_sha256": "757851299e861f9b6363282a2f2b573a8b6ce07e3904de9f5f3907840febea17"
+    },
+    "ram_team_help_p1_v2.wav": {
+      "kind": "team_signal",
+      "signal": "help",
+      "target": 1,
+      "event": 1,
+      "text": "Player number one needs help!",
+      "seconds": 1.5664166666666666,
+      "sha256": "333b660c0df6dffd1fb7bbc377d6920e6589cd95f19d159a3131ebfa1e58d44c",
+      "pcm_sha256": "be62b3dbd1d58dd3d150a7b0f1a89623c0e17bf65288140f3bad0be6e0dc2b68"
+    },
+    "ram_team_attack_p1_v2.wav": {
+      "kind": "team_signal",
+      "signal": "attack",
+      "target": 1,
+      "event": 9,
+      "text": "Let's attack player number one!",
+      "seconds": 1.7405625,
+      "sha256": "8adb225c075272e2b637f0dc8718997bf27805bd0deec75e37171455bba2c852",
+      "pcm_sha256": "debfdf6f985c4161d5746314aa91bf9e3cf22854e0d7bdd892d8f905dac0691d"
+    },
+    "ram_team_feed_p1_v2.wav": {
+      "kind": "team_signal",
+      "signal": "feed",
+      "target": 1,
+      "event": 17,
+      "text": "Player number one. Stop giving away kills!",
+      "seconds": 2.564875,
+      "sha256": "921e638c60a9bb9788a664106f5470397289ac6a4ec600290136030cba432ad3",
+      "pcm_sha256": "27bc2b68597694e42867d3b623f18bb88c72bca76084c44911c674e5701d82a1"
+    },
+    "ram_team_help_p2_v2.wav": {
+      "kind": "team_signal",
+      "signal": "help",
+      "target": 2,
+      "event": 2,
+      "text": "Player number two needs help!",
+      "seconds": 1.5896458333333334,
+      "sha256": "2a06a74452e63e152c2f62c82828b68239301c52bd8a7f679e2e6330ac3a9b8a",
+      "pcm_sha256": "5e09a48cb433d17bceb20cc6749f478b0dda847cbfb010739e9718066cd5ca58"
+    },
+    "ram_team_attack_p2_v2.wav": {
+      "kind": "team_signal",
+      "signal": "attack",
+      "target": 2,
+      "event": 10,
+      "text": "Let's attack player number two!",
+      "seconds": 1.8682916666666667,
+      "sha256": "4c6b09dff8225d0f8d65dd20b8822c0336a4b11a2c0be1313d7692811a4bbf7a",
+      "pcm_sha256": "23126e292784e4a680b1b4b26585156a70b1b9c250e42d81b4b882a0e6703eb8"
+    },
+    "ram_team_feed_p2_v2.wav": {
+      "kind": "team_signal",
+      "signal": "feed",
+      "target": 2,
+      "event": 18,
+      "text": "Player number two. Stop giving away kills!",
+      "seconds": 2.646145833333333,
+      "sha256": "70cf750c2adf6c8008f5dc2e5bc346f4d6fcd57e660fd518e008b3bac4a6040e",
+      "pcm_sha256": "0a8da2c5e6f39ae05a23e631a740b6dd72a7159ac58b29a9886f208ff1edfab0"
+    },
+    "ram_team_help_p3_v2.wav": {
+      "kind": "team_signal",
+      "signal": "help",
+      "target": 3,
+      "event": 3,
+      "text": "Player number three needs help!",
+      "seconds": 1.60125,
+      "sha256": "2f0f1bd07e238e23063f707a1855f65e7c1f544b199f23778cec0d760cffc4be",
+      "pcm_sha256": "870b1cf60a5b35535eb0a51e8b74a19785489bc3711ba755a487263bfdc49c8b"
+    },
+    "ram_team_attack_p3_v2.wav": {
+      "kind": "team_signal",
+      "signal": "attack",
+      "target": 3,
+      "event": 11,
+      "text": "Let's attack player number three!",
+      "seconds": 1.8102291666666666,
+      "sha256": "af91c45d50d8c2de7203031bf1b2222511a9a17119ef2798b558d0e99fb5c388",
+      "pcm_sha256": "30b22f73d0e7a48d2ff3d8feb87593f69074f9da6761f38913fc170b470789f4"
+    },
+    "ram_team_feed_p3_v2.wav": {
+      "kind": "team_signal",
+      "signal": "feed",
+      "target": 3,
+      "event": 19,
+      "text": "Player number three. Stop giving away kills!",
+      "seconds": 2.634541666666667,
+      "sha256": "c95665feab49f6c69802431e1aa59d180d0ae88abede64701e5a1b063d347d4a",
+      "pcm_sha256": "0cbbb6c6b3491862bfd3c9f1ff49654870ea53f0521d1f91dfde82bc3badfba3"
+    },
+    "ram_team_help_p4_v2.wav": {
+      "kind": "team_signal",
+      "signal": "help",
+      "target": 4,
+      "event": 4,
+      "text": "Player number four needs help!",
+      "seconds": 1.6825208333333332,
+      "sha256": "3622282ec32e8fa546139e34f827ea05c54f078c871097f0169f40c4e9f8b94d",
+      "pcm_sha256": "713b4a8f39b9c320233d7e2869e5345f2f1001790805835886a9857f674fb5b6"
+    },
+    "ram_team_attack_p4_v2.wav": {
+      "kind": "team_signal",
+      "signal": "attack",
+      "target": 4,
+      "event": 12,
+      "text": "Let's attack player number four!",
+      "seconds": 1.8798958333333333,
+      "sha256": "078810f61d3c33daf3bcc11710c6d291ef5edf9aeffb4d1975074162d57a0003",
+      "pcm_sha256": "3ea448d160e933d5b5f0e394e49f30501961e5355d1ad48c8b473464ac66f73c"
+    },
+    "ram_team_feed_p4_v2.wav": {
+      "kind": "team_signal",
+      "signal": "feed",
+      "target": 4,
+      "event": 20,
+      "text": "Player number four. Stop giving away kills!",
+      "seconds": 2.65775,
+      "sha256": "02aac5252b24cda008f6266b75d3a31562c93d0b2f70f694cc9e7d23fb41a0f8",
+      "pcm_sha256": "3cf1303ffaa91038dc74f233f0f0b46134fc70d54e4417731d049dc97e487318"
+    },
+    "ram_team_help_p5_v2.wav": {
+      "kind": "team_signal",
+      "signal": "help",
+      "target": 5,
+      "event": 5,
+      "text": "Player number five needs help!",
+      "seconds": 1.6709166666666666,
+      "sha256": "23ac671435fd4c543454fe26b972238bfe5c4400bd4bb7681bfcedbae743898c",
+      "pcm_sha256": "60b12a33c630e62a9bb0b62c1b7960ef8a909d69c223df6adf9e36f2b5484776"
+    },
+    "ram_team_attack_p5_v2.wav": {
+      "kind": "team_signal",
+      "signal": "attack",
+      "target": 5,
+      "event": 13,
+      "text": "Let's attack player number five!",
+      "seconds": 1.9611666666666667,
+      "sha256": "89df94221d398105e6c94d795c3bcd510d1e5c738fc1002070d783e15ebdd25b",
+      "pcm_sha256": "3cc868365369ba339020a5ce9387e1880af1517a22fd09716f9c974ce98df94a"
+    },
+    "ram_team_feed_p5_v2.wav": {
+      "kind": "team_signal",
+      "signal": "feed",
+      "target": 5,
+      "event": 21,
+      "text": "Player number five. Stop giving away kills!",
+      "seconds": 2.7390208333333335,
+      "sha256": "bd4eac5c18008edcb4a75c2c64b1600e6cca9e9578b45dbdfb97f250bae71cac",
+      "pcm_sha256": "0085586946fa02f1b28bd1c98eb9260e530c407791964cd85ff5f87d131bf2cf"
+    },
+    "ram_team_help_p6_v2.wav": {
+      "kind": "team_signal",
+      "signal": "help",
+      "target": 6,
+      "event": 6,
+      "text": "Player number six needs help!",
+      "seconds": 1.70575,
+      "sha256": "fc6be6ca148e64e1183627e84ef1994496a7472adb5276f1dec0ee72633fe0b4",
+      "pcm_sha256": "5b16c02110384f52720741c4f96b734defad292c82461c945e1abc6a5a801d2b"
+    },
+    "ram_team_attack_p6_v2.wav": {
+      "kind": "team_signal",
+      "signal": "attack",
+      "target": 6,
+      "event": 14,
+      "text": "Let's attack player number six!",
+      "seconds": 1.8915,
+      "sha256": "c94e7176963fc61a7bbd930cf3e3ff8ae8fc1b53a469d454add0802f2d62040a",
+      "pcm_sha256": "5438adc851709e117a1abd64b97afc11d0cfacfba5034d83b0b9020da26ed7a3"
+    },
+    "ram_team_feed_p6_v2.wav": {
+      "kind": "team_signal",
+      "signal": "feed",
+      "target": 6,
+      "event": 22,
+      "text": "Player number six. Stop giving away kills!",
+      "seconds": 2.634541666666667,
+      "sha256": "e89918c10fc4116e0bd2d21b93687e8d3bdf072b8816c8a9df71e81e91020dc4",
+      "pcm_sha256": "acf59ccba454009b780e59e8d07102b89d56b7ce48104a4130b1a71c9d07556a"
+    },
+    "ram_team_help_p7_v2.wav": {
+      "kind": "team_signal",
+      "signal": "help",
+      "target": 7,
+      "event": 7,
+      "text": "Player number seven needs help!",
+      "seconds": 1.6709166666666666,
+      "sha256": "ba3246e4bfac10706117ffe062bd8db5e31f1d44f97e136a9054291e01dd55ef",
+      "pcm_sha256": "a5ced95da843f893d09ede7d85b371ebc7697d7c1a51fb54381236ecf29109f1"
+    },
+    "ram_team_attack_p7_v2.wav": {
+      "kind": "team_signal",
+      "signal": "attack",
+      "target": 7,
+      "event": 15,
+      "text": "Let's attack player number seven!",
+      "seconds": 1.8798958333333333,
+      "sha256": "345ebb30214d40121b7c65eca0465f3e8dc0a7c4cfad6bc7692049507f9c72a4",
+      "pcm_sha256": "36a92cd7a5ff04f49d8f681190e990b6a537832c89c7b381c7d0b557c677dde7"
+    },
+    "ram_team_feed_p7_v2.wav": {
+      "kind": "team_signal",
+      "signal": "feed",
+      "target": 7,
+      "event": 23,
+      "text": "Player number seven. Stop giving away kills!",
+      "seconds": 2.669375,
+      "sha256": "58f119ca68b54fcd19f8270e28783cb53283783a358b13f5c691b5c8052f0c6d",
+      "pcm_sha256": "b3c9a312f217208a27d185e59109e68d0da025420e89ac1023e7c35a14290255"
+    },
+    "ram_team_help_p8_v2.wav": {
+      "kind": "team_signal",
+      "signal": "help",
+      "target": 8,
+      "event": 8,
+      "text": "Player number eight needs help!",
+      "seconds": 1.6593125,
+      "sha256": "23400a9016942773343f1cc3ee71b5ac35eec762f2d45bab8aef9f4b5494d1ae",
+      "pcm_sha256": "0012ef50d8e2d1f655d8036886cf03ecc12af1084537828def227e44ed7ccf64"
+    },
+    "ram_team_attack_p8_v2.wav": {
+      "kind": "team_signal",
+      "signal": "attack",
+      "target": 8,
+      "event": 16,
+      "text": "Let's attack player number eight!",
+      "seconds": 1.798625,
+      "sha256": "29a6596af12a9d1bb178e300fd680896c925c0c8a510fabce51b8cfc88944ad8",
+      "pcm_sha256": "200c273005a28c2c0218f64c825438a0d3de3b66e5d4ccbae05814aeefd1e0a8"
+    },
+    "ram_team_feed_p8_v2.wav": {
+      "kind": "team_signal",
+      "signal": "feed",
+      "target": 8,
+      "event": 24,
+      "text": "Player number eight. Stop giving away kills!",
+      "seconds": 2.634541666666667,
+      "sha256": "4dd162bbbb1133b5e5900b619341ddae4ed104be591902d486e97aa38e772a10",
+      "pcm_sha256": "ffb313ed157150c865fa8bcb8b0a2e676f04d6aba2ca5c48ae374b8850cac02e"
+    }
+  }
+}
