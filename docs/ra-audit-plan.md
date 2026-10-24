@@ -33,9 +33,13 @@ frequency remains 95.25% of v0.10.0; health delivery proxy remains 97.68%.
 - [ ] User fresh-match balance/voice/leader acceptance, including early armies,
   later researched armies, hero transitions, center fights and mixed teams.
 
-The user explicitly requested leaving the test package ready. Do not install,
-operate the game, or publish the candidate as accepted. The full target table and
-all screening limits are in `docs/ram-balance-v0.11.0.md`.
+The user initially requested leaving the test package ready, then explicitly
+requested a full update and closed DE. Version 0.11.0 is now installed as the
+subscribed RAM entry (online ID 551448 preserved) with its matching scenario, and
+published to the same unlisted listing at service revision 1.8. The existing
+preview is retained; old installed files are backed up outside the mod scan.
+Native gameplay acceptance remains open. The full target table and screening
+limits are in `docs/ram-balance-v0.11.0.md`.
 
 ## 2026-10-24 RAM v0.10.0 candidate after live v0.9.0 feedback
 

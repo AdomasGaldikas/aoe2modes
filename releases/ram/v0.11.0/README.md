@@ -1,7 +1,10 @@
 # RAM v0.11.0 whole-roster balance test
 
 Use the matching RAM v0.11.0 scenario and Data Mod in a fresh match.
-This package is prepared for manual testing, without installation or publication.
+Installed and published to the existing unlisted listing on 2026-10-24 at the
+user's request. Fresh-match gameplay acceptance remains pending.
+
+[RAM Data Mod](https://www.ageofempires.com/mods/details/551448/)
 
 - 57 civilizations receive revised role-specific targets; all 62 are covered.
 - 26 armies gain additional health; the Lithuanian durability bonus is retained.

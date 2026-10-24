@@ -170,4 +170,6 @@ teams, all-ranged teams, cavalry raids into counter teams, swarms into splash,
 and durable siege screens into mobile anti-siege. Check early build-up, researched
 armies and hero unlocks; observe center occupancy and whether fragile roles feed
 heroes before they contribute. Test representative newer native abilities too.
-The user chose to receive a test package: this pass is not installed or published.
+The user subsequently requested a full update: v0.11.0 is installed and published
+to the existing unlisted listing 551448 (service revision 1.8). Native gameplay
+acceptance remains pending.
