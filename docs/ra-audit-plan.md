@@ -6,6 +6,37 @@ Goal: audit the maintained RA source and serialized scenario, fix confirmed logi
 and map-design defects, validate the changes, and push a reproducible candidate.
 Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
+## 2026-10-24 RAM v0.11.0 whole-roster balance candidate
+
+The user rejected limiting the balance pass to the reported problem civilizations.
+The new candidate reviews team roles across all 62 and changes 57, including
+modest new health increases for 26 ordinary armies and the retained Lithuanian
+bonus. Native attack/armour classes,
+weapons, movement, abilities, kill progression, center mechanics and growing
+ranged starting leaders remain intact. Theoretical global four-Castle birth
+frequency remains 95.25% of v0.10.0; health delivery proxy remains 97.68%.
+
+- [x] Correct the comparison's missing Armenian pierce-armour bypass and retain
+  explicit inventories of native auras, slows, damage/attack-speed growth and
+  melee-blocking armour. Avoid interpreting encoded charge fields as raw DPS.
+- [x] Give every civilization equal paired-lineup exposure, report separate
+  1v1/2v2/4v4 results and health/kill-feed metrics, and exercise eight cap/contact/
+  starting-field sensitivities. Keep mixed/unfavorable proxy results visible.
+- [x] Preserve native population admission; resource40 military-cap weighting
+  remains unverified, with body/population interpretations compared separately.
+- [x] Complete tests, Ruff, embedded XS validation, strict written audit and
+  full-package hash checks for the new version: 96 passed, strict audit 0/0,
+  all 910 payload files verified; all 893 audio files and DAT match v0.10.0.
+- [x] Inventory written-file native/class-wide stat scopes and all embedded XS
+  stat writes: no native wave stat overwrite, exactly 27 guarded additive HP
+  mutations, no wave HP SET/multiply overrides.
+- [ ] User fresh-match balance/voice/leader acceptance, including early armies,
+  later researched armies, hero transitions, center fights and mixed teams.
+
+The user explicitly requested leaving the test package ready. Do not install,
+operate the game, or publish the candidate as accepted. The full target table and
+all screening limits are in `docs/ram-balance-v0.11.0.md`.
+
 ## 2026-10-24 RAM v0.10.0 candidate after live v0.9.0 feedback
 
 The user reported missing Lithuanian speech, weak Lithuanian armies, and dominant

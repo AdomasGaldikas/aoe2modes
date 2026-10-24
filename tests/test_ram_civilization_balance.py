@@ -103,9 +103,42 @@ def test_release_reports_are_applied_without_changing_native_unit_identity():
     assert rules[9] == (556, 56, 14)
     assert rules[14] == (771, 48, 12)
     assert rules[35] == (1236, 72, 9)
-    assert rules[43] == (1792, 60, 9)
-    assert rules[61] == (2709, 72, 9)
+    assert rules[43] == (1792, 56, 10)
+    assert rules[61] == (2709, 64, 10)
     assert all(rules[civ][0] == baseline[civ][0] for civ in baseline)
     source = b.render_civilization_balance(ctx, baseline)
     assert "cAddAttribute, 1236, 0, 18, worldPlayer" in source
-    assert source.count("xsEffectAmount") == 1
+    import tomllib
+
+    rows = tomllib.loads((ctx.mode_dir / "mode.toml").read_text())["civilization_balance"]["adjustments"]
+    assert source.count("xsEffectAmount") == sum(row.get("hit_points_bonus", 0) > 0 for row in rows)
+
+
+
+def test_whole_roster_report_matches_shipped_targets_and_preserves_pace():
+    import json
+    import tomllib
+
+    mode = Path(__file__).resolve().parents[1] / "modes/ram"
+    rows = tomllib.loads((mode / "mode.toml").read_text())["civilization_balance"]["adjustments"]
+    review = json.loads((mode / "assets/balance/review.json").read_text())
+    inputs = json.loads((mode / "assets/balance/screen-inputs.json").read_text())
+    targets = {row["civilization"]: row for row in rows}
+    assert set(targets) == set(range(1, 63))
+    before_rate = after_rate = 0
+    for row in review["rules"]:
+        target = targets[row["civilization"]]
+        for field in ("army_cap", "spawn_seconds", "reason"):
+            assert target[field] == row[field]
+        assert target.get("hit_points_bonus", 0) == row["hit_points_bonus"]
+        assert row["role"] and row["native_mechanics_note"]
+        native = inputs["units"][str(row["civilization"])]
+        assert row["unit_id"] == native["unit_id"]
+        # Small flat additions support survival without turning glass units into tanks.
+        assert 0 <= row["hit_points_bonus"] <= 0.20 * native["hp"]
+        before_rate += 4 / row["previous"]["spawn_seconds"]
+        after_rate += 4 / row["spawn_seconds"]
+    assert 0.95 <= after_rate / before_rate <= 1.05
+    assert inputs["units"]["44"]["ignore_armour"] is True
+    assert inputs["units"]["35"]["ignore_armour"] is True
+    assert inputs["units"]["29"]["population_per_body"] == 0.5

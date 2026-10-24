@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-24",
+  "version": "0.11.0",
+  "status": "manual playtest candidate; not installed or published",
+  "automated_tests": {
+    "passed": 96,
+    "elapsed_seconds": 245.25
+  },
+  "ruff": "passed",
+  "embedded_xs_validation": "passed",
+  "strict_written_audit": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "scenario_sha256": "52242a4fe554e578b7b5a941629860569ef664b4c8d023cf5b4020dcbcc2c13f",
+  "package": {
+    "sha256": "5f09fcc0466d038311cc8405ee30f41f0bdeba52c5fcf90d05bbaa79cf6570f3",
+    "files": 910,
+    "all_zip_crc_sha256_and_directory_files": "passed",
+    "unchanged_previous_audio_files": 893,
+    "unchanged_previous_dat": true,
+    "base_game_dat_unchanged": true
+  },
+  "roster": {
+    "civilizations": 62,
+    "changed_from_0_10": 57,
+    "new_durability_increases": 26,
+    "retained_lithuanian_durability_bonus": true,
+    "birth_frequency_ratio": 0.9525478586055515
+  },
+  "native_acceptance": {
+    "balance_and_fun": "awaiting user matches; screening is not win-rate evidence",
+    "voices_and_leaders": "fresh-match acceptance still required"
+  },
+  "installation": "not performed, per user request",
+  "publication": "not performed",
+  "written_wave_stat_scope_audit": {
+    "native_stat_overwrites_of_wave_types_or_broad_classes": 0,
+    "embedded_owner_civ_guarded_additive_wave_hp_mutations": 27,
+    "wave_hp_set_or_multiply_overrides": 0,
+    "note": "Static written-file scope check; native playtesting remains required."
+  }
+}

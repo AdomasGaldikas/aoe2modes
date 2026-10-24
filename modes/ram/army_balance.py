@@ -19,6 +19,15 @@ def _numeric_keys(unit):
     result = deepcopy(unit)
     for field in ("attack", "armour"):
         result[field] = {int(k): v for k, v in result[field].items()}
+    result.setdefault("population_per_body", 1.0)
+    # Bit 1 is native armour bypass on Leitis and Composite Bowmen. Explicit
+    # IDs retain correct screening when older measured inputs lack this byte.
+    result.setdefault(
+        "ignore_base_armour",
+        bool(result.get("ignore_armour"))
+        or bool(result.get("break_off_combat", 0) & 1)
+        or result.get("unit_id") in (1236, 1802),
+    )
     return result
 
 
@@ -106,7 +115,12 @@ def hit_damage(attacker, defender):
         if kind not in defender["armour"]:
             continue
         armour = defender["armour"][kind]
-        if attacker.get("ignore_armour") and kind == 4:
+        if kind in (3, 4) and (
+            attacker.get("ignore_base_armour")
+            or attacker.get("ignore_armour")
+            or bool(attacker.get("break_off_combat", 0) & 1)
+            or attacker.get("unit_id") in (1236, 1802)
+        ):
             armour = 0
         damage += max(0.0, attack - armour)
     return max(1.0, damage)
@@ -199,22 +213,60 @@ def with_rules(units, rules):
     return result
 
 
-def simulate_teams(left, right, seconds=180, step=0.5, full_start=False, frontage=24):
-    """Fractional-cohort attrition with simultaneous damage and replacements.
+def unit_limit(unit, cap_basis="bodies"):
+    """Convert the configured cap for an explicitly chosen sensitivity scenario.
 
-    Both armies approach from 12 tiles. Melee has finite frontage; ranged units
-    behind surviving allied melee retain firing opportunities. This is deliberately
-    a screening proxy with no native pathfinding or perfect target micro.
+    Native MilitaryPopulation/resource-40 accounting is not inferred from DAT
+    population storage. The default is body-count caps; population weighting is
+    a separate sensitivity calculation, never a runtime rule or asserted fact.
     """
-    if not left or not right or step <= 0 or seconds <= 0:
-        raise ValueError("Two nonempty teams and positive simulation timing required")
+    if cap_basis not in {"bodies", "population"}:
+        raise ValueError("cap_basis must be bodies or population")
+    population = unit.get("population_per_body", 1.0)
+    if not isinstance(population, (int, float)) or not math.isfinite(population) or population <= 0:
+        raise ValueError("population_per_body must be finite and positive")
+    return float(unit["cap"]) / (population if cap_basis == "population" else 1.0)
+
+
+def simulate_teams(
+    left,
+    right,
+    seconds=180,
+    step=0.5,
+    full_start=False,
+    frontage=24,
+    cap_basis="bodies",
+    contact_mode="frontal",
+):
+    """Simultaneous cohort attrition, explicit frontage and kill-feed accounting.
+
+    Fresh build-up starts with zero ordinary units; full-field starts at each
+    configured body limit. Replacements approximate four surviving Castles as a
+    continuous stream, rather than native four-body batches. Contact mode and cap
+    basis are independent scenario choices, not claims about engine geometry.
+    """
+    if not left or not right or step <= 0 or seconds <= 0 or frontage <= 0:
+        raise ValueError("Two nonempty teams and positive simulation timing/frontage required")
+    if contact_mode not in {"frontal", "wide"}:
+        raise ValueError("contact_mode must be frontal or wide")
     teams = [list(left), list(right)]
-    populations = [[float(u["cap"] if full_start else min(u["cap"], 12)) for u in team] for team in teams]
-    initial = [
-        sum(n * u["hp"] for n, u in zip(nums, team, strict=True))
-        for nums, team in zip(populations, teams, strict=True)
+    limits = [[unit_limit(u, cap_basis) for u in team] for team in teams]
+    populations = [[limit if full_start else 0.0 for limit in side] for side in limits]
+    budgets = [
+        sum(limit * u["hp"] for limit, u in zip(side, team, strict=True))
+        for side, team in zip(limits, teams, strict=True)
     ]
-    kills = [0.0, 0.0]
+    dps = [
+        [
+            [
+                tuple(damage_per_second(attacker, defender, screened) for screened in (False, True))
+                for defender in teams[1 - side]
+            ]
+            for attacker in team
+        ]
+        for side, team in enumerate(teams)
+    ]
+    kills, destroyed_hp, births = [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]
     for tick in range(math.ceil(seconds / step)):
         t = tick * step
         losses = [[0.0 for _ in team] for team in teams]
@@ -229,8 +281,12 @@ def simulate_teams(left, right, seconds=180, step=0.5, full_start=False, frontag
                 continue
             enemy_speed = sum(u["speed"] * n for _, u, n in targets) / sum(n for _, _, n in targets)
             melee_total = sum(populations[side][i] for i, u in enumerate(teams[side]) if u["range"] < 2)
-            # Wider engagements emerge as combat unfolds, bounded by the map's routes.
-            contacts = frontage * max(1, len(teams[side]) ** 0.5) * min(1.8, 1 + t / 90)
+            contacts = (
+                frontage
+                * (2 if contact_mode == "wide" else 1)
+                * max(1, len(teams[side]) ** 0.5)
+                * min(1.8, 1 + t / 90)
+            )
             for i, unit in enumerate(teams[side]):
                 count = populations[side][i]
                 if count <= 0.001:
@@ -245,77 +301,182 @@ def simulate_teams(left, right, seconds=180, step=0.5, full_start=False, frontag
                     front = [(j, u, n) for j, u, n in targets if u["range"] < 2]
                     if front:
                         target_pool = front
-                # Attack the enemy frontage, distributed by presence, not an
-                # omniscient selection of the most profitable counter target.
                 total = sum(n for _, _, n in target_pool)
-                screened = ranged and melee_total > 1
+                screened = int(ranged and melee_total > 1)
                 for j, defender, amount in target_pool:
-                    dealt = active * damage_per_second(unit, defender, screened) * amount / total * step
+                    dealt = active * dps[side][i][j][screened] * amount / total * step
                     losses[enemy][j] += dealt / defender["hp"]
         for side in (0, 1):
             for i, unit in enumerate(teams[side]):
                 died = min(populations[side][i], losses[side][i])
                 kills[1 - side] += died
-                populations[side][i] = min(
-                    unit["cap"], max(0.0, populations[side][i] - died) + 4 / unit["seconds"] * step
-                )
+                destroyed_hp[1 - side] += died * unit["hp"]
+                survivors = max(0.0, populations[side][i] - died)
+                born = min(max(0.0, limits[side][i] - survivors), 4 / unit["seconds"] * step)
+                births[side] += born
+                populations[side][i] = survivors + born
     remaining = [
-        sum(n * u["hp"] for n, u in zip(nums, team, strict=True))
-        for nums, team in zip(populations, teams, strict=True)
+        sum(n * u["hp"] for n, u in zip(side, team, strict=True))
+        for side, team in zip(populations, teams, strict=True)
     ]
-    # Signed health advantage normalized by the larger initial team budget.
-    advantage = (remaining[0] - remaining[1]) / max(1.0, max(initial))
+    fractions = [hp / max(1.0, budget) for hp, budget in zip(remaining, budgets, strict=True)]
+    kill_sum = sum(kills)
     return {
-        "advantage": advantage,
+        "advantage": (remaining[0] - remaining[1]) / max(1.0, max(budgets)),
+        "normalized_hp_advantage": fractions[0] - fractions[1],
         "remaining_hp": remaining,
+        "remaining_hp_fraction": fractions,
+        "full_field_hp_budget": budgets,
         "kills": kills,
+        # Every ordinary death gives one native kill regardless of body HP.
+        "killfeed_advantage": (kills[0] - kills[1]) / max(1.0, kill_sum),
+        "enemy_hero_kills_fed": kills[::-1],
+        "hp_destroyed": destroyed_hp,
+        "hp_per_kill": [hp / n if n > 0 else 0.0 for hp, n in zip(destroyed_hp, kills, strict=True)],
+        "hp_trade_ratio": (destroyed_hp[0] + 1) / (destroyed_hp[1] + 1),
+        "kill_trade_ratio": (kills[0] + 1) / (kills[1] + 1),
+        "births": births,
         "remaining_units": populations,
+        "body_limits": limits,
         "seconds": seconds,
+        "cap_basis": cap_basis,
+        "contact_mode": contact_mode,
+        "full_start": full_start,
     }
 
 
-def mixed_team_screen(units, draws=128, seed=816, team_sizes=(1, 2, 4)):
-    """Reproducible distinct-lineup trials including mixed ranged/melee teams."""
+def mixed_team_screen(
+    units,
+    draws=128,
+    seed=816,
+    team_sizes=(1, 2, 4),
+    *,
+    cap_basis="bodies",
+    contact_mode="frontal",
+    full_start=False,
+    seconds=90,
+):
+    """Equal-exposure paired rounds with separate 1v1, 2v2 and 4v4 reports.
+
+    Each shuffled cyclic round uses every civilization in every lineup position;
+    every trial has its side-swapped partner. A full round can exceed requested
+    draws, rather than silently dropping civilizations or giving uneven samples.
+    These are lineup results, not isolated causal effects of individual civs.
+    """
+    if type(draws) is not int or draws < 1:
+        raise ValueError("draws must be a positive integer")
     rng = random.Random(seed)
+    units = {civ: _numeric_keys(unit) for civ, unit in units.items()}
     civs = sorted(units)
-    trials = []
-    contributions = {civ: [] for civ in civs}
+    trials, by_size = [], {}
+    all_scores = {civ: [] for civ in civs}
+    all_feed = {civ: [] for civ in civs}
     for size in team_sizes:
-        for _ in range(draws):
-            selected = rng.sample(civs, min(len(civs), size * 2))
-            if len(selected) < size * 2:
-                continue
-            a, b = selected[:size], selected[size:]
-            outcome = simulate_teams([units[c] for c in a], [units[c] for c in b], seconds=90)
-            value = max(-1.0, min(1.0, outcome["advantage"]))
-            for c in a:
-                contributions[c].append(value)
-            for c in b:
-                contributions[c].append(-value)
-            trials.append({"left": a, "right": b, "advantage": value})
+        if type(size) is not int or size < 1:
+            raise ValueError("Team sizes must be positive integers")
+        if len(civs) < size * 2:
+            continue
+        rounds = math.ceil(draws / (2 * len(civs)))
+        scores = {civ: [] for civ in civs}
+        feeds = {civ: [] for civ in civs}
+        positions = {civ: [0] * (size * 2) for civ in civs}
+        size_trials = []
+        for _ in range(rounds):
+            order = rng.sample(civs, len(civs))
+            ring = order + order
+            for start in range(len(civs)):
+                selected = ring[start : start + size * 2]
+                for swapped in (False, True):
+                    a, b = selected[:size], selected[size:]
+                    if swapped:
+                        a, b = b, a
+                    outcome = simulate_teams(
+                        [units[c] for c in a],
+                        [units[c] for c in b],
+                        seconds=seconds,
+                        cap_basis=cap_basis,
+                        contact_mode=contact_mode,
+                        full_start=full_start,
+                    )
+                    value = outcome["normalized_hp_advantage"]
+                    feed = outcome["killfeed_advantage"]
+                    for position, civ in enumerate(a + b):
+                        sign = 1 if position < size else -1
+                        scores[civ].append(sign * value)
+                        feeds[civ].append(sign * feed)
+                        all_scores[civ].append(sign * value)
+                        all_feed[civ].append(sign * feed)
+                        positions[civ][position] += 1
+                    trial = {
+                        "left": a,
+                        "right": b,
+                        "advantage": outcome["advantage"],
+                        "normalized_hp_advantage": value,
+                        "killfeed_advantage": feed,
+                        "hp_trade_ratio": outcome["hp_trade_ratio"],
+                        "kill_trade_ratio": outcome["kill_trade_ratio"],
+                        "kills": outcome["kills"],
+                        "hp_destroyed": outcome["hp_destroyed"],
+                    }
+                    size_trials.append(trial)
+                    trials.append(trial)
+        counts = {c: len(v) for c, v in scores.items()}
+        if len(set(counts.values())) != 1 or any(len(set(v)) != 1 for v in positions.values()):
+            raise RuntimeError("Unbalanced paired-round civilization exposure")
+        by_size[str(size)] = {
+            "paired_rounds": rounds,
+            "trial_count": len(size_trials),
+            "sample_count": counts,
+            "lineup_position_counts": positions,
+            "mean_contribution": {c: sum(v) / len(v) for c, v in scores.items()},
+            "mean_killfeed_advantage": {c: sum(v) / len(v) for c, v in feeds.items()},
+            "trials": size_trials,
+        }
     return {
         "seed": seed,
+        "requested_draws_per_team_size": draws,
         "trials": trials,
-        "mean_contribution": {c: sum(v) / len(v) if v else 0 for c, v in contributions.items()},
-        "sample_count": {c: len(v) for c, v in contributions.items()},
+        "by_team_size": by_size,
+        "score_definition": "Own-field HP fraction; paired lineup effect, not native win rate.",
+        "cap_basis": cap_basis,
+        "contact_mode": contact_mode,
+        "full_start": full_start,
+        "mean_contribution": {c: sum(v) / len(v) if v else 0 for c, v in all_scores.items()},
+        "mean_killfeed_advantage": {c: sum(v) / len(v) if v else 0 for c, v in all_feed.items()},
+        "sample_count": {c: len(v) for c, v in all_scores.items()},
     }
 
 
-def review_saved_inputs(inputs, review, draws=64, seed=816):
-    """Reproduce mixed-team screens from compact checked-in measured inputs."""
+def review_saved_inputs(
+    inputs, review, draws=64, seed=816, *, cap_basis="bodies", contact_mode="frontal", full_start=False
+):
+    """Reproduce explicit combat/kill-feed sensitivity scenarios from saved inputs."""
     if inputs.get("schema_version") != 1 or review.get("schema_version") != 1:
         raise ValueError("Unsupported saved balance review schema")
     units = {int(cid): _numeric_keys(row) for cid, row in inputs["units"].items()}
     rules = {row["civilization"]: row for row in review["rules"]}
     previous = {row["civilization"]: row["previous"] for row in review["rules"]}
+    options = {
+        "draws": draws,
+        "seed": seed,
+        "cap_basis": cap_basis,
+        "contact_mode": contact_mode,
+        "full_start": full_start,
+    }
     return {
         "schema_version": 1,
-        "purpose": "Reproducible screening only; native balance and win rates remain unverified.",
+        "purpose": "Combat and kill-feed screening only; native balance/win rates remain unverified.",
         "native_dataset_sha256": inputs["native_dataset_sha256"],
         "civilization_count": len(units),
-        "assumptions": review["screen_assumptions"],
-        "before": mixed_team_screen(with_rules(units, previous), draws=draws, seed=seed),
-        "after": mixed_team_screen(with_rules(units, rules), draws=draws, seed=seed),
+        "assumptions": review["screen_assumptions"]
+        + [
+            "Native military-cap accounting is unverified; body/population bases are separate sensitivities.",
+            "Fresh starts contain no ordinary units; replacements approximate four-Castle waves.",
+            "Paired rounds equalize lineup positions; opponent coverage and human micro are not exhaustive.",
+            "Deaths feed equal native kills; the screen does not change progression or add a kill ledger.",
+        ],
+        "before": mixed_team_screen(with_rules(units, previous), **options),
+        "after": mixed_team_screen(with_rules(units, rules), **options),
     }
 
 
@@ -329,16 +490,24 @@ def main():
     parser.add_argument("--review", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--draws", type=int, default=64)
+    parser.add_argument("--cap-basis", choices=("bodies", "population"), default="bodies")
+    parser.add_argument("--contacts", choices=("frontal", "wide"), default="frontal")
+    parser.add_argument("--start", choices=("fresh", "full"), default="fresh")
     args = parser.parse_args()
     if args.draws < 1:
         parser.error("--draws must be positive")
     report = review_saved_inputs(
-        json.loads(args.inputs.read_text()), json.loads(args.review.read_text()), draws=args.draws
+        json.loads(args.inputs.read_text()),
+        json.loads(args.review.read_text()),
+        draws=args.draws,
+        cap_basis=args.cap_basis,
+        contact_mode=args.contacts,
+        full_start=args.start == "full",
     )
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(
         f"Reviewed {report['civilization_count']} civilizations; "
-        f"{len(report['before']['trials'])} distinct-lineup trials per version. "
+        f"{len(report['before']['trials'])} paired-lineup trials per version. "
         "Native gameplay acceptance remains open."
     )
 

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "native_dataset_sha256": "4aa2f0a719e88e5f1502517eddb27c669aeb40c2fe9d8c4f3eec7751c01e7baa",
   "native_dataset_version": "VER 8.9",
-  "source": "Measured installed empires2_x2_p1.dat, native automatic bonuses and explicit source startup grants.",
+  "source": "Measured installed empires2_x2_p1.dat, native automatic bonuses and explicit source startup grants. Native population storage, combat-ability byte and body sizes cross-checked for v0.11.0.",
   "units": {
     "1": {
       "civilization": 1,
@@ -44,7 +44,15 @@
       "tech_tree": 254,
       "team_bonus": 399,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "2": {
       "civilization": 2,
@@ -88,7 +96,15 @@
       "tech_tree": 258,
       "team_bonus": 403,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "3": {
       "civilization": 3,
@@ -151,6 +167,14 @@
           "c": 100,
           "d": 0.9375
         }
+      ],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
       ]
     },
     "4": {
@@ -195,7 +219,15 @@
       "tech_tree": 262,
       "team_bonus": 404,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "5": {
       "civilization": 5,
@@ -242,7 +274,15 @@
       "applied_technology_ids": [
         341
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "6": {
       "civilization": 6,
@@ -289,7 +329,15 @@
         47,
         437
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "7": {
       "civilization": 7,
@@ -336,7 +384,15 @@
       "tech_tree": 256,
       "team_bonus": 400,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "8": {
       "civilization": 8,
@@ -384,7 +440,15 @@
       "tech_tree": 260,
       "team_bonus": 408,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "9": {
       "civilization": 9,
@@ -434,7 +498,15 @@
       "applied_technology_ids": [
         312
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "10": {
       "civilization": 10,
@@ -478,7 +550,15 @@
       "applied_technology_ids": [
         301
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "11": {
       "civilization": 11,
@@ -524,7 +604,15 @@
       "applied_technology_ids": [
         416
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "12": {
       "civilization": 12,
@@ -574,7 +662,15 @@
       "applied_technology_ids": [
         394
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "13": {
       "civilization": 13,
@@ -621,7 +717,15 @@
         393,
         898
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "14": {
       "civilization": 14,
@@ -666,7 +770,15 @@
       "tech_tree": 446,
       "team_bonus": 490,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "15": {
       "civilization": 15,
@@ -711,7 +823,15 @@
       "tech_tree": 447,
       "team_bonus": 488,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "16": {
       "civilization": 16,
@@ -754,7 +874,15 @@
       "tech_tree": 449,
       "team_bonus": 489,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "17": {
       "civilization": 17,
@@ -803,7 +931,15 @@
       "tech_tree": 448,
       "team_bonus": 484,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "18": {
       "civilization": 18,
@@ -858,6 +994,14 @@
           "c": 104,
           "d": 0.5
         }
+      ],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.44999998807907104,
+        0.44999998807907104
       ]
     },
     "19": {
@@ -904,7 +1048,15 @@
       "applied_technology_ids": [
         901
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "20": {
       "civilization": 20,
@@ -948,7 +1100,15 @@
       "tech_tree": 1,
       "team_bonus": 2,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "21": {
       "civilization": 21,
@@ -1017,6 +1177,14 @@
           "c": 103,
           "d": 0.800000011920929
         }
+      ],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
       ]
     },
     "22": {
@@ -1063,7 +1231,15 @@
       "tech_tree": 5,
       "team_bonus": 6,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "23": {
       "civilization": 23,
@@ -1109,7 +1285,15 @@
       "tech_tree": 7,
       "team_bonus": 9,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "24": {
       "civilization": 24,
@@ -1163,6 +1347,14 @@
           "c": 105,
           "d": 0.800000011920929
         }
+      ],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 18,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.4000000059604645,
+        0.4000000059604645
       ]
     },
     "25": {
@@ -1208,7 +1400,15 @@
       "tech_tree": 48,
       "team_bonus": 49,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "26": {
       "civilization": 26,
@@ -1252,7 +1452,15 @@
       "tech_tree": 42,
       "team_bonus": 43,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "27": {
       "civilization": 27,
@@ -1303,7 +1511,15 @@
       "tech_tree": 37,
       "team_bonus": 38,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "28": {
       "civilization": 28,
@@ -1354,7 +1570,15 @@
       "tech_tree": 646,
       "team_bonus": 647,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 2,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "29": {
       "civilization": 29,
@@ -1398,7 +1622,15 @@
       "tech_tree": 648,
       "team_bonus": 649,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 0.5,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Half-population storage is native; military-cap resource40 weighting is unverified.",
+      "collision_size": [
+        0.15000000596046448,
+        0.15000000596046448
+      ]
     },
     "30": {
       "civilization": 30,
@@ -1445,7 +1677,15 @@
       "tech_tree": 650,
       "team_bonus": 651,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "31": {
       "civilization": 31,
@@ -1490,7 +1730,15 @@
       "applied_technology_ids": [
         632
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "32": {
       "civilization": 32,
@@ -1536,7 +1784,15 @@
       "tech_tree": 706,
       "team_bonus": 707,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Konnik dismount adds a second infantry body; storage flag32 is special.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "33": {
       "civilization": 33,
@@ -1582,7 +1838,15 @@
       "tech_tree": 708,
       "team_bonus": 709,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "34": {
       "civilization": 34,
@@ -1639,6 +1903,14 @@
           "c": 0,
           "d": 1233.0
         }
+      ],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 16,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
       ]
     },
     "35": {
@@ -1694,6 +1966,14 @@
           "c": 0,
           "d": 1236.0
         }
+      ],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 1,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
       ]
     },
     "36": {
@@ -1740,7 +2020,15 @@
       "tech_tree": 782,
       "team_bonus": 783,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "37": {
       "civilization": 37,
@@ -1793,6 +2081,14 @@
           "c": 24,
           "d": 0.4000000059604645
         }
+      ],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
       ]
     },
     "38": {
@@ -1837,7 +2133,15 @@
       "tech_tree": 801,
       "team_bonus": 802,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 4,
+      "native_mechanics_note": "Armour stripping amplifies allied damage.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "39": {
       "civilization": 39,
@@ -1880,7 +2184,15 @@
       "tech_tree": 803,
       "team_bonus": 804,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 18,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.44999998807907104,
+        0.44999998807907104
+      ]
     },
     "40": {
       "civilization": 40,
@@ -1924,7 +2236,15 @@
       "tech_tree": 838,
       "team_bonus": 839,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "41": {
       "civilization": 41,
@@ -1971,7 +2291,15 @@
       "tech_tree": 840,
       "team_bonus": 841,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "42": {
       "civilization": 42,
@@ -2016,7 +2344,15 @@
       "tech_tree": 842,
       "team_bonus": 843,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "43": {
       "civilization": 43,
@@ -2061,7 +2397,15 @@
       "tech_tree": 890,
       "team_bonus": 891,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 32,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "44": {
       "civilization": 44,
@@ -2099,11 +2443,19 @@
       "charge_type": 0,
       "class": 0,
       "collision": 0.20000000298023224,
-      "ignore_armour": false,
+      "ignore_armour": true,
       "tech_tree": 925,
       "team_bonus": 926,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 1,
+      "native_mechanics_note": "Combat ability bit1: arrows ignore armour.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "45": {
       "civilization": 45,
@@ -2149,7 +2501,15 @@
       "tech_tree": 927,
       "team_bonus": 928,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 96,
+      "native_mechanics_note": "Nearby-unit attack stacking.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "46": {
       "civilization": 46,
@@ -2195,7 +2555,15 @@
       "tech_tree": 1101,
       "team_bonus": 1102,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "47": {
       "civilization": 47,
@@ -2239,7 +2607,15 @@
       "tech_tree": 1117,
       "team_bonus": 1118,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 32,
+      "native_mechanics_note": "Strategos allied-unit aura.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "48": {
       "civilization": 48,
@@ -2283,7 +2659,15 @@
       "tech_tree": 1129,
       "team_bonus": 1130,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 96,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "49": {
       "civilization": 49,
@@ -2328,7 +2712,15 @@
       "tech_tree": 1028,
       "team_bonus": 1029,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 128,
+      "native_mechanics_note": "Native White Feather Guard attacks slow targets.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "50": {
       "civilization": 50,
@@ -2372,7 +2764,15 @@
       "tech_tree": 1030,
       "team_bonus": 1031,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native long-range fire effects; charge fields are encoded.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "51": {
       "civilization": 51,
@@ -2418,7 +2818,15 @@
       "tech_tree": 1026,
       "team_bonus": 1027,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native Tiger Cavalry gains health and attack from kills.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "52": {
       "civilization": 52,
@@ -2466,7 +2874,15 @@
       "applied_technology_ids": [
         994
       ],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Durable armour blocks melee attacks; not an extra life.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "53": {
       "civilization": 53,
@@ -2510,7 +2926,15 @@
       "tech_tree": 988,
       "team_bonus": 989,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 128,
+      "native_mechanics_note": "Native lasting damage.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "54": {
       "civilization": 54,
@@ -2555,7 +2979,15 @@
       "tech_tree": 1218,
       "team_bonus": 1219,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "55": {
       "civilization": 55,
@@ -2598,7 +3030,15 @@
       "tech_tree": 1246,
       "team_bonus": 1247,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "56": {
       "civilization": 56,
@@ -2641,7 +3081,15 @@
       "tech_tree": 1256,
       "team_bonus": 1257,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 96,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "57": {
       "civilization": 57,
@@ -2686,7 +3134,15 @@
       "tech_tree": 1360,
       "team_bonus": 1357,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 128,
+      "native_mechanics_note": "Native attack speed ramps during continuous combat.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "58": {
       "civilization": 58,
@@ -2735,7 +3191,15 @@
       "tech_tree": 1361,
       "team_bonus": 1358,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native slow/snare enables allied focus fire.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "59": {
       "civilization": 59,
@@ -2778,7 +3242,15 @@
       "tech_tree": 1362,
       "team_bonus": 1359,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "60": {
       "civilization": 60,
@@ -2822,7 +3294,15 @@
       "tech_tree": 1458,
       "team_bonus": 1455,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 16,
+      "native_mechanics_note": "Native opening javelin.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     },
     "61": {
       "civilization": 61,
@@ -2868,7 +3348,15 @@
       "tech_tree": 1459,
       "team_bonus": 1456,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 0,
+      "native_mechanics_note": "Native weapons, counters and abilities retained; simplified screen omits some engine mechanics.",
+      "collision_size": [
+        0.25,
+        0.25
+      ]
     },
     "62": {
       "civilization": 62,
@@ -2914,7 +3402,19 @@
       "tech_tree": 1460,
       "team_bonus": 1457,
       "applied_technology_ids": [],
-      "unsupported_combat_effects": []
+      "unsupported_combat_effects": [],
+      "population_per_body": 1.0,
+      "military_cap_basis": "unverified",
+      "combat_ability": 16,
+      "native_mechanics_note": "Native torch against buildings/ships; not generic charge damage.",
+      "collision_size": [
+        0.20000000298023224,
+        0.20000000298023224
+      ]
     }
-  }
+  },
+  "limitations": [
+    "Resource40 military-cap weighting is not established by resource4/11 population storage.",
+    "Native ability byte values beyond verified armour-ignore bit1 are inventoried, not simulated generically."
+  ]
 }

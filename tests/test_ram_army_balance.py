@@ -100,7 +100,7 @@ def test_mixed_team_trials_are_reproducible_and_use_distinct_lineups():
     }
     first = a.mixed_team_screen(units, draws=4, team_sizes=(1, 2))
     assert first == a.mixed_team_screen(units, draws=4, team_sizes=(1, 2))
-    assert len(first["trials"]) == 8
+    assert len(first["trials"]) == 16
     for trial in first["trials"]:
         assert set(trial["left"]).isdisjoint(trial["right"])
     trial = next(t for t in first["trials"] if len(t["left"]) == 2)
@@ -142,3 +142,76 @@ def test_all_civilization_rules_are_complete_and_bounded_without_changing_unit_i
         assert updated[cid]["range"] == units[cid]["range"]
     with pytest.raises(ValueError, match="every civilization"):
         a.with_rules(units, {1: rules[1]})
+
+
+def test_composite_bowman_bypasses_pierce_armour_from_native_id_or_mechanics_bit():
+    archer = unit(unit_id=1802, attack={3: 4}, range=4)
+    heavy = unit(armour={4: 8, 3: 9})
+    assert a.hit_damage(archer, heavy) == 4
+    explicit = unit(attack={3: 7}, range=5, break_off_combat=1)
+    assert a.hit_damage(explicit, heavy) == 7
+    ordinary = unit(attack={3: 7}, range=5)
+    assert a.hit_damage(ordinary, heavy) == 1
+
+
+def test_half_population_caps_are_explicit_sensitivity_choices_not_engine_claims():
+    karambit = unit(cap=60, population_per_body=0.5)
+    assert a.unit_limit(karambit) == 60
+    assert a.unit_limit(karambit, "population") == 120
+    defaults = unit(cap=60)
+    assert a.unit_limit(defaults, "population") == 60
+    full_body = a.simulate_teams([karambit], [defaults], seconds=1, full_start=True)
+    full_population = a.simulate_teams(
+        [karambit], [defaults], seconds=1, full_start=True, cap_basis="population"
+    )
+    assert full_body["body_limits"][0] == [60]
+    assert full_population["body_limits"][0] == [120]
+    assert full_population["cap_basis"] == "population"
+    with pytest.raises(ValueError, match="finite and positive"):
+        a.unit_limit(unit(population_per_body=0))
+
+
+def test_paired_rounds_give_each_civ_equal_exposure_in_every_lineup_position():
+    units = {i: unit(hp=40 + i * 10, range=4 if i % 2 else 0) for i in range(1, 10)}
+    report = a.mixed_team_screen(units, draws=19, team_sizes=(1, 2, 4))
+    assert set(report["by_team_size"]) == {"1", "2", "4"}
+    for size, section in report["by_team_size"].items():
+        assert len(set(section["sample_count"].values())) == 1
+        expected = section["paired_rounds"] * 4 * int(size)
+        assert set(section["sample_count"].values()) == {expected}
+        assert all(len(set(v)) == 1 for v in section["lineup_position_counts"].values())
+        trials = section["trials"]
+        for first, second in zip(trials[::2], trials[1::2], strict=True):
+            assert first["left"] == second["right"]
+            assert first["right"] == second["left"]
+            assert first["normalized_hp_advantage"] == pytest.approx(-second["normalized_hp_advantage"])
+            assert first["killfeed_advantage"] == pytest.approx(-second["killfeed_advantage"])
+
+
+def test_fresh_build_up_and_full_field_are_distinct_scenarios():
+    ordinary = unit()
+    fresh = a.simulate_teams([ordinary], [ordinary], seconds=1)
+    full = a.simulate_teams([ordinary], [ordinary], seconds=1, full_start=True)
+    assert fresh["remaining_units"][0][0] == pytest.approx(0.4)
+    assert full["remaining_units"][0][0] == 60
+    assert fresh["kills"] == full["kills"] == [0, 0]
+    assert fresh["remaining_hp_fraction"][0] < full["remaining_hp_fraction"][0]
+
+
+def test_wide_contacts_allow_melee_to_use_more_of_its_existing_field_force():
+    melee = unit(hp=100, attack={4: 10}, cap=100)
+    ranged = unit(hp=40, attack={3: 6}, range=5, cap=100)
+    frontal = a.simulate_teams([melee], [ranged], seconds=30, full_start=True, frontage=8)
+    wide = a.simulate_teams([melee], [ranged], seconds=30, full_start=True, frontage=8, contact_mode="wide")
+    assert wide["normalized_hp_advantage"] > frontal["normalized_hp_advantage"]
+
+
+def test_equal_hp_trades_can_feed_unequal_native_hero_progress():
+    small = unit(hp=50, attack={4: 5}, cap=40, seconds=100)
+    large = unit(hp=100, attack={4: 10}, cap=20, seconds=100)
+    outcome = a.simulate_teams([small], [large], seconds=15, full_start=True, frontage=100)
+    assert outcome["kills"][1] > outcome["kills"][0] * 1.5
+    assert outcome["hp_per_kill"] == pytest.approx([100, 50])
+    assert outcome["hp_trade_ratio"] == pytest.approx(1, abs=0.08)
+    assert outcome["kill_trade_ratio"] < 0.65
+    assert outcome["enemy_hero_kills_fed"] == outcome["kills"][::-1]

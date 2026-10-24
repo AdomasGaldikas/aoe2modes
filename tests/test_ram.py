@@ -157,10 +157,20 @@ def test_ram_civilization_balance_is_embedded_in_the_delivered_xs(ram):
     config = tomllib.loads((ram[0].directory / "mode.toml").read_text())
     rows = config["civilization_balance"]["adjustments"]
     assert {row["civilization"] for row in rows} == set(range(1, 63))
+    unit_ids = {row["civilization"]: row["unit_id"] for row in json.loads(
+        (ram[0].directory / "assets/balance/review.json").read_text(),
+    )["rules"]}
     for row in rows:
         civ = row["civilization"]
         assert f"xsArraySetInt(gCbaCapByCiv, {civ}, {row['army_cap']});" in source
         assert f"xsArraySetInt(gCbaIntervalByCiv, {civ}, {row['spawn_seconds']});" in source
+        if row.get("hit_points_bonus", 0):
+            assert f"if (xsGetPlayerCivilization(worldPlayer) == {civ})" in source
+            expected = (
+                f"xsEffectAmount(cAddAttribute, {unit_ids[civ]}, 0, "
+                f"{row['hit_points_bonus']}, worldPlayer);"
+            )
+            assert source.count(expected) == 1
     assert "xsArraySetInt(gCbaCapByCiv, 35, 72);" in source
     assert "xsArraySetInt(gCbaIntervalByCiv, 35, 9);" in source
     assert "xsArraySetInt(gCbaCapByCiv, 14, 48);" in source

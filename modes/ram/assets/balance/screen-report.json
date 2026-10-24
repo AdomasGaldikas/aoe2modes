@@ -1,4760 +1,4095 @@
 {
   "schema_version": 1,
-  "purpose": "Reproducible screening only; native balance and win rates remain unverified.",
+  "purpose": "Combat and kill-feed screening only; native balance/win rates remain unverified.",
   "native_dataset_sha256": "4aa2f0a719e88e5f1502517eddb27c669aeb40c2fe9d8c4f3eec7751c01e7baa",
   "civilization_count": 62,
   "assumptions": [
-    "Native Feudal-age automatically reachable bonuses and explicit Chinese/Turk startup grants are inventoried.",
-    "Armour and attack bonus classes, Leitis melee-armour bypass, ordinary accuracy, reduced secondary projectile damage, simple melee frontage and finite range lead-in are screened.",
-    "Mixed-team screening includes distinct 1v1, 2v2 and 4v4 lineups with simultaneous damage and four-Castle replacements.",
-    "Native team bonuses, manually researched upgrades, hero tiers, Castle fire, micro, terrain/pathfinding, dismounts, armour stripping, reflection, most new charge/ability types and perfect kiting are not reproduced.",
-    "Where simplified screen disagrees with live gameplay, live evidence takes priority; Spanish/Saracen corrections and Lithuanian strengthening are explicit empirical decisions.",
-    "Newer and special-mechanic civilizations retain deployed pacing pending native playtests; all 62 have explicit reviewed decisions."
+    "Native Castle-wave unit IDs, damage/armour classes, speed, range, projectiles, abilities and counters remain intact.",
+    "Flat HP additions improve fragile-body durability; replacement/cap decisions preserve distinct army roles.",
+    "Per-kill hero progression is unchanged; death feeding is a design consideration rather than a new score ledger.",
+    "Overall four-Castle maximum birth frequency remains within five percent of v0.10.0.",
+    "Native half-population storage is measured; resource40 military-cap weighting is tested as both body and weighted-cap sensitivity, not asserted.",
+    "Paired deterministic screening is a stress test; it omits full native AI, kiting, terrain, aura/special mechanics and later researched upgrades.",
+    "No engine playback, multiplayer delivery or equal-win-rate claim follows from automated checks.",
+    "Native military-cap accounting is unverified; body/population bases are separate sensitivities.",
+    "Fresh starts contain no ordinary units; replacements approximate four-Castle waves.",
+    "Paired rounds equalize lineup positions; opponent coverage and human micro are not exhaustive.",
+    "Deaths feed equal native kills; the screen does not change progression or add a kill ledger."
   ],
   "before": {
     "seed": 816,
-    "trials": [
-      {
-        "left": [
-          11
-        ],
-        "right": [
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          7
-        ],
-        "right": [
-          58
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          27
-        ],
-        "right": [
-          31
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          6
-        ],
-        "right": [
-          4
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          58
-        ],
-        "right": [
-          20
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          51
-        ],
-        "right": [
-          24
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          13
-        ],
-        "right": [
-          62
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          18
-        ],
-        "right": [
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          59
-        ],
-        "right": [
-          25
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          14
-        ],
-        "right": [
-          42
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          37
-        ],
-        "right": [
-          62
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          61
-        ],
-        "right": [
-          47
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          8
-        ],
-        "right": [
-          21
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          12
-        ],
-        "right": [
-          48
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          49
-        ],
-        "right": [
-          28
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          10
-        ],
-        "right": [
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          3
-        ],
-        "right": [
-          21
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          32
-        ],
-        "right": [
-          52
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          51
-        ],
-        "right": [
-          9
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          3
-        ],
-        "right": [
-          58
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          24
-        ],
-        "right": [
-          15
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          60
-        ],
-        "right": [
-          19
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          35
-        ],
-        "right": [
-          12
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          24
-        ],
-        "right": [
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          28
-        ],
-        "right": [
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          19
-        ],
-        "right": [
-          24
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1
-        ],
-        "right": [
-          43
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          29
-        ],
-        "right": [
-          38
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          54
-        ],
-        "right": [
-          48
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          62
-        ],
-        "right": [
-          28
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          43
-        ],
-        "right": [
-          7
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          39
-        ],
-        "right": [
-          17
-        ],
-        "advantage": 0.23299666110146067
-      },
-      {
-        "left": [
-          45
-        ],
-        "right": [
-          54
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          44
-        ],
-        "right": [
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          51
-        ],
-        "right": [
-          19
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          20
-        ],
-        "right": [
-          52
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          24
-        ],
-        "right": [
-          33
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          53
-        ],
-        "right": [
-          51
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          13
-        ],
-        "right": [
-          40
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          59
-        ],
-        "right": [
-          9
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          38
-        ],
-        "right": [
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          30
-        ],
-        "right": [
-          15
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          21
-        ],
-        "right": [
-          37
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          24
-        ],
-        "right": [
-          48
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          57
-        ],
-        "right": [
-          21
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          22
-        ],
-        "right": [
-          14
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          56
-        ],
-        "right": [
-          62
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          25
-        ],
-        "right": [
-          36
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          9
-        ],
-        "right": [
-          55
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          36
-        ],
-        "right": [
-          8
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          15
-        ],
-        "right": [
-          51
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          40
-        ],
-        "right": [
-          25
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          47
-        ],
-        "right": [
-          7
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          25
-        ],
-        "right": [
-          5
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          42
-        ],
-        "right": [
-          61
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          28
-        ],
-        "right": [
-          30
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          61
-        ],
-        "right": [
-          56
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          36
-        ],
-        "right": [
-          27
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          6
-        ],
-        "right": [
-          25
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          7
-        ],
-        "right": [
-          42
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          30
-        ],
-        "right": [
-          3
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          54
-        ],
-        "right": [
-          13
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          28
-        ],
-        "right": [
-          14
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          57
-        ],
-        "right": [
-          49
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          25,
-          23
-        ],
-        "right": [
-          55,
-          40
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          48,
-          35
-        ],
-        "right": [
-          44,
-          31
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1,
-          27
-        ],
-        "right": [
-          10,
-          59
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          37,
-          5
-        ],
-        "right": [
-          33,
-          46
-        ],
-        "advantage": 0.5268081263925017
-      },
-      {
-        "left": [
-          4,
-          50
-        ],
-        "right": [
-          37,
-          23
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          17,
-          51
-        ],
-        "right": [
-          42,
-          59
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          8,
-          2
-        ],
-        "right": [
-          49,
-          37
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          42,
-          21
-        ],
-        "right": [
-          8,
-          9
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          5,
-          16
-        ],
-        "right": [
-          59,
-          32
-        ],
-        "advantage": 0.35212097965650496
-      },
-      {
-        "left": [
-          23,
-          17
-        ],
-        "right": [
-          25,
-          52
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          38,
-          8
-        ],
-        "right": [
-          2,
-          46
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          10,
-          31
-        ],
-        "right": [
-          33,
-          48
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          43,
-          60
-        ],
-        "right": [
-          52,
-          33
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          55,
-          27
-        ],
-        "right": [
-          62,
-          31
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          20,
-          29
-        ],
-        "right": [
-          15,
-          4
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          8,
-          6
-        ],
-        "right": [
-          54,
-          1
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          6,
-          23
-        ],
-        "right": [
-          21,
-          8
-        ],
-        "advantage": -0.20814702452377076
-      },
-      {
-        "left": [
-          8,
-          59
-        ],
-        "right": [
-          33,
-          55
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          54,
-          41
-        ],
-        "right": [
-          9,
-          36
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          24,
-          41
-        ],
-        "right": [
-          34,
-          2
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          50,
-          59
-        ],
-        "right": [
-          9,
-          34
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          15,
-          5
-        ],
-        "right": [
-          53,
-          60
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          14,
-          19
-        ],
-        "right": [
-          47,
-          9
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          20,
-          7
-        ],
-        "right": [
-          18,
-          49
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          59,
-          28
-        ],
-        "right": [
-          25,
-          49
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          32,
-          2
-        ],
-        "right": [
-          5,
-          26
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          57,
-          55
-        ],
-        "right": [
-          4,
-          21
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          62,
-          46
-        ],
-        "right": [
-          49,
-          35
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          55,
-          7
-        ],
-        "right": [
-          10,
-          14
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          26,
-          8
-        ],
-        "right": [
-          51,
-          1
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          9,
-          37
-        ],
-        "right": [
-          25,
-          5
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          7,
-          19
-        ],
-        "right": [
-          45,
-          43
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          3,
-          7
-        ],
-        "right": [
-          62,
-          61
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          14,
-          21
-        ],
-        "right": [
-          7,
-          1
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          6,
-          51
-        ],
-        "right": [
-          11,
-          61
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          9,
-          14
-        ],
-        "right": [
-          3,
-          56
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          48,
-          25
-        ],
-        "right": [
-          50,
-          6
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          5,
-          17
-        ],
-        "right": [
-          10,
-          9
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          44,
-          33
-        ],
-        "right": [
-          15,
-          16
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          61,
-          23
-        ],
-        "right": [
-          21,
-          58
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          54,
-          17
-        ],
-        "right": [
-          19,
-          1
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          45,
-          33
-        ],
-        "right": [
-          1,
-          35
-        ],
-        "advantage": 0.6913093726608479
-      },
-      {
-        "left": [
-          60,
-          56
-        ],
-        "right": [
-          42,
-          35
-        ],
-        "advantage": -0.7059540565005976
-      },
-      {
-        "left": [
-          13,
-          48
-        ],
-        "right": [
-          40,
-          29
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          12,
-          49
-        ],
-        "right": [
-          2,
-          44
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          41,
-          37
-        ],
-        "right": [
-          9,
-          5
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          1,
-          26
-        ],
-        "right": [
-          31,
-          2
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          52,
-          34
-        ],
-        "right": [
-          53,
-          3
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          15,
-          62
-        ],
-        "right": [
-          30,
-          12
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          46,
-          14
-        ],
-        "right": [
-          7,
-          38
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          40,
-          32
-        ],
-        "right": [
-          47,
-          25
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          21,
-          40
-        ],
-        "right": [
-          48,
-          56
-        ],
-        "advantage": -0.7932075745478157
-      },
-      {
-        "left": [
-          29,
-          57
-        ],
-        "right": [
-          34,
-          7
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          49,
-          16
-        ],
-        "right": [
-          62,
-          5
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          39,
-          14
-        ],
-        "right": [
-          60,
-          20
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          7,
-          42
-        ],
-        "right": [
-          16,
-          46
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          47,
-          8
-        ],
-        "right": [
-          29,
-          52
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          7,
-          36
-        ],
-        "right": [
-          62,
-          43
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          41,
-          29
-        ],
-        "right": [
-          1,
-          49
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          12,
-          48
-        ],
-        "right": [
-          41,
-          16
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          42,
-          57
-        ],
-        "right": [
-          61,
-          22
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          56,
-          31
-        ],
-        "right": [
-          19,
-          4
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          49,
-          13
-        ],
-        "right": [
-          38,
-          56
-        ],
-        "advantage": 0.3074857673116871
-      },
-      {
-        "left": [
-          30,
-          6
-        ],
-        "right": [
-          31,
-          50
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          31,
-          19,
-          26,
-          25
-        ],
-        "right": [
-          27,
-          42,
-          20,
-          7
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          28,
-          9,
-          3,
-          6
-        ],
-        "right": [
-          51,
-          36,
-          5,
-          11
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          53,
-          18,
-          17,
-          31
-        ],
-        "right": [
-          6,
-          20,
-          7,
-          36
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          1,
-          34,
-          41,
-          55
-        ],
-        "right": [
-          18,
-          12,
-          17,
-          50
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          26,
-          38,
-          10,
-          33
-        ],
-        "right": [
-          27,
-          58,
-          43,
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          17,
-          54,
-          50,
-          1
-        ],
-        "right": [
-          41,
-          57,
-          25,
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          55,
-          40,
-          45,
-          59
-        ],
-        "right": [
-          29,
-          43,
-          15,
-          61
-        ],
-        "advantage": -0.963176908077117
-      },
-      {
-        "left": [
-          8,
-          4,
-          48,
-          61
-        ],
-        "right": [
-          1,
-          34,
-          39,
-          6
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          17,
-          2,
-          49,
-          32
-        ],
-        "right": [
-          25,
-          30,
-          9,
-          35
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          23,
-          58,
-          17,
-          53
-        ],
-        "right": [
-          16,
-          61,
-          11,
-          1
-        ],
-        "advantage": -0.4636328443258472
-      },
-      {
-        "left": [
-          28,
-          21,
-          41,
-          55
-        ],
-        "right": [
-          31,
-          29,
-          6,
-          47
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          3,
-          57,
-          55,
-          47
-        ],
-        "right": [
-          40,
-          54,
-          62,
-          9
-        ],
-        "advantage": -0.6618362427195494
-      },
-      {
-        "left": [
-          32,
-          25,
-          60,
-          33
-        ],
-        "right": [
-          23,
-          2,
-          6,
-          26
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          32,
-          8,
-          43,
-          46
-        ],
-        "right": [
-          15,
-          2,
-          11,
-          16
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1,
-          7,
-          16,
-          13
-        ],
-        "right": [
-          42,
-          48,
-          21,
-          45
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          5,
-          25,
-          48,
-          52
-        ],
-        "right": [
-          46,
-          45,
-          58,
-          54
-        ],
-        "advantage": 0.8299705025545233
-      },
-      {
-        "left": [
-          44,
-          5,
-          38,
-          53
-        ],
-        "right": [
-          39,
-          40,
-          57,
-          18
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          15,
-          61,
-          3,
-          41
-        ],
-        "right": [
-          4,
-          57,
-          2,
-          1
-        ],
-        "advantage": 0.6741866198105096
-      },
-      {
-        "left": [
-          60,
-          57,
-          53,
-          19
-        ],
-        "right": [
-          51,
-          3,
-          27,
-          14
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          6,
-          53,
-          18,
-          33
-        ],
-        "right": [
-          32,
-          20,
-          22,
-          45
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1,
-          18,
-          21,
-          60
-        ],
-        "right": [
-          23,
-          55,
-          13,
-          50
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          36,
-          30,
-          49,
-          60
-        ],
-        "right": [
-          39,
-          29,
-          31,
-          4
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          21,
-          24,
-          6,
-          50
-        ],
-        "right": [
-          41,
-          60,
-          16,
-          42
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          53,
-          61,
-          15,
-          36
-        ],
-        "right": [
-          58,
-          35,
-          62,
-          9
-        ],
-        "advantage": -0.4268109869398661
-      },
-      {
-        "left": [
-          34,
-          15,
-          28,
-          4
-        ],
-        "right": [
-          56,
-          10,
-          39,
-          21
-        ],
-        "advantage": 0.30812321749875893
-      },
-      {
-        "left": [
-          30,
-          52,
-          59,
-          10
-        ],
-        "right": [
-          23,
-          19,
-          44,
-          21
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          62,
-          51,
-          36,
-          46
-        ],
-        "right": [
-          19,
-          20,
-          54,
-          49
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          28,
-          55,
-          38,
-          23
-        ],
-        "right": [
-          12,
-          53,
-          49,
-          5
-        ],
-        "advantage": -0.4777948478662925
-      },
-      {
-        "left": [
-          17,
-          46,
-          45,
-          29
-        ],
-        "right": [
-          32,
-          21,
-          39,
-          35
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          25,
-          52,
-          6,
-          53
-        ],
-        "right": [
-          12,
-          11,
-          28,
-          51
-        ],
-        "advantage": -0.997727671859928
-      },
-      {
-        "left": [
-          42,
-          20,
-          2,
-          41
-        ],
-        "right": [
-          17,
-          44,
-          12,
-          28
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          54,
-          60,
-          3,
-          43
-        ],
-        "right": [
-          27,
-          26,
-          41,
-          56
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          21,
-          14,
-          42,
-          13
-        ],
-        "right": [
-          9,
-          49,
-          56,
-          37
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          60,
-          6,
-          12,
-          61
-        ],
-        "right": [
-          40,
-          21,
-          16,
-          39
-        ],
-        "advantage": -0.171376057077039
-      },
-      {
-        "left": [
-          47,
-          35,
-          4,
-          61
-        ],
-        "right": [
-          51,
-          18,
-          43,
-          48
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          16,
-          31,
-          5,
-          4
-        ],
-        "right": [
-          33,
-          17,
-          46,
-          22
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          38,
-          57,
-          17,
-          41
-        ],
-        "right": [
-          22,
-          43,
-          8,
-          25
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          2,
-          57,
-          30,
-          46
-        ],
-        "right": [
-          15,
-          49,
-          12,
-          40
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          2,
-          8,
-          50,
-          29
-        ],
-        "right": [
-          44,
-          53,
-          25,
-          5
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          50,
-          53,
-          32,
-          22
-        ],
-        "right": [
-          45,
-          25,
-          52,
-          42
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          26,
-          59,
-          17,
-          39
-        ],
-        "right": [
-          4,
-          16,
-          23,
-          56
-        ],
-        "advantage": 0.420041934882056
-      },
-      {
-        "left": [
-          57,
-          62,
-          18,
-          4
-        ],
-        "right": [
-          61,
-          37,
-          58,
-          31
-        ],
-        "advantage": 0.29580102405707764
-      },
-      {
-        "left": [
-          19,
-          29,
-          5,
-          10
-        ],
-        "right": [
-          34,
-          43,
-          17,
-          31
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          62,
-          31,
-          4,
-          20
-        ],
-        "right": [
-          7,
-          26,
-          28,
-          15
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          7,
-          3,
-          59,
-          62
-        ],
-        "right": [
-          47,
-          38,
-          2,
-          36
-        ],
-        "advantage": 0.8607213048630704
-      },
-      {
-        "left": [
-          4,
-          32,
-          23,
-          38
-        ],
-        "right": [
-          36,
-          39,
-          31,
-          26
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          15,
-          26,
-          6,
-          43
-        ],
-        "right": [
-          14,
-          37,
-          52,
-          42
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          11,
-          60,
-          20,
-          5
-        ],
-        "right": [
-          9,
-          48,
-          37,
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          59,
-          41,
-          30,
-          6
-        ],
-        "right": [
-          56,
-          28,
-          7,
-          43
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          28,
-          27,
-          35,
-          59
-        ],
-        "right": [
-          54,
-          46,
-          4,
-          45
-        ],
-        "advantage": 0.422496409972129
-      },
-      {
-        "left": [
-          20,
-          25,
-          38,
-          4
-        ],
-        "right": [
-          46,
-          62,
-          44,
-          32
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1,
-          6,
-          10,
-          52
-        ],
-        "right": [
-          41,
-          35,
-          16,
-          11
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          41,
-          21,
-          27,
-          48
-        ],
-        "right": [
-          59,
-          58,
-          57,
-          29
-        ],
-        "advantage": 0.04820620373544836
-      },
-      {
-        "left": [
-          40,
-          36,
-          26,
-          28
-        ],
-        "right": [
-          59,
-          10,
-          4,
-          61
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          51,
-          46,
-          12,
-          14
-        ],
-        "right": [
-          32,
-          60,
-          44,
-          35
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          56,
-          23,
-          55,
-          26
-        ],
-        "right": [
-          52,
-          5,
-          32,
-          44
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          61,
-          50,
-          57,
-          36
-        ],
-        "right": [
-          29,
-          11,
-          26,
-          48
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          43,
-          16,
-          12,
-          59
-        ],
-        "right": [
-          47,
-          58,
-          45,
-          19
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          8,
-          53,
-          1,
-          59
-        ],
-        "right": [
-          35,
-          56,
-          17,
-          11
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          38,
-          14,
-          57,
-          60
-        ],
-        "right": [
-          58,
-          55,
-          54,
-          3
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          26,
-          24,
-          53,
-          34
-        ],
-        "right": [
-          19,
-          17,
-          56,
-          58
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          54,
-          3,
-          25,
-          49
-        ],
-        "right": [
-          35,
-          32,
-          53,
-          52
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          11,
-          8,
-          52,
-          13
-        ],
-        "right": [
-          49,
-          50,
-          19,
-          18
-        ],
-        "advantage": -0.5500465910019853
-      },
-      {
-        "left": [
-          55,
-          15,
-          60,
-          32
-        ],
-        "right": [
-          17,
-          9,
-          57,
-          5
-        ],
-        "advantage": -1.0
+    "requested_draws_per_team_size": 64,
+    "by_team_size": {
+      "1": {
+        "paired_rounds": 1,
+        "trial_count": 124,
+        "sample_count": {
+          "1": 4,
+          "2": 4,
+          "3": 4,
+          "4": 4,
+          "5": 4,
+          "6": 4,
+          "7": 4,
+          "8": 4,
+          "9": 4,
+          "10": 4,
+          "11": 4,
+          "12": 4,
+          "13": 4,
+          "14": 4,
+          "15": 4,
+          "16": 4,
+          "17": 4,
+          "18": 4,
+          "19": 4,
+          "20": 4,
+          "21": 4,
+          "22": 4,
+          "23": 4,
+          "24": 4,
+          "25": 4,
+          "26": 4,
+          "27": 4,
+          "28": 4,
+          "29": 4,
+          "30": 4,
+          "31": 4,
+          "32": 4,
+          "33": 4,
+          "34": 4,
+          "35": 4,
+          "36": 4,
+          "37": 4,
+          "38": 4,
+          "39": 4,
+          "40": 4,
+          "41": 4,
+          "42": 4,
+          "43": 4,
+          "44": 4,
+          "45": 4,
+          "46": 4,
+          "47": 4,
+          "48": 4,
+          "49": 4,
+          "50": 4,
+          "51": 4,
+          "52": 4,
+          "53": 4,
+          "54": 4,
+          "55": 4,
+          "56": 4,
+          "57": 4,
+          "58": 4,
+          "59": 4,
+          "60": 4,
+          "61": 4,
+          "62": 4
+        },
+        "lineup_position_counts": {
+          "1": [
+            2,
+            2
+          ],
+          "2": [
+            2,
+            2
+          ],
+          "3": [
+            2,
+            2
+          ],
+          "4": [
+            2,
+            2
+          ],
+          "5": [
+            2,
+            2
+          ],
+          "6": [
+            2,
+            2
+          ],
+          "7": [
+            2,
+            2
+          ],
+          "8": [
+            2,
+            2
+          ],
+          "9": [
+            2,
+            2
+          ],
+          "10": [
+            2,
+            2
+          ],
+          "11": [
+            2,
+            2
+          ],
+          "12": [
+            2,
+            2
+          ],
+          "13": [
+            2,
+            2
+          ],
+          "14": [
+            2,
+            2
+          ],
+          "15": [
+            2,
+            2
+          ],
+          "16": [
+            2,
+            2
+          ],
+          "17": [
+            2,
+            2
+          ],
+          "18": [
+            2,
+            2
+          ],
+          "19": [
+            2,
+            2
+          ],
+          "20": [
+            2,
+            2
+          ],
+          "21": [
+            2,
+            2
+          ],
+          "22": [
+            2,
+            2
+          ],
+          "23": [
+            2,
+            2
+          ],
+          "24": [
+            2,
+            2
+          ],
+          "25": [
+            2,
+            2
+          ],
+          "26": [
+            2,
+            2
+          ],
+          "27": [
+            2,
+            2
+          ],
+          "28": [
+            2,
+            2
+          ],
+          "29": [
+            2,
+            2
+          ],
+          "30": [
+            2,
+            2
+          ],
+          "31": [
+            2,
+            2
+          ],
+          "32": [
+            2,
+            2
+          ],
+          "33": [
+            2,
+            2
+          ],
+          "34": [
+            2,
+            2
+          ],
+          "35": [
+            2,
+            2
+          ],
+          "36": [
+            2,
+            2
+          ],
+          "37": [
+            2,
+            2
+          ],
+          "38": [
+            2,
+            2
+          ],
+          "39": [
+            2,
+            2
+          ],
+          "40": [
+            2,
+            2
+          ],
+          "41": [
+            2,
+            2
+          ],
+          "42": [
+            2,
+            2
+          ],
+          "43": [
+            2,
+            2
+          ],
+          "44": [
+            2,
+            2
+          ],
+          "45": [
+            2,
+            2
+          ],
+          "46": [
+            2,
+            2
+          ],
+          "47": [
+            2,
+            2
+          ],
+          "48": [
+            2,
+            2
+          ],
+          "49": [
+            2,
+            2
+          ],
+          "50": [
+            2,
+            2
+          ],
+          "51": [
+            2,
+            2
+          ],
+          "52": [
+            2,
+            2
+          ],
+          "53": [
+            2,
+            2
+          ],
+          "54": [
+            2,
+            2
+          ],
+          "55": [
+            2,
+            2
+          ],
+          "56": [
+            2,
+            2
+          ],
+          "57": [
+            2,
+            2
+          ],
+          "58": [
+            2,
+            2
+          ],
+          "59": [
+            2,
+            2
+          ],
+          "60": [
+            2,
+            2
+          ],
+          "61": [
+            2,
+            2
+          ],
+          "62": [
+            2,
+            2
+          ]
+        },
+        "mean_contribution": {
+          "1": -0.5022871149808393,
+          "2": 0.035086534925840795,
+          "3": -0.13295176109962223,
+          "4": 0.570462720946739,
+          "5": 0.4656309298938546,
+          "6": -0.009244782672739649,
+          "7": 0.5989154907826262,
+          "8": 0.05889877665161988,
+          "9": -0.11327527091646056,
+          "10": -0.5885730725410617,
+          "11": -0.12270732835535211,
+          "12": -0.5820523055387983,
+          "13": 0.4575207870018325,
+          "14": 0.038439861906948924,
+          "15": 0.4079452883826003,
+          "16": 0.0329053169668001,
+          "17": -0.1207327013652075,
+          "18": -0.24939348582155219,
+          "19": 0.012452743241712916,
+          "20": -0.5708480782763704,
+          "21": 0.5119615575399998,
+          "22": -0.034071225793142174,
+          "23": 0.6055844452229734,
+          "24": -0.544604779869189,
+          "25": 0.02650223889117445,
+          "26": 0.056241979871200304,
+          "27": 0.04725827600382451,
+          "28": 0.7021608306856831,
+          "29": -0.020338904792321588,
+          "30": -0.4203774440624669,
+          "31": -0.0797940111736396,
+          "32": -0.4835915208721054,
+          "33": -0.050974075561573684,
+          "34": -0.671947884145024,
+          "35": 0.06326157462204518,
+          "36": 0.5899169720823556,
+          "37": -0.05101855526140822,
+          "38": 0.6471533861291404,
+          "39": -0.46512941681592634,
+          "40": 0.6196132291489698,
+          "41": -0.42120683681342397,
+          "42": -0.535730756402356,
+          "43": 0.6388174704917294,
+          "44": -0.5385080648821032,
+          "45": 0.45263299630180265,
+          "46": -0.052227942916978076,
+          "47": -0.09225652193554526,
+          "48": -0.5594262320710746,
+          "49": 0.08952308732909525,
+          "50": -0.5060367496059899,
+          "51": 0.5764803538352823,
+          "52": 0.021107240655585557,
+          "53": -0.024313548910876004,
+          "54": 0.4918994296087955,
+          "55": -0.526434463410332,
+          "56": 0.05404253698129652,
+          "57": 0.48035939765054814,
+          "58": -0.5505122262530409,
+          "59": 0.07882533356169699,
+          "60": -0.03159703739016678,
+          "61": 0.26868528780673767,
+          "62": -0.04812197461382445
+        },
+        "mean_killfeed_advantage": {
+          "1": -0.9057665013705216,
+          "2": 0.06017294713296706,
+          "3": 0.014341202180934598,
+          "4": 0.9343541549384538,
+          "5": 0.884456910425559,
+          "6": -0.04671788724385051,
+          "7": 0.8338163622994255,
+          "8": 0.16247438014058974,
+          "9": -0.10635296409821654,
+          "10": -0.9625273637367837,
+          "11": -0.23355778232868343,
+          "12": -0.8114974860255344,
+          "13": 0.8277778517347105,
+          "14": 0.009028123211063055,
+          "15": 0.7027068161755547,
+          "16": -0.04077711667756434,
+          "17": -0.03774801672482375,
+          "18": -0.2999243542723703,
+          "19": -0.021581313658045054,
+          "20": -0.9118855933496746,
+          "21": 0.7018587140544906,
+          "22": 0.0872594907837152,
+          "23": 0.9123865833422939,
+          "24": -0.9975644343138292,
+          "25": 0.0772198963445544,
+          "26": 0.02825990405419687,
+          "27": -0.03581647023721607,
+          "28": 0.8333652122436105,
+          "29": -0.009890812725189935,
+          "30": -0.899370158366114,
+          "31": -0.00028591101281438824,
+          "32": -0.7583239518940832,
+          "33": -0.03618108391454211,
+          "34": -0.9076323888920804,
+          "35": 0.20865700850441715,
+          "36": 0.6627523350901404,
+          "37": 0.08627441862567675,
+          "38": 0.7751174085672383,
+          "39": -0.5731729767376902,
+          "40": 0.7395335378592252,
+          "41": -0.580560443436992,
+          "42": -0.949109487828036,
+          "43": 0.9114102033597564,
+          "44": -0.8998094717521539,
+          "45": 0.6749590139988025,
+          "46": -0.15261979454746644,
+          "47": -0.14844000081966058,
+          "48": -0.8307579093022222,
+          "49": 0.04773199637880704,
+          "50": -0.8788593589552511,
+          "51": 0.9262608321013585,
+          "52": 0.1479175124364826,
+          "53": 0.0043795030134864965,
+          "54": 0.9276026014858412,
+          "55": -0.7229101984930284,
+          "56": 0.08380004813181835,
+          "57": 0.7301024792282387,
+          "58": -0.8463402442452066,
+          "59": 0.20350611086292625,
+          "60": 0.012562832291253101,
+          "61": 0.3397190172462445,
+          "62": 0.05421606871581236
+        }
+      },
+      "2": {
+        "paired_rounds": 1,
+        "trial_count": 124,
+        "sample_count": {
+          "1": 8,
+          "2": 8,
+          "3": 8,
+          "4": 8,
+          "5": 8,
+          "6": 8,
+          "7": 8,
+          "8": 8,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 8,
+          "14": 8,
+          "15": 8,
+          "16": 8,
+          "17": 8,
+          "18": 8,
+          "19": 8,
+          "20": 8,
+          "21": 8,
+          "22": 8,
+          "23": 8,
+          "24": 8,
+          "25": 8,
+          "26": 8,
+          "27": 8,
+          "28": 8,
+          "29": 8,
+          "30": 8,
+          "31": 8,
+          "32": 8,
+          "33": 8,
+          "34": 8,
+          "35": 8,
+          "36": 8,
+          "37": 8,
+          "38": 8,
+          "39": 8,
+          "40": 8,
+          "41": 8,
+          "42": 8,
+          "43": 8,
+          "44": 8,
+          "45": 8,
+          "46": 8,
+          "47": 8,
+          "48": 8,
+          "49": 8,
+          "50": 8,
+          "51": 8,
+          "52": 8,
+          "53": 8,
+          "54": 8,
+          "55": 8,
+          "56": 8,
+          "57": 8,
+          "58": 8,
+          "59": 8,
+          "60": 8,
+          "61": 8,
+          "62": 8
+        },
+        "lineup_position_counts": {
+          "1": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "2": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "3": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "4": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "5": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "6": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "7": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "8": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "9": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "10": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "11": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "12": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "13": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "14": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "15": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "16": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "17": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "18": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "19": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "20": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "21": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "22": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "23": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "24": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "25": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "26": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "27": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "28": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "29": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "30": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "31": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "32": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "33": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "34": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "35": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "36": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "37": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "38": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "39": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "40": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "41": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "42": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "43": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "44": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "45": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "46": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "47": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "48": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "49": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "50": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "51": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "52": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "53": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "54": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "55": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "56": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "57": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "58": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "59": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "60": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "61": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "62": [
+            2,
+            2,
+            2,
+            2
+          ]
+        },
+        "mean_contribution": {
+          "1": -0.1852356357170922,
+          "2": -0.2185154847577439,
+          "3": -0.16528125945965877,
+          "4": 0.4204090981227776,
+          "5": 0.06175278348647891,
+          "6": 0.23991682465881903,
+          "7": 0.4420103049163028,
+          "8": 0.45946180456242514,
+          "9": 0.19683107971394526,
+          "10": -0.5068120276752672,
+          "11": 0.09548273543310457,
+          "12": -0.46402552482708026,
+          "13": -0.2401019569745879,
+          "14": -0.47185113744079027,
+          "15": 0.2743521424279247,
+          "16": 0.06751615701716919,
+          "17": 0.2001780046969988,
+          "18": -9.85944481196599e-06,
+          "19": 0.21619453956177656,
+          "20": -0.15390335362439803,
+          "21": -0.40722879937281076,
+          "22": 0.3792250121015676,
+          "23": 0.1907544818881804,
+          "24": -0.392561445573266,
+          "25": 0.07383558639031965,
+          "26": 0.14315894035656193,
+          "27": -0.08393897547826468,
+          "28": -0.40292067108189006,
+          "29": -0.12711037877664536,
+          "30": -0.2212160981271703,
+          "31": 0.1905293093877234,
+          "32": 0.03347269368080796,
+          "33": -0.03118126728050004,
+          "34": -0.49576357367227614,
+          "35": 0.22671736766315087,
+          "36": 0.26012317124109785,
+          "37": 0.3971928573753089,
+          "38": 0.13854693938533746,
+          "39": -0.15790453960459738,
+          "40": -0.2711304202007682,
+          "41": -0.05950594377034811,
+          "42": -0.1319103539590262,
+          "43": 0.32908974705285676,
+          "44": -0.12632494404718853,
+          "45": 0.14064124275319645,
+          "46": 0.0029664838254255255,
+          "47": -0.0034358587863156653,
+          "48": 0.41386006532363206,
+          "49": 0.039994517064178746,
+          "50": -0.25328716025880577,
+          "51": -0.045593794594258996,
+          "52": -0.028395764856983155,
+          "53": 0.17923487849229205,
+          "54": 0.45563298946586817,
+          "55": -0.11933673054698865,
+          "56": -0.3428388097107022,
+          "57": 0.2132468217540306,
+          "58": 0.0004460680855007809,
+          "59": 0.0033896998374109213,
+          "60": -0.5038654472775874,
+          "61": -0.0829668101486674,
+          "62": 0.20798967932432083
+        },
+        "mean_killfeed_advantage": {
+          "1": -0.38378527361124876,
+          "2": -0.34076251846607075,
+          "3": -0.1856850720620861,
+          "4": 0.6618328715319899,
+          "5": 0.14555112225348105,
+          "6": 0.3495681991067733,
+          "7": 0.7253629098494023,
+          "8": 0.580924035377824,
+          "9": 0.35281574774000096,
+          "10": -0.8012114549272558,
+          "11": 0.30401249229279015,
+          "12": -0.8676365631628445,
+          "13": -0.4368989902442541,
+          "14": -0.6236538264618283,
+          "15": 0.4385555404354604,
+          "16": -0.0255819423228604,
+          "17": 0.5544272731794345,
+          "18": 0.006921283937062178,
+          "19": 0.25539063017961156,
+          "20": -0.31570654559227995,
+          "21": -0.6813006453529433,
+          "22": 0.8062054507547792,
+          "23": 0.4043228932534796,
+          "24": -0.8105366061010706,
+          "25": 0.07394271616606735,
+          "26": 0.24327026312490285,
+          "27": -0.18186091440782975,
+          "28": -0.6181599751445772,
+          "29": -0.30615727480224286,
+          "30": -0.33920635843695446,
+          "31": 0.38504040535905304,
+          "32": 0.048782358277431534,
+          "33": -0.007740599762780909,
+          "34": -0.8202334613843133,
+          "35": 0.4741427062562805,
+          "36": 0.40853277516786674,
+          "37": 0.8050416478416752,
+          "38": 0.1565066640237851,
+          "39": -0.19710917356559665,
+          "40": -0.45767959338859987,
+          "41": -0.07774879753150973,
+          "42": -0.22469348369936737,
+          "43": 0.5364747849982721,
+          "44": -0.11129115844879899,
+          "45": 0.13822235812944067,
+          "46": 0.0069631319504614535,
+          "47": 0.024978190718610183,
+          "48": 0.6192536755551794,
+          "49": 0.029508526898656646,
+          "50": -0.5411555434882518,
+          "51": -0.016249739490651838,
+          "52": 0.0063795131278119865,
+          "53": 0.36190583468787674,
+          "54": 0.6923021664802295,
+          "55": -0.17184128422136885,
+          "56": -0.5065258404410605,
+          "57": 0.27939609354528694,
+          "58": -0.10146849392735492,
+          "59": -0.08312874683233926,
+          "60": -0.7874151027121037,
+          "61": -0.16739108380545556,
+          "62": 0.3132818015949229
+        }
+      },
+      "4": {
+        "paired_rounds": 1,
+        "trial_count": 124,
+        "sample_count": {
+          "1": 16,
+          "2": 16,
+          "3": 16,
+          "4": 16,
+          "5": 16,
+          "6": 16,
+          "7": 16,
+          "8": 16,
+          "9": 16,
+          "10": 16,
+          "11": 16,
+          "12": 16,
+          "13": 16,
+          "14": 16,
+          "15": 16,
+          "16": 16,
+          "17": 16,
+          "18": 16,
+          "19": 16,
+          "20": 16,
+          "21": 16,
+          "22": 16,
+          "23": 16,
+          "24": 16,
+          "25": 16,
+          "26": 16,
+          "27": 16,
+          "28": 16,
+          "29": 16,
+          "30": 16,
+          "31": 16,
+          "32": 16,
+          "33": 16,
+          "34": 16,
+          "35": 16,
+          "36": 16,
+          "37": 16,
+          "38": 16,
+          "39": 16,
+          "40": 16,
+          "41": 16,
+          "42": 16,
+          "43": 16,
+          "44": 16,
+          "45": 16,
+          "46": 16,
+          "47": 16,
+          "48": 16,
+          "49": 16,
+          "50": 16,
+          "51": 16,
+          "52": 16,
+          "53": 16,
+          "54": 16,
+          "55": 16,
+          "56": 16,
+          "57": 16,
+          "58": 16,
+          "59": 16,
+          "60": 16,
+          "61": 16,
+          "62": 16
+        },
+        "lineup_position_counts": {
+          "1": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "2": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "3": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "4": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "5": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "6": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "7": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "8": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "9": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "10": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "11": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "12": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "13": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "14": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "15": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "16": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "17": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "18": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "19": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "20": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "21": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "22": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "23": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "24": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "25": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "26": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "27": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "28": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "29": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "30": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "31": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "32": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "33": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "34": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "35": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "36": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "37": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "38": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "39": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "40": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "41": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "42": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "43": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "44": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "45": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "46": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "47": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "48": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "49": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "50": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "51": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "52": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "53": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "54": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "55": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "56": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "57": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "58": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "59": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "60": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "61": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "62": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ]
+        },
+        "mean_contribution": {
+          "1": 0.12407123415458374,
+          "2": -0.16839704178054773,
+          "3": -0.19170541678455766,
+          "4": 0.3146702826124311,
+          "5": 0.2351123633764141,
+          "6": 0.3675352266866338,
+          "7": 0.07874800230477098,
+          "8": 0.4334288102824769,
+          "9": 0.04429670245423287,
+          "10": -0.14945425801064996,
+          "11": 0.016252819421340332,
+          "12": -0.04957335610410671,
+          "13": -0.16805447138983978,
+          "14": 0.008586374918251746,
+          "15": -0.10643222593695056,
+          "16": -0.3103110365689874,
+          "17": -0.2181123291868289,
+          "18": 0.1152389515200961,
+          "19": 0.03109709798067569,
+          "20": -0.2666880999040755,
+          "21": -0.20530189129772644,
+          "22": 0.017512621692665924,
+          "23": -0.27759583363486073,
+          "24": -0.1342681382624141,
+          "25": -0.014985038468270744,
+          "26": 0.2378440736339321,
+          "27": -0.14607358320484395,
+          "28": -0.0905208528899529,
+          "29": -0.27238492809355813,
+          "30": -0.042643658172159454,
+          "31": -0.1536462149297185,
+          "32": -0.02370807540175813,
+          "33": 0.06086224469429327,
+          "34": -0.2384002726210446,
+          "35": 0.35309447623530266,
+          "36": -0.23554006333056987,
+          "37": 0.1291628003982097,
+          "38": -0.1644057852200994,
+          "39": 0.2952114564064592,
+          "40": -0.01302459791192136,
+          "41": 0.2505090140701224,
+          "42": -0.01569704511514307,
+          "43": 0.23069886999860137,
+          "44": -0.29055010747889376,
+          "45": -0.14231312793240503,
+          "46": -0.21511678488759084,
+          "47": 0.1265892109371575,
+          "48": 0.17720421118727175,
+          "49": -0.11282092585485858,
+          "50": -0.2770111293054415,
+          "51": 0.10922447374971497,
+          "52": 0.14159344966283557,
+          "53": -0.03355526372995433,
+          "54": 0.17542599844637788,
+          "55": 0.21324783813000964,
+          "56": 0.287219762460563,
+          "57": 0.1465813178411758,
+          "58": 0.03616488796354138,
+          "59": -0.2581413796079897,
+          "60": 0.2109193314766092,
+          "61": 0.2162825707179914,
+          "62": -0.19795354239702276
+        },
+        "mean_killfeed_advantage": {
+          "1": 0.196918876884274,
+          "2": -0.2989987891568639,
+          "3": -0.342326643750447,
+          "4": 0.37720631333040483,
+          "5": 0.392930723037259,
+          "6": 0.559431168551049,
+          "7": 0.05999448060824154,
+          "8": 0.5912117503980974,
+          "9": 0.2016164908192294,
+          "10": -0.22731215903223848,
+          "11": -0.0181551955884092,
+          "12": -0.06758833223185584,
+          "13": -0.2050271857024955,
+          "14": 0.07287561524571157,
+          "15": -0.3124472366652446,
+          "16": -0.4231393139540966,
+          "17": -0.3962872763364581,
+          "18": 0.23320377289220903,
+          "19": 0.08828502540681775,
+          "20": -0.43522689014565247,
+          "21": -0.33217613895120346,
+          "22": 0.12591501014669823,
+          "23": -0.3876943640755136,
+          "24": -0.08081620339237572,
+          "25": -0.045231051609481376,
+          "26": 0.4423348828854101,
+          "27": -0.12669531194329703,
+          "28": -0.2214978918072293,
+          "29": -0.530646121416421,
+          "30": 0.023749901452306484,
+          "31": -0.21060354040316087,
+          "32": 0.030365044277426704,
+          "33": 0.16288013423508252,
+          "34": -0.253671437639138,
+          "35": 0.5265673690913024,
+          "36": -0.41911414312501355,
+          "37": 0.20151784923419963,
+          "38": -0.34618938809561917,
+          "39": 0.4557613610112198,
+          "40": -0.050768486886371825,
+          "41": 0.3323990165889363,
+          "42": -0.040075900785113874,
+          "43": 0.38841528825071087,
+          "44": -0.4265878495839992,
+          "45": -0.20825055174239235,
+          "46": -0.3102555231519594,
+          "47": 0.25264790259016223,
+          "48": 0.2778339407908977,
+          "49": -0.17765309805627533,
+          "50": -0.45054283892511326,
+          "51": 0.03481174090585214,
+          "52": 0.27885835589076935,
+          "53": -0.10208875514307211,
+          "54": 0.3676128170730916,
+          "55": 0.21789351409943955,
+          "56": 0.34408620523680894,
+          "57": 0.11909255295643037,
+          "58": 0.13852409792829107,
+          "59": -0.35840998307584304,
+          "60": 0.2988141550798488,
+          "61": 0.3214997702811801,
+          "62": -0.30977752480700327
+        }
       }
-    ],
+    },
+    "score_definition": "Own-field HP fraction; paired lineup effect, not native win rate.",
+    "cap_basis": "bodies",
+    "contact_mode": "frontal",
+    "full_start": false,
     "mean_contribution": {
-      "1": -0.438992397119195,
-      "2": -0.25249342319097,
-      "3": -0.009066308431854955,
-      "4": 0.3381777376050634,
-      "5": 0.062457602972095926,
-      "6": -0.07248688176109146,
-      "7": 0.5716169107822668,
-      "8": 0.8536312770951116,
-      "9": 0.39381373498107863,
-      "10": -0.3916475652271599,
-      "11": -0.46260782498329184,
-      "12": 0.2541651125114755,
-      "13": 0.08415990847885575,
-      "14": -0.5714285714285714,
-      "15": 0.4699172349029075,
-      "16": 0.3262205675840954,
-      "17": 0.0907059173397236,
-      "18": 0.2845847615059063,
-      "19": -0.09666356059986765,
-      "20": -0.38461538461538464,
-      "21": -0.2836800753355158,
-      "22": 0.0,
-      "23": 0.11002948833861795,
-      "24": -0.7777777777777778,
-      "25": -0.0985344167866093,
-      "26": 0.16133612899213706,
-      "27": -0.5529297386292422,
-      "28": 0.3281595282165327,
-      "29": -0.36321637826130937,
-      "30": -0.2,
-      "31": 0.04401243599643265,
-      "32": -0.45950756122853154,
-      "33": -0.2577726139756049,
-      "34": -0.18798630916680456,
-      "35": 0.4902822914822675,
-      "36": 0.1937476934426474,
-      "37": 0.2937279183941295,
-      "38": -0.12661553231085002,
-      "39": 0.5010860957041198,
-      "40": 0.122166342186568,
-      "41": -0.07985044852837762,
-      "42": -0.48626972956662684,
-      "43": 0.5975451272051411,
-      "44": -0.8181818181818182,
-      "45": -0.5931213134493565,
-      "46": -0.3413767884942253,
-      "47": -0.352255754758262,
-      "48": 0.4169615175523617,
-      "49": -0.09248182187889084,
-      "50": -0.2041627840831679,
-      "51": 0.14269483370428057,
-      "52": -0.04785358402049266,
-      "53": -0.3381485409537093,
-      "54": -0.11361647641479307,
-      "55": -0.4068538665775306,
-      "56": -0.06322649344301894,
-      "57": 0.2300924681053865,
-      "58": -0.4008307375179255,
-      "59": 0.4633197532360103,
-      "60": 0.07016686790139771,
-      "61": 0.600412253184676,
-      "62": 0.07324526815173904
+      "1": -0.05378192139952698,
+      "2": -0.15364751453026257,
+      "3": -0.17576227816531007,
+      "4": 0.38142314966314556,
+      "5": 0.21851227862463843,
+      "6": 0.2772471104844905,
+      "7": 0.2568468728334737,
+      "8": 0.3873625181294825,
+      "9": 0.06536767118976591,
+      "10": -0.3142877371334566,
+      "11": 0.019038488599459762,
+      "12": -0.24405668280134082,
+      "13": -0.09927157321524319,
+      "14": -0.12441670190023209,
+      "15": 0.07584580992723534,
+      "16": -0.15332950218211588,
+      "17": -0.0846894298169322,
+      "18": 0.030220371624172616,
+      "19": 0.0813186020411384,
+      "20": -0.2779153121630669,
+      "21": -0.16052908662807536,
+      "22": 0.11348989788295095,
+      "23": -0.01761284650572981,
+      "24": -0.2666857462950539,
+      "25": 0.01631903682839011,
+      "26": 0.1848480221600075,
+      "27": -0.10070200111029724,
+      "28": -0.0665377032911298,
+      "29": -0.19487133924569214,
+      "30": -0.14762632471506362,
+      "31": -0.04476003601672383,
+      "32": -0.07306834787393171,
+      "33": 0.018587481236371328,
+      "34": -0.37386801742482206,
+      "35": 0.27558203069850823,
+      "36": 0.024000437320324548,
+      "37": 0.18000262301172118,
+      "38": 0.03808916057420253,
+      "39": 0.05712961851438795,
+      "40": 0.003607713871392556,
+      "41": 0.0659739045609099,
+      "42": -0.12319137782585439,
+      "43": 0.317113206370264,
+      "44": -0.2790511975560079,
+      "45": 0.0235232814397965,
+      "46": -0.12953744497378433,
+      "47": 0.05817551489149334,
+      "48": 0.13958724904646808,
+      "49": -0.040253083137425934,
+      "50": -0.30295079819219534,
+      "51": 0.1317415228065177,
+      "52": 0.0758127870847088,
+      "53": 0.02856216473627012,
+      "54": 0.3006956289037205,
+      "55": 0.012554775430818474,
+      "56": 0.07389199534316347,
+      "57": 0.21331118750333036,
+      "58": -0.05785150546112483,
+      "59": -0.13528011217077715,
+      "60": -0.027950086576986406,
+      "61": 0.13826885005448122,
+      "62": -0.06056525507903911
+    },
+    "mean_killfeed_advantage": {
+      "1": -0.1265230772937033,
+      "2": -0.2596210352038043,
+      "3": -0.24661935956357509,
+      "4": 0.5381207359034361,
+      "5": 0.39246886386879387,
+      "6": 0.4128775978819846,
+      "7": 0.36064572920445664,
+      "8": 0.5270242074983753,
+      "9": 0.20082064209410042,
+      "10": -0.4963141299600356,
+      "11": 0.04312091712903716,
+      "12": -0.40244627732552096,
+      "13": -0.12373269593768284,
+      "14": -0.13525386696139247,
+      "15": 0.04714699291221387,
+      "16": -0.2549283224485245,
+      "17": -0.07343465367311244,
+      "18": 0.09239047216722718,
+      "19": 0.12033429261834985,
+      "20": -0.46917232073097775,
+      "21": -0.28420673320802997,
+      "22": 0.3147614904114381,
+      "23": 0.024322130506742683,
+      "24": -0.42027178001221044,
+      "25": 0.006311588891251942,
+      "26": 0.3263057088350919,
+      "27": -0.12947422097515196,
+      "28": -0.18413518646778018,
+      "29": -0.39211283542790853,
+      "30": -0.2118261813472567,
+      "31": -0.010374180272478828,
+      "32": -0.07704272260421619,
+      "33": 0.08569403621431802,
+      "34": -0.5089692946024656,
+      "35": 0.46617312819745543,
+      "36": -0.028091241010597186,
+      "37": 0.357489873035118,
+      "38": -0.04237525939538117,
+      "39": 0.12223630288228508,
+      "40": -0.05412851378049456,
+      "41": 0.0847911468365334,
+      "42": -0.22268572262388944,
+      "43": 0.5054315609084491,
+      "44": -0.40410616956939266,
+      "45": 0.0169145033268735,
+      "46": -0.19710223189348303,
+      "47": 0.13030114156831554,
+      "48": 0.2170121721388182,
+      "49": -0.086266191721283,
+      "50": -0.5376202573760297,
+      "51": 0.14757261667763763,
+      "52": 0.182301423179312,
+      "53": 0.04569087883099306,
+      "54": 0.5403797432483809,
+      "55": -0.027859815791143987,
+      "56": 0.06387045545670471,
+      "57": 0.25218069687779054,
+      "58": -0.07074012005525031,
+      "59": -0.19948447358644633,
+      "60": -0.05243010754479414,
+      "61": 0.18441941868000766,
+      "62": -0.07976148961747927
     },
     "sample_count": {
-      "1": 18,
-      "2": 14,
-      "3": 14,
-      "4": 18,
-      "5": 19,
-      "6": 19,
-      "7": 19,
-      "8": 16,
-      "9": 18,
-      "10": 11,
-      "11": 11,
-      "12": 13,
-      "13": 9,
-      "14": 14,
-      "15": 16,
-      "16": 14,
-      "17": 19,
-      "18": 10,
-      "19": 15,
-      "20": 13,
-      "21": 20,
-      "22": 6,
-      "23": 13,
-      "24": 9,
-      "25": 22,
-      "26": 15,
-      "27": 10,
-      "28": 16,
-      "29": 14,
-      "30": 10,
-      "31": 16,
-      "32": 16,
-      "33": 11,
-      "34": 9,
-      "35": 14,
-      "36": 14,
-      "37": 11,
-      "38": 13,
-      "39": 15,
-      "40": 17,
-      "41": 16,
-      "42": 15,
-      "43": 15,
-      "44": 11,
-      "45": 11,
-      "46": 14,
-      "47": 10,
-      "48": 16,
-      "49": 18,
-      "50": 12,
-      "51": 14,
-      "52": 15,
-      "53": 16,
-      "54": 14,
-      "55": 15,
-      "56": 15,
-      "57": 17,
-      "58": 13,
-      "59": 18,
-      "60": 16,
-      "61": 17,
-      "62": 17
-    }
+      "1": 28,
+      "2": 28,
+      "3": 28,
+      "4": 28,
+      "5": 28,
+      "6": 28,
+      "7": 28,
+      "8": 28,
+      "9": 28,
+      "10": 28,
+      "11": 28,
+      "12": 28,
+      "13": 28,
+      "14": 28,
+      "15": 28,
+      "16": 28,
+      "17": 28,
+      "18": 28,
+      "19": 28,
+      "20": 28,
+      "21": 28,
+      "22": 28,
+      "23": 28,
+      "24": 28,
+      "25": 28,
+      "26": 28,
+      "27": 28,
+      "28": 28,
+      "29": 28,
+      "30": 28,
+      "31": 28,
+      "32": 28,
+      "33": 28,
+      "34": 28,
+      "35": 28,
+      "36": 28,
+      "37": 28,
+      "38": 28,
+      "39": 28,
+      "40": 28,
+      "41": 28,
+      "42": 28,
+      "43": 28,
+      "44": 28,
+      "45": 28,
+      "46": 28,
+      "47": 28,
+      "48": 28,
+      "49": 28,
+      "50": 28,
+      "51": 28,
+      "52": 28,
+      "53": 28,
+      "54": 28,
+      "55": 28,
+      "56": 28,
+      "57": 28,
+      "58": 28,
+      "59": 28,
+      "60": 28,
+      "61": 28,
+      "62": 28
+    },
+    "trial_count": 372
   },
   "after": {
     "seed": 816,
-    "trials": [
-      {
-        "left": [
-          11
-        ],
-        "right": [
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          7
-        ],
-        "right": [
-          58
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          27
-        ],
-        "right": [
-          31
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          6
-        ],
-        "right": [
-          4
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          58
-        ],
-        "right": [
-          20
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          51
-        ],
-        "right": [
-          24
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          13
-        ],
-        "right": [
-          62
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          18
-        ],
-        "right": [
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          59
-        ],
-        "right": [
-          25
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          14
-        ],
-        "right": [
-          42
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          37
-        ],
-        "right": [
-          62
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          61
-        ],
-        "right": [
-          47
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          8
-        ],
-        "right": [
-          21
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          12
-        ],
-        "right": [
-          48
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          49
-        ],
-        "right": [
-          28
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          10
-        ],
-        "right": [
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          3
-        ],
-        "right": [
-          21
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          32
-        ],
-        "right": [
-          52
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          51
-        ],
-        "right": [
-          9
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          3
-        ],
-        "right": [
-          58
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          24
-        ],
-        "right": [
-          15
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          60
-        ],
-        "right": [
-          19
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          35
-        ],
-        "right": [
-          12
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          24
-        ],
-        "right": [
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          28
-        ],
-        "right": [
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          19
-        ],
-        "right": [
-          24
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1
-        ],
-        "right": [
-          43
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          29
-        ],
-        "right": [
-          38
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          54
-        ],
-        "right": [
-          48
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          62
-        ],
-        "right": [
-          28
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          43
-        ],
-        "right": [
-          7
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          39
-        ],
-        "right": [
-          17
-        ],
-        "advantage": -0.13214102692963284
-      },
-      {
-        "left": [
-          45
-        ],
-        "right": [
-          54
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          44
-        ],
-        "right": [
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          51
-        ],
-        "right": [
-          19
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          20
-        ],
-        "right": [
-          52
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          24
-        ],
-        "right": [
-          33
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          53
-        ],
-        "right": [
-          51
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          13
-        ],
-        "right": [
-          40
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          59
-        ],
-        "right": [
-          9
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          38
-        ],
-        "right": [
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          30
-        ],
-        "right": [
-          15
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          21
-        ],
-        "right": [
-          37
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          24
-        ],
-        "right": [
-          48
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          57
-        ],
-        "right": [
-          21
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          22
-        ],
-        "right": [
-          14
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          56
-        ],
-        "right": [
-          62
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          25
-        ],
-        "right": [
-          36
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          9
-        ],
-        "right": [
-          55
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          36
-        ],
-        "right": [
-          8
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          15
-        ],
-        "right": [
-          51
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          40
-        ],
-        "right": [
-          25
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          47
-        ],
-        "right": [
-          7
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          25
-        ],
-        "right": [
-          5
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          42
-        ],
-        "right": [
-          61
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          28
-        ],
-        "right": [
-          30
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          61
-        ],
-        "right": [
-          56
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          36
-        ],
-        "right": [
-          27
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          6
-        ],
-        "right": [
-          25
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          7
-        ],
-        "right": [
-          42
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          30
-        ],
-        "right": [
-          3
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          54
-        ],
-        "right": [
-          13
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          28
-        ],
-        "right": [
-          14
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          57
-        ],
-        "right": [
-          49
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          25,
-          23
-        ],
-        "right": [
-          55,
-          40
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          48,
-          35
-        ],
-        "right": [
-          44,
-          31
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1,
-          27
-        ],
-        "right": [
-          10,
-          59
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          37,
-          5
-        ],
-        "right": [
-          33,
-          46
-        ],
-        "advantage": 0.5268081263925017
-      },
-      {
-        "left": [
-          4,
-          50
-        ],
-        "right": [
-          37,
-          23
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          17,
-          51
-        ],
-        "right": [
-          42,
-          59
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          8,
-          2
-        ],
-        "right": [
-          49,
-          37
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          42,
-          21
-        ],
-        "right": [
-          8,
-          9
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          5,
-          16
-        ],
-        "right": [
-          59,
-          32
-        ],
-        "advantage": 0.35212097965650496
-      },
-      {
-        "left": [
-          23,
-          17
-        ],
-        "right": [
-          25,
-          52
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          38,
-          8
-        ],
-        "right": [
-          2,
-          46
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          10,
-          31
-        ],
-        "right": [
-          33,
-          48
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          43,
-          60
-        ],
-        "right": [
-          52,
-          33
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          55,
-          27
-        ],
-        "right": [
-          62,
-          31
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          20,
-          29
-        ],
-        "right": [
-          15,
-          4
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          8,
-          6
-        ],
-        "right": [
-          54,
-          1
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          6,
-          23
-        ],
-        "right": [
-          21,
-          8
-        ],
-        "advantage": -0.047330078192559695
-      },
-      {
-        "left": [
-          8,
-          59
-        ],
-        "right": [
-          33,
-          55
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          54,
-          41
-        ],
-        "right": [
-          9,
-          36
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          24,
-          41
-        ],
-        "right": [
-          34,
-          2
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          50,
-          59
-        ],
-        "right": [
-          9,
-          34
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          15,
-          5
-        ],
-        "right": [
-          53,
-          60
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          14,
-          19
-        ],
-        "right": [
-          47,
-          9
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          20,
-          7
-        ],
-        "right": [
-          18,
-          49
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          59,
-          28
-        ],
-        "right": [
-          25,
-          49
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          32,
-          2
-        ],
-        "right": [
-          5,
-          26
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          57,
-          55
-        ],
-        "right": [
-          4,
-          21
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          62,
-          46
-        ],
-        "right": [
-          49,
-          35
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          55,
-          7
-        ],
-        "right": [
-          10,
-          14
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          26,
-          8
-        ],
-        "right": [
-          51,
-          1
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          9,
-          37
-        ],
-        "right": [
-          25,
-          5
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          7,
-          19
-        ],
-        "right": [
-          45,
-          43
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          3,
-          7
-        ],
-        "right": [
-          62,
-          61
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          14,
-          21
-        ],
-        "right": [
-          7,
-          1
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          6,
-          51
-        ],
-        "right": [
-          11,
-          61
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          9,
-          14
-        ],
-        "right": [
-          3,
-          56
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          48,
-          25
-        ],
-        "right": [
-          50,
-          6
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          5,
-          17
-        ],
-        "right": [
-          10,
-          9
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          44,
-          33
-        ],
-        "right": [
-          15,
-          16
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          61,
-          23
-        ],
-        "right": [
-          21,
-          58
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          54,
-          17
-        ],
-        "right": [
-          19,
-          1
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          45,
-          33
-        ],
-        "right": [
-          1,
-          35
-        ],
-        "advantage": 0.4816277002708919
-      },
-      {
-        "left": [
-          60,
-          56
-        ],
-        "right": [
-          42,
-          35
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          13,
-          48
-        ],
-        "right": [
-          40,
-          29
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          12,
-          49
-        ],
-        "right": [
-          2,
-          44
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          41,
-          37
-        ],
-        "right": [
-          9,
-          5
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          1,
-          26
-        ],
-        "right": [
-          31,
-          2
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          52,
-          34
-        ],
-        "right": [
-          53,
-          3
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          15,
-          62
-        ],
-        "right": [
-          30,
-          12
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          46,
-          14
-        ],
-        "right": [
-          7,
-          38
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          40,
-          32
-        ],
-        "right": [
-          47,
-          25
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          21,
-          40
-        ],
-        "right": [
-          48,
-          56
-        ],
-        "advantage": -0.7932075745478157
-      },
-      {
-        "left": [
-          29,
-          57
-        ],
-        "right": [
-          34,
-          7
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          49,
-          16
-        ],
-        "right": [
-          62,
-          5
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          39,
-          14
-        ],
-        "right": [
-          60,
-          20
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          7,
-          42
-        ],
-        "right": [
-          16,
-          46
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          47,
-          8
-        ],
-        "right": [
-          29,
-          52
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          7,
-          36
-        ],
-        "right": [
-          62,
-          43
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          41,
-          29
-        ],
-        "right": [
-          1,
-          49
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          12,
-          48
-        ],
-        "right": [
-          41,
-          16
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          42,
-          57
-        ],
-        "right": [
-          61,
-          22
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          56,
-          31
-        ],
-        "right": [
-          19,
-          4
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          49,
-          13
-        ],
-        "right": [
-          38,
-          56
-        ],
-        "advantage": 0.3074857673116871
-      },
-      {
-        "left": [
-          30,
-          6
-        ],
-        "right": [
-          31,
-          50
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          31,
-          19,
-          26,
-          25
-        ],
-        "right": [
-          27,
-          42,
-          20,
-          7
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          28,
-          9,
-          3,
-          6
-        ],
-        "right": [
-          51,
-          36,
-          5,
-          11
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          53,
-          18,
-          17,
-          31
-        ],
-        "right": [
-          6,
-          20,
-          7,
-          36
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          1,
-          34,
-          41,
-          55
-        ],
-        "right": [
-          18,
-          12,
-          17,
-          50
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          26,
-          38,
-          10,
-          33
-        ],
-        "right": [
-          27,
-          58,
-          43,
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          17,
-          54,
-          50,
-          1
-        ],
-        "right": [
-          41,
-          57,
-          25,
-          40
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          55,
-          40,
-          45,
-          59
-        ],
-        "right": [
-          29,
-          43,
-          15,
-          61
-        ],
-        "advantage": -0.963176908077117
-      },
-      {
-        "left": [
-          8,
-          4,
-          48,
-          61
-        ],
-        "right": [
-          1,
-          34,
-          39,
-          6
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          17,
-          2,
-          49,
-          32
-        ],
-        "right": [
-          25,
-          30,
-          9,
-          35
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          23,
-          58,
-          17,
-          53
-        ],
-        "right": [
-          16,
-          61,
-          11,
-          1
-        ],
-        "advantage": -0.4636328443258472
-      },
-      {
-        "left": [
-          28,
-          21,
-          41,
-          55
-        ],
-        "right": [
-          31,
-          29,
-          6,
-          47
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          3,
-          57,
-          55,
-          47
-        ],
-        "right": [
-          40,
-          54,
-          62,
-          9
-        ],
-        "advantage": -0.31380025265269024
-      },
-      {
-        "left": [
-          32,
-          25,
-          60,
-          33
-        ],
-        "right": [
-          23,
-          2,
-          6,
-          26
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          32,
-          8,
-          43,
-          46
-        ],
-        "right": [
-          15,
-          2,
-          11,
-          16
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1,
-          7,
-          16,
-          13
-        ],
-        "right": [
-          42,
-          48,
-          21,
-          45
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          5,
-          25,
-          48,
-          52
-        ],
-        "right": [
-          46,
-          45,
-          58,
-          54
-        ],
-        "advantage": 0.8299705025545233
-      },
-      {
-        "left": [
-          44,
-          5,
-          38,
-          53
-        ],
-        "right": [
-          39,
-          40,
-          57,
-          18
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          15,
-          61,
-          3,
-          41
-        ],
-        "right": [
-          4,
-          57,
-          2,
-          1
-        ],
-        "advantage": 0.6741866198105096
-      },
-      {
-        "left": [
-          60,
-          57,
-          53,
-          19
-        ],
-        "right": [
-          51,
-          3,
-          27,
-          14
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          6,
-          53,
-          18,
-          33
-        ],
-        "right": [
-          32,
-          20,
-          22,
-          45
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1,
-          18,
-          21,
-          60
-        ],
-        "right": [
-          23,
-          55,
-          13,
-          50
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          36,
-          30,
-          49,
-          60
-        ],
-        "right": [
-          39,
-          29,
-          31,
-          4
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          21,
-          24,
-          6,
-          50
-        ],
-        "right": [
-          41,
-          60,
-          16,
-          42
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          53,
-          61,
-          15,
-          36
-        ],
-        "right": [
-          58,
-          35,
-          62,
-          9
-        ],
-        "advantage": -0.13925322000669202
-      },
-      {
-        "left": [
-          34,
-          15,
-          28,
-          4
-        ],
-        "right": [
-          56,
-          10,
-          39,
-          21
-        ],
-        "advantage": 0.43812907133812995
-      },
-      {
-        "left": [
-          30,
-          52,
-          59,
-          10
-        ],
-        "right": [
-          23,
-          19,
-          44,
-          21
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          62,
-          51,
-          36,
-          46
-        ],
-        "right": [
-          19,
-          20,
-          54,
-          49
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          28,
-          55,
-          38,
-          23
-        ],
-        "right": [
-          12,
-          53,
-          49,
-          5
-        ],
-        "advantage": -0.4777948478662925
-      },
-      {
-        "left": [
-          17,
-          46,
-          45,
-          29
-        ],
-        "right": [
-          32,
-          21,
-          39,
-          35
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          25,
-          52,
-          6,
-          53
-        ],
-        "right": [
-          12,
-          11,
-          28,
-          51
-        ],
-        "advantage": -0.997727671859928
-      },
-      {
-        "left": [
-          42,
-          20,
-          2,
-          41
-        ],
-        "right": [
-          17,
-          44,
-          12,
-          28
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          54,
-          60,
-          3,
-          43
-        ],
-        "right": [
-          27,
-          26,
-          41,
-          56
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          21,
-          14,
-          42,
-          13
-        ],
-        "right": [
-          9,
-          49,
-          56,
-          37
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          60,
-          6,
-          12,
-          61
-        ],
-        "right": [
-          40,
-          21,
-          16,
-          39
-        ],
-        "advantage": 0.2529018335872989
-      },
-      {
-        "left": [
-          47,
-          35,
-          4,
-          61
-        ],
-        "right": [
-          51,
-          18,
-          43,
-          48
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          16,
-          31,
-          5,
-          4
-        ],
-        "right": [
-          33,
-          17,
-          46,
-          22
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          38,
-          57,
-          17,
-          41
-        ],
-        "right": [
-          22,
-          43,
-          8,
-          25
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          2,
-          57,
-          30,
-          46
-        ],
-        "right": [
-          15,
-          49,
-          12,
-          40
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          2,
-          8,
-          50,
-          29
-        ],
-        "right": [
-          44,
-          53,
-          25,
-          5
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          50,
-          53,
-          32,
-          22
-        ],
-        "right": [
-          45,
-          25,
-          52,
-          42
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          26,
-          59,
-          17,
-          39
-        ],
-        "right": [
-          4,
-          16,
-          23,
-          56
-        ],
-        "advantage": 0.27411383371225395
-      },
-      {
-        "left": [
-          57,
-          62,
-          18,
-          4
-        ],
-        "right": [
-          61,
-          37,
-          58,
-          31
-        ],
-        "advantage": 0.29580102405707764
-      },
-      {
-        "left": [
-          19,
-          29,
-          5,
-          10
-        ],
-        "right": [
-          34,
-          43,
-          17,
-          31
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          62,
-          31,
-          4,
-          20
-        ],
-        "right": [
-          7,
-          26,
-          28,
-          15
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          7,
-          3,
-          59,
-          62
-        ],
-        "right": [
-          47,
-          38,
-          2,
-          36
-        ],
-        "advantage": 0.8607213048630704
-      },
-      {
-        "left": [
-          4,
-          32,
-          23,
-          38
-        ],
-        "right": [
-          36,
-          39,
-          31,
-          26
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          15,
-          26,
-          6,
-          43
-        ],
-        "right": [
-          14,
-          37,
-          52,
-          42
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          11,
-          60,
-          20,
-          5
-        ],
-        "right": [
-          9,
-          48,
-          37,
-          39
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          59,
-          41,
-          30,
-          6
-        ],
-        "right": [
-          56,
-          28,
-          7,
-          43
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          28,
-          27,
-          35,
-          59
-        ],
-        "right": [
-          54,
-          46,
-          4,
-          45
-        ],
-        "advantage": 0.4570262561889952
-      },
-      {
-        "left": [
-          20,
-          25,
-          38,
-          4
-        ],
-        "right": [
-          46,
-          62,
-          44,
-          32
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          1,
-          6,
-          10,
-          52
-        ],
-        "right": [
-          41,
-          35,
-          16,
-          11
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          41,
-          21,
-          27,
-          48
-        ],
-        "right": [
-          59,
-          58,
-          57,
-          29
-        ],
-        "advantage": 0.04820620373544836
-      },
-      {
-        "left": [
-          40,
-          36,
-          26,
-          28
-        ],
-        "right": [
-          59,
-          10,
-          4,
-          61
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          51,
-          46,
-          12,
-          14
-        ],
-        "right": [
-          32,
-          60,
-          44,
-          35
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          56,
-          23,
-          55,
-          26
-        ],
-        "right": [
-          52,
-          5,
-          32,
-          44
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          61,
-          50,
-          57,
-          36
-        ],
-        "right": [
-          29,
-          11,
-          26,
-          48
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          43,
-          16,
-          12,
-          59
-        ],
-        "right": [
-          47,
-          58,
-          45,
-          19
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          8,
-          53,
-          1,
-          59
-        ],
-        "right": [
-          35,
-          56,
-          17,
-          11
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          38,
-          14,
-          57,
-          60
-        ],
-        "right": [
-          58,
-          55,
-          54,
-          3
-        ],
-        "advantage": 1.0
-      },
-      {
-        "left": [
-          26,
-          24,
-          53,
-          34
-        ],
-        "right": [
-          19,
-          17,
-          56,
-          58
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          54,
-          3,
-          25,
-          49
-        ],
-        "right": [
-          35,
-          32,
-          53,
-          52
-        ],
-        "advantage": -1.0
-      },
-      {
-        "left": [
-          11,
-          8,
-          52,
-          13
-        ],
-        "right": [
-          49,
-          50,
-          19,
-          18
-        ],
-        "advantage": -0.6366980117924097
-      },
-      {
-        "left": [
-          55,
-          15,
-          60,
-          32
-        ],
-        "right": [
-          17,
-          9,
-          57,
-          5
-        ],
-        "advantage": -1.0
+    "requested_draws_per_team_size": 64,
+    "by_team_size": {
+      "1": {
+        "paired_rounds": 1,
+        "trial_count": 124,
+        "sample_count": {
+          "1": 4,
+          "2": 4,
+          "3": 4,
+          "4": 4,
+          "5": 4,
+          "6": 4,
+          "7": 4,
+          "8": 4,
+          "9": 4,
+          "10": 4,
+          "11": 4,
+          "12": 4,
+          "13": 4,
+          "14": 4,
+          "15": 4,
+          "16": 4,
+          "17": 4,
+          "18": 4,
+          "19": 4,
+          "20": 4,
+          "21": 4,
+          "22": 4,
+          "23": 4,
+          "24": 4,
+          "25": 4,
+          "26": 4,
+          "27": 4,
+          "28": 4,
+          "29": 4,
+          "30": 4,
+          "31": 4,
+          "32": 4,
+          "33": 4,
+          "34": 4,
+          "35": 4,
+          "36": 4,
+          "37": 4,
+          "38": 4,
+          "39": 4,
+          "40": 4,
+          "41": 4,
+          "42": 4,
+          "43": 4,
+          "44": 4,
+          "45": 4,
+          "46": 4,
+          "47": 4,
+          "48": 4,
+          "49": 4,
+          "50": 4,
+          "51": 4,
+          "52": 4,
+          "53": 4,
+          "54": 4,
+          "55": 4,
+          "56": 4,
+          "57": 4,
+          "58": 4,
+          "59": 4,
+          "60": 4,
+          "61": 4,
+          "62": 4
+        },
+        "lineup_position_counts": {
+          "1": [
+            2,
+            2
+          ],
+          "2": [
+            2,
+            2
+          ],
+          "3": [
+            2,
+            2
+          ],
+          "4": [
+            2,
+            2
+          ],
+          "5": [
+            2,
+            2
+          ],
+          "6": [
+            2,
+            2
+          ],
+          "7": [
+            2,
+            2
+          ],
+          "8": [
+            2,
+            2
+          ],
+          "9": [
+            2,
+            2
+          ],
+          "10": [
+            2,
+            2
+          ],
+          "11": [
+            2,
+            2
+          ],
+          "12": [
+            2,
+            2
+          ],
+          "13": [
+            2,
+            2
+          ],
+          "14": [
+            2,
+            2
+          ],
+          "15": [
+            2,
+            2
+          ],
+          "16": [
+            2,
+            2
+          ],
+          "17": [
+            2,
+            2
+          ],
+          "18": [
+            2,
+            2
+          ],
+          "19": [
+            2,
+            2
+          ],
+          "20": [
+            2,
+            2
+          ],
+          "21": [
+            2,
+            2
+          ],
+          "22": [
+            2,
+            2
+          ],
+          "23": [
+            2,
+            2
+          ],
+          "24": [
+            2,
+            2
+          ],
+          "25": [
+            2,
+            2
+          ],
+          "26": [
+            2,
+            2
+          ],
+          "27": [
+            2,
+            2
+          ],
+          "28": [
+            2,
+            2
+          ],
+          "29": [
+            2,
+            2
+          ],
+          "30": [
+            2,
+            2
+          ],
+          "31": [
+            2,
+            2
+          ],
+          "32": [
+            2,
+            2
+          ],
+          "33": [
+            2,
+            2
+          ],
+          "34": [
+            2,
+            2
+          ],
+          "35": [
+            2,
+            2
+          ],
+          "36": [
+            2,
+            2
+          ],
+          "37": [
+            2,
+            2
+          ],
+          "38": [
+            2,
+            2
+          ],
+          "39": [
+            2,
+            2
+          ],
+          "40": [
+            2,
+            2
+          ],
+          "41": [
+            2,
+            2
+          ],
+          "42": [
+            2,
+            2
+          ],
+          "43": [
+            2,
+            2
+          ],
+          "44": [
+            2,
+            2
+          ],
+          "45": [
+            2,
+            2
+          ],
+          "46": [
+            2,
+            2
+          ],
+          "47": [
+            2,
+            2
+          ],
+          "48": [
+            2,
+            2
+          ],
+          "49": [
+            2,
+            2
+          ],
+          "50": [
+            2,
+            2
+          ],
+          "51": [
+            2,
+            2
+          ],
+          "52": [
+            2,
+            2
+          ],
+          "53": [
+            2,
+            2
+          ],
+          "54": [
+            2,
+            2
+          ],
+          "55": [
+            2,
+            2
+          ],
+          "56": [
+            2,
+            2
+          ],
+          "57": [
+            2,
+            2
+          ],
+          "58": [
+            2,
+            2
+          ],
+          "59": [
+            2,
+            2
+          ],
+          "60": [
+            2,
+            2
+          ],
+          "61": [
+            2,
+            2
+          ],
+          "62": [
+            2,
+            2
+          ]
+        },
+        "mean_contribution": {
+          "1": -0.5835387717444389,
+          "2": 0.018440090724029662,
+          "3": -0.07083477141976491,
+          "4": 0.5667120036845658,
+          "5": 0.5240262477530409,
+          "6": -0.036476318424933624,
+          "7": 0.5708951025012661,
+          "8": 0.15033952018619198,
+          "9": -0.1298813526385477,
+          "10": -0.6449687929002806,
+          "11": -0.023153406496073836,
+          "12": -0.49187764235610676,
+          "13": 0.5675953545178092,
+          "14": 0.027884839881906043,
+          "15": 0.39624876107397056,
+          "16": -0.0005621472254116466,
+          "17": -0.0720379846568491,
+          "18": -0.2712783019440372,
+          "19": 0.011993569711461982,
+          "20": -0.5421171369987717,
+          "21": 0.39694443066503915,
+          "22": -0.010949408376450254,
+          "23": 0.5680100293830388,
+          "24": -0.5835526704351677,
+          "25": 0.5023694484815391,
+          "26": 0.021161976110948416,
+          "27": 0.04215398904823342,
+          "28": 0.666997893439027,
+          "29": 0.07181946645019377,
+          "30": -0.43870695908309376,
+          "31": -0.04193706133216071,
+          "32": -0.4671518120082976,
+          "33": -0.027450072612200727,
+          "34": -0.5785038365679734,
+          "35": 0.4524179126892321,
+          "36": 0.15530396244784983,
+          "37": -0.07549227184095994,
+          "38": 0.5733743693447347,
+          "39": -0.5126121050439024,
+          "40": 0.580157410876698,
+          "41": -0.47485647043213863,
+          "42": -0.5334762716009067,
+          "43": 0.6034314576526789,
+          "44": -0.506885741328214,
+          "45": 0.43146086208544443,
+          "46": -0.03935252211543483,
+          "47": -0.027336919925809416,
+          "48": -0.5754997498531875,
+          "49": 0.4281854484653742,
+          "50": -0.48466657026067905,
+          "51": 0.5433874348886938,
+          "52": -0.28533929842543837,
+          "53": -0.03721208176755339,
+          "54": 0.479565446076617,
+          "55": -0.10316684032036488,
+          "56": 0.018287482124702492,
+          "57": 0.08224440488359358,
+          "58": -0.5471122012387217,
+          "59": 0.07667210174754593,
+          "60": -0.04369547595746104,
+          "61": -0.23452041666161566,
+          "62": -0.03187763290247875
+        },
+        "mean_killfeed_advantage": {
+          "1": -0.9142419668351243,
+          "2": 0.02998575928705388,
+          "3": 0.028745921097222626,
+          "4": 0.9360380436743688,
+          "5": 0.8968465985167591,
+          "6": -0.11606053274490902,
+          "7": 0.797575647914092,
+          "8": 0.27884881691640084,
+          "9": -0.11985807328779413,
+          "10": -0.9624142838607836,
+          "11": -0.09675830035626981,
+          "12": -0.7615411346632235,
+          "13": 0.8963003353732648,
+          "14": 0.008216734307412099,
+          "15": 0.6564946776083074,
+          "16": -0.07175531756071446,
+          "17": -0.004760079948043228,
+          "18": -0.3226953371220273,
+          "19": -0.009112771297102973,
+          "20": -0.8689874325121101,
+          "21": 0.6015127006221637,
+          "22": 0.09975721347881611,
+          "23": 0.8705686069951294,
+          "24": -0.9978292898165393,
+          "25": 0.7778619726786702,
+          "26": 0.010049276153742237,
+          "27": -0.0236775841029227,
+          "28": 0.7826207560846314,
+          "29": 0.02716688174019155,
+          "30": -0.9048488454802219,
+          "31": 0.06695118854039456,
+          "32": -0.7460757454081417,
+          "33": -0.004914077558418939,
+          "34": -0.8726900876788952,
+          "35": 0.7291993066721849,
+          "36": 0.1413332273812477,
+          "37": 0.06934913287474681,
+          "38": 0.771153308237204,
+          "39": -0.6327519735415892,
+          "40": 0.7313469317542586,
+          "41": -0.7007116937190053,
+          "42": -0.9558713199265902,
+          "43": 0.8864759655210416,
+          "44": -0.8696222839062406,
+          "45": 0.6325961410300669,
+          "46": -0.11833357888880958,
+          "47": -0.027805844237922372,
+          "48": -0.8430545486255256,
+          "49": 0.5206413457956554,
+          "50": -0.8922088551492411,
+          "51": 0.8853432118906857,
+          "52": -0.26855649834183337,
+          "53": 0.009856983523515661,
+          "54": 0.9045317302322808,
+          "55": -0.19751766614466643,
+          "56": 0.05446718140003587,
+          "57": 0.19469103002032745,
+          "58": -0.8575476422067385,
+          "59": 0.19953268622345743,
+          "60": 0.010903715679850434,
+          "61": -0.3989763330195866,
+          "62": 0.05421606871581136
+        }
+      },
+      "2": {
+        "paired_rounds": 1,
+        "trial_count": 124,
+        "sample_count": {
+          "1": 8,
+          "2": 8,
+          "3": 8,
+          "4": 8,
+          "5": 8,
+          "6": 8,
+          "7": 8,
+          "8": 8,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 8,
+          "14": 8,
+          "15": 8,
+          "16": 8,
+          "17": 8,
+          "18": 8,
+          "19": 8,
+          "20": 8,
+          "21": 8,
+          "22": 8,
+          "23": 8,
+          "24": 8,
+          "25": 8,
+          "26": 8,
+          "27": 8,
+          "28": 8,
+          "29": 8,
+          "30": 8,
+          "31": 8,
+          "32": 8,
+          "33": 8,
+          "34": 8,
+          "35": 8,
+          "36": 8,
+          "37": 8,
+          "38": 8,
+          "39": 8,
+          "40": 8,
+          "41": 8,
+          "42": 8,
+          "43": 8,
+          "44": 8,
+          "45": 8,
+          "46": 8,
+          "47": 8,
+          "48": 8,
+          "49": 8,
+          "50": 8,
+          "51": 8,
+          "52": 8,
+          "53": 8,
+          "54": 8,
+          "55": 8,
+          "56": 8,
+          "57": 8,
+          "58": 8,
+          "59": 8,
+          "60": 8,
+          "61": 8,
+          "62": 8
+        },
+        "lineup_position_counts": {
+          "1": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "2": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "3": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "4": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "5": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "6": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "7": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "8": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "9": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "10": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "11": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "12": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "13": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "14": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "15": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "16": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "17": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "18": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "19": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "20": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "21": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "22": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "23": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "24": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "25": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "26": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "27": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "28": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "29": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "30": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "31": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "32": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "33": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "34": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "35": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "36": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "37": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "38": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "39": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "40": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "41": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "42": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "43": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "44": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "45": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "46": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "47": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "48": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "49": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "50": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "51": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "52": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "53": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "54": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "55": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "56": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "57": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "58": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "59": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "60": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "61": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "62": [
+            2,
+            2,
+            2,
+            2
+          ]
+        },
+        "mean_contribution": {
+          "1": -0.18123775505454331,
+          "2": -0.22773566755242924,
+          "3": -0.1019575128635497,
+          "4": 0.4194132135124008,
+          "5": 0.08135296159204512,
+          "6": 0.2286941966760025,
+          "7": 0.4380150494534905,
+          "8": 0.4676824206306424,
+          "9": 0.2027595945801729,
+          "10": -0.5377653579043697,
+          "11": 0.20031598072570636,
+          "12": -0.4888315064256048,
+          "13": 0.025113902634287123,
+          "14": -0.46615427270144705,
+          "15": 0.2740266624770966,
+          "16": 0.021252690092063764,
+          "17": 0.22026440198830693,
+          "18": -0.004244849111218349,
+          "19": 0.19453954450280003,
+          "20": -0.04675386524514391,
+          "21": -0.396017127708444,
+          "22": 0.42469705953862724,
+          "23": 0.09738873594323492,
+          "24": -0.42528397546237096,
+          "25": 0.0767142278259686,
+          "26": 0.246991731003981,
+          "27": -0.06929314401126684,
+          "28": -0.41278425801726115,
+          "29": -0.11419713491436004,
+          "30": -0.25305026847688805,
+          "31": 0.20002755234045927,
+          "32": 0.029798959252240978,
+          "33": -0.0021895698619054382,
+          "34": -0.45130627979976634,
+          "35": 0.3634960346246935,
+          "36": 0.25674488569441545,
+          "37": 0.4219495251204284,
+          "38": 0.09655167020471045,
+          "39": -0.15298971103696202,
+          "40": -0.3083354185133176,
+          "41": -0.08430004904742076,
+          "42": -0.12624236289086935,
+          "43": 0.2801323941258197,
+          "44": -0.14622462025523064,
+          "45": 0.2863006767042296,
+          "46": 0.013343868690696509,
+          "47": 0.024414743228256916,
+          "48": 0.4027149354413013,
+          "49": 0.025154363444298902,
+          "50": -0.2656233643126838,
+          "51": -0.0900909824963223,
+          "52": -0.3393213937580677,
+          "53": 0.19946886781737955,
+          "54": 0.42676709837646826,
+          "55": -0.12838626536274078,
+          "56": -0.32913113536353006,
+          "57": 0.19853178296634227,
+          "58": -0.08273397163561733,
+          "59": -0.00884986159405144,
+          "60": -0.46908490871899944,
+          "61": -0.08834726629453764,
+          "62": -0.04615587481764813
+        },
+        "mean_killfeed_advantage": {
+          "1": -0.352618198752755,
+          "2": -0.36508934444727004,
+          "3": -0.11689914809448879,
+          "4": 0.6621423190970558,
+          "5": 0.15666132170082414,
+          "6": 0.33670199498573217,
+          "7": 0.7229810647557403,
+          "8": 0.5868410030440885,
+          "9": 0.3732902001691348,
+          "10": -0.8392653021428569,
+          "11": 0.4059730962725611,
+          "12": -0.8699078458238562,
+          "13": -0.047181280556759075,
+          "14": -0.6484228442111568,
+          "15": 0.42795511006657594,
+          "16": -0.040693155447738494,
+          "17": 0.5322253286526677,
+          "18": -0.03374349022892706,
+          "19": 0.250153305563177,
+          "20": -0.14768710756299305,
+          "21": -0.6396559566205949,
+          "22": 0.8295059193583636,
+          "23": 0.2801867233354153,
+          "24": -0.8316050661489792,
+          "25": 0.08537210943267697,
+          "26": 0.3705698277398143,
+          "27": -0.15638692056654463,
+          "28": -0.6213249763407308,
+          "29": -0.2657725225440245,
+          "30": -0.3703176304352005,
+          "31": 0.40934660123550076,
+          "32": 0.046434386918333806,
+          "33": 0.02730991964333454,
+          "34": -0.7800025999331082,
+          "35": 0.6517459597559304,
+          "36": 0.40591267352928045,
+          "37": 0.8307129019671691,
+          "38": 0.1306228069510053,
+          "39": -0.20694043808418222,
+          "40": -0.5116688762544473,
+          "41": -0.13273431223972115,
+          "42": -0.22191975248762882,
+          "43": 0.45288439165585964,
+          "44": -0.14944520511495532,
+          "45": 0.33581090564624616,
+          "46": 0.02121600509621861,
+          "47": 0.06789776684458988,
+          "48": 0.6122979659341067,
+          "49": 0.03739882919104887,
+          "50": -0.5679569901098868,
+          "51": -0.08376165134608081,
+          "52": -0.42814027440949187,
+          "53": 0.38361723911098256,
+          "54": 0.6485968944491847,
+          "55": -0.16395090409994043,
+          "56": -0.49474013455171395,
+          "57": 0.2733975146803494,
+          "58": -0.1961695355329276,
+          "59": -0.0916456616539006,
+          "60": -0.7371394178120418,
+          "61": -0.172539255187543,
+          "62": -0.07043628804052272
+        }
+      },
+      "4": {
+        "paired_rounds": 1,
+        "trial_count": 124,
+        "sample_count": {
+          "1": 16,
+          "2": 16,
+          "3": 16,
+          "4": 16,
+          "5": 16,
+          "6": 16,
+          "7": 16,
+          "8": 16,
+          "9": 16,
+          "10": 16,
+          "11": 16,
+          "12": 16,
+          "13": 16,
+          "14": 16,
+          "15": 16,
+          "16": 16,
+          "17": 16,
+          "18": 16,
+          "19": 16,
+          "20": 16,
+          "21": 16,
+          "22": 16,
+          "23": 16,
+          "24": 16,
+          "25": 16,
+          "26": 16,
+          "27": 16,
+          "28": 16,
+          "29": 16,
+          "30": 16,
+          "31": 16,
+          "32": 16,
+          "33": 16,
+          "34": 16,
+          "35": 16,
+          "36": 16,
+          "37": 16,
+          "38": 16,
+          "39": 16,
+          "40": 16,
+          "41": 16,
+          "42": 16,
+          "43": 16,
+          "44": 16,
+          "45": 16,
+          "46": 16,
+          "47": 16,
+          "48": 16,
+          "49": 16,
+          "50": 16,
+          "51": 16,
+          "52": 16,
+          "53": 16,
+          "54": 16,
+          "55": 16,
+          "56": 16,
+          "57": 16,
+          "58": 16,
+          "59": 16,
+          "60": 16,
+          "61": 16,
+          "62": 16
+        },
+        "lineup_position_counts": {
+          "1": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "2": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "3": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "4": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "5": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "6": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "7": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "8": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "9": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "10": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "11": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "12": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "13": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "14": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "15": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "16": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "17": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "18": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "19": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "20": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "21": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "22": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "23": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "24": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "25": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "26": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "27": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "28": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "29": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "30": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "31": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "32": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "33": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "34": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "35": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "36": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "37": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "38": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "39": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "40": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "41": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "42": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "43": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "44": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "45": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "46": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "47": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "48": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "49": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "50": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "51": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "52": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "53": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "54": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "55": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "56": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "57": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "58": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "59": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "60": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "61": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "62": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ]
+        },
+        "mean_contribution": {
+          "1": 0.12449734573063419,
+          "2": -0.1838943779562175,
+          "3": -0.15349162072917769,
+          "4": 0.3099185858239925,
+          "5": 0.25207483032902867,
+          "6": 0.36727104814336975,
+          "7": 0.10618362257723493,
+          "8": 0.43783468081852,
+          "9": 0.07740261578502963,
+          "10": -0.20165582157381137,
+          "11": 0.11260824893459576,
+          "12": 0.049292858727125924,
+          "13": -0.15433573353078814,
+          "14": 0.017913268680810807,
+          "15": -0.10535109708678086,
+          "16": -0.30248718753776643,
+          "17": -0.24687931938522076,
+          "18": 0.06087356105807551,
+          "19": 0.09137624411088807,
+          "20": -0.2522556430861337,
+          "21": -0.23337141985094317,
+          "22": -0.0177296821215373,
+          "23": -0.3088156013222194,
+          "24": -0.11427202656396909,
+          "25": -0.018294701753544647,
+          "26": 0.25242267005576546,
+          "27": -0.14092945243070132,
+          "28": -0.10407668563770145,
+          "29": -0.26597756639292575,
+          "30": -0.061557292602868754,
+          "31": -0.16178478393274148,
+          "32": -0.004637140275063775,
+          "33": 0.05390850359060464,
+          "34": -0.24215675518868818,
+          "35": 0.36145897000244664,
+          "36": -0.2829871454533289,
+          "37": 0.058236685512654464,
+          "38": -0.18855348775685116,
+          "39": 0.3158212337215255,
+          "40": 0.08614476820667567,
+          "41": 0.19142045568022603,
+          "42": -0.04329423000275582,
+          "43": 0.22481232664768155,
+          "44": -0.2901792784189787,
+          "45": -0.14419055392393623,
+          "46": -0.22970581459519754,
+          "47": 0.14637547996809244,
+          "48": 0.15930813022470453,
+          "49": -0.044822903928085696,
+          "50": -0.27901921461132034,
+          "51": 0.10617454086476241,
+          "52": 0.1264765911374509,
+          "53": 0.0015141464378519466,
+          "54": 0.20684588969670645,
+          "55": 0.16307018198615075,
+          "56": 0.22936675110153437,
+          "57": 0.11441306953891761,
+          "58": 0.030142055317173042,
+          "59": -0.2448421153661606,
+          "60": 0.2382275428492835,
+          "61": 0.19476814567356965,
+          "62": -0.24660639591766748
+        },
+        "mean_killfeed_advantage": {
+          "1": 0.2033878014824051,
+          "2": -0.3178248512037412,
+          "3": -0.30884006894174726,
+          "4": 0.37926425448056883,
+          "5": 0.4127978455700593,
+          "6": 0.561531747971561,
+          "7": 0.0951339422502207,
+          "8": 0.6029164104617835,
+          "9": 0.23923188467431417,
+          "10": -0.2655024558724649,
+          "11": 0.06395837029278209,
+          "12": 0.04319091053179658,
+          "13": -0.20600002713083293,
+          "14": 0.07442264854084318,
+          "15": -0.3089483313228934,
+          "16": -0.43498774315935634,
+          "17": -0.43616113474144863,
+          "18": 0.1555038777631456,
+          "19": 0.15833576188346135,
+          "20": -0.425923378056203,
+          "21": -0.355606208669743,
+          "22": 0.0706670188961108,
+          "23": -0.4220803989258289,
+          "24": -0.05625424254325394,
+          "25": -0.05511875612440745,
+          "26": 0.45885321835782794,
+          "27": -0.1259000207889223,
+          "28": -0.23735198748327643,
+          "29": -0.5211244020883201,
+          "30": -0.0009231547532272254,
+          "31": -0.20481577786864372,
+          "32": 0.05062917760764624,
+          "33": 0.16774450954574394,
+          "34": -0.25270757462678606,
+          "35": 0.5429875712753105,
+          "36": -0.47846650550190495,
+          "37": 0.12882394266932454,
+          "38": -0.3804953547404969,
+          "39": 0.47599478945697254,
+          "40": 0.058933585736883204,
+          "41": 0.2879478759310599,
+          "42": -0.0706792462521711,
+          "43": 0.3798166868327252,
+          "44": -0.45265290305985234,
+          "45": -0.20563669406301519,
+          "46": -0.3060384165900205,
+          "47": 0.2780290757461695,
+          "48": 0.2599481640283198,
+          "49": -0.1250434925107511,
+          "50": -0.46661748706214023,
+          "51": 0.035225888164646765,
+          "52": 0.2574015749171188,
+          "53": -0.0602448969595683,
+          "54": 0.3911998098059733,
+          "55": 0.19728354866299166,
+          "56": 0.3107350648541309,
+          "57": 0.09473365560792638,
+          "58": 0.12056254380573361,
+          "59": -0.3482464954276814,
+          "60": 0.3316617904019777,
+          "61": 0.2970253294260546,
+          "62": -0.3556882711648902
+        }
       }
-    ],
+    },
+    "score_definition": "Own-field HP fraction; paired lineup effect, not native win rate.",
+    "cap_basis": "bodies",
+    "contact_mode": "frontal",
+    "full_start": false,
     "mean_contribution": {
-      "1": -0.42734341531975306,
-      "2": -0.25249342319097,
-      "3": 0.015793405144349272,
-      "4": 0.3515890769824138,
-      "5": 0.062457602972095926,
-      "6": -0.04169241665606257,
-      "7": 0.5716169107822668,
-      "8": 0.8381645041500094,
-      "9": 0.358502970703299,
-      "10": -0.4034662792125573,
-      "11": -0.47048522687333044,
-      "12": 0.2868018733318092,
-      "13": 0.07453197283547526,
-      "14": -0.5714285714285714,
-      "15": 0.49601496120119154,
-      "16": 0.30633843976305714,
-      "17": 0.10224326401663365,
-      "18": 0.29324990358494873,
-      "19": -0.09088679921383935,
-      "20": -0.38461538461538464,
-      "21": -0.3194351098772618,
-      "22": 0.0,
-      "23": 0.13362526122331128,
-      "24": -0.7777777777777778,
-      "25": -0.0985344167866093,
-      "26": 0.15160758891415024,
-      "27": -0.5494767540075556,
-      "28": 0.3384430094700475,
-      "29": -0.36321637826130937,
-      "30": -0.2,
-      "31": 0.04401243599643265,
-      "32": -0.45950756122853154,
-      "33": -0.2768345841928736,
-      "34": -0.17354121429576333,
-      "35": 0.5081894125660568,
-      "36": 0.21428753393787411,
-      "37": 0.2937279183941295,
-      "38": -0.12661553231085002,
-      "39": 0.4300627934571461,
-      "40": 0.07673611390826228,
-      "41": -0.07985044852837762,
-      "42": -0.4666666666666667,
-      "43": 0.5975451272051411,
-      "44": -0.8181818181818182,
-      "45": -0.6153223605954312,
-      "46": -0.3438432060811443,
-      "47": -0.31745215575157604,
-      "48": 0.4169615175523617,
-      "49": -0.0876678540572006,
-      "50": -0.19694183235063253,
-      "51": 0.14269483370428057,
-      "52": -0.05363034540652096,
-      "53": -0.32017618052038593,
-      "54": -0.1409426075779163,
-      "55": -0.38365146723974,
-      "56": -0.08176807318761702,
-      "57": 0.250565173403437,
-      "58": -0.42295056574355416,
-      "59": 0.4571309612941805,
-      "60": 0.07830636459920617,
-      "61": 0.6422849389257062,
-      "62": 0.03585740009291355
+      "1": -0.06400355699014125,
+      "2": -0.1675155366008141,
+      "3": -0.12695946858051071,
+      "4": 0.37788753914361967,
+      "5": 0.24214735603617796,
+      "6": 0.2699994667857929,
+      "7": 0.2673799559595981,
+      "8": 0.4052918692459367,
+      "9": 0.08360689995170237,
+      "10": -0.36101754214346654,
+      "11": 0.1182730786705317,
+      "12": -0.18176703147125894,
+      "13": 6.86036661758411e-05,
+      "14": -0.11896723297110638,
+      "15": 0.07469967109729148,
+      "16": -0.16685793102747853,
+      "17": -0.08843235117444546,
+      "18": -0.00518196513345312,
+      "19": 0.10951109073723062,
+      "20": -0.23494963426194207,
+      "21": -0.1897965005936602,
+      "22": 0.10964656888780785,
+      "23": -0.06749641485990987,
+      "24": -0.27017267537368367,
+      "25": 0.08323129958847109,
+      "26": 0.2178337311917103,
+      "27": -0.0943071583853008,
+      "28": -0.08212533787804302,
+      "29": -0.17435500985003277,
+      "30": -0.1701480952069064,
+      "31": -0.04128872748317259,
+      "32": -0.060871779229152954,
+      "33": 0.026257828860915277,
+      "34": -0.3499633452746084,
+      "35": 0.37503512313548654,
+      "36": -0.06616497828237641,
+      "37": 0.1430505029215021,
+      "38": 0.001751965532392997,
+      "39": 0.0635276296811822,
+      "40": 0.044009378096680804,
+      "41": 0.01746075059913199,
+      "42": -0.13701970248480982,
+      "43": 0.29470650749929206,
+      "44": -0.28000744221637003,
+      "45": 0.06104285711402268,
+      "46": -0.13306972044497598,
+      "47": 0.08671349805758202,
+      "48": 0.12388037741831903,
+      "49": 0.042743222805947036,
+      "50": -0.304570022475904,
+      "51": 0.11255766190787124,
+      "52": -0.06543938877025288,
+      "53": 0.052540319945516216,
+      "54": 0.3086404573737685,
+      "55": 0.04176305098553666,
+      "56": 0.039641745114825704,
+      "57": 0.1338514641388498,
+      "58": -0.08457313189160917,
+      "59": -0.13148515470074276,
+      "60": -0.004136445999760848,
+      "61": 0.0525510904919411,
+      "62": -0.1586592808869207
+    },
+    "mean_killfeed_advantage": {
+      "1": -0.11513245120157342,
+      "2": -0.28164176206035013,
+      "3": -0.20577323583696344,
+      "4": 0.5396256713986795,
+      "5": 0.4087658034569492,
+      "6": 0.4004957784446857,
+      "7": 0.37486764948949364,
+      "8": 0.5520280664073874,
+      "9": 0.22623569510681887,
+      "10": -0.5289935302337653,
+      "11": 0.13871733905142583,
+      "12": -0.3326561691691071,
+      "13": -0.0031517620376550134,
+      "14": -0.1415626228502184,
+      "15": 0.03951593892141221,
+      "16": -0.270441800156231,
+      "17": -0.09785056594407178,
+      "18": 0.03311902763895728,
+      "19": 0.1606481267661566,
+      "20": -0.40972216569470116,
+      "21": -0.3000320067568569,
+      "22": 0.2916338753971409,
+      "23": -0.03676850600533651,
+      "24": -0.41229377032678766,
+      "25": 0.10401873814948491,
+      "26": 0.36951454358066893,
+      "27": -0.1200073583416716,
+      "28": -0.20134816378999082,
+      "29": -0.3698393959573054,
+      "30": -0.23559667505193313,
+      "31": 0.009483039933831598,
+      "32": -0.06438432302012702,
+      "33": 0.10295482855874656,
+      "34": -0.4919322265788937,
+      "35": 0.6006630730407554,
+      "36": -0.13724392108111588,
+      "37": 0.3208672439266262,
+      "38": -0.06994035668896757,
+      "39": 0.12247804401684807,
+      "40": -0.008036639686729031,
+      "41": 0.02651588364654172,
+      "42": -0.2403468299872189,
+      "43": 0.4730730708805231,
+      "44": -0.4255891866250801,
+      "45": 0.0688101680100712,
+      "46": -0.18572217643663635,
+      "47": 0.1743008560622765,
+      "48": 0.20304771990799528,
+      "49": 0.013609290590678396,
+      "50": -0.5563703976596537,
+      "51": 0.12267478026530158,
+      "52": -0.013604392498905996,
+      "53": 0.07658741055817252,
+      "54": 0.5380749654792205,
+      "55": 0.03767353147248849,
+      "56": 0.04398959595901879,
+      "57": 0.16006009740181884,
+      "58": -0.10966236257852276,
+      "59": -0.19667780268500992,
+      "60": -0.019532565476617515,
+      "61": 0.06343521061564938,
+      "62": -0.21562994171782784
     },
     "sample_count": {
-      "1": 18,
-      "2": 14,
-      "3": 14,
-      "4": 18,
-      "5": 19,
-      "6": 19,
-      "7": 19,
-      "8": 16,
-      "9": 18,
-      "10": 11,
-      "11": 11,
-      "12": 13,
-      "13": 9,
-      "14": 14,
-      "15": 16,
-      "16": 14,
-      "17": 19,
-      "18": 10,
-      "19": 15,
-      "20": 13,
-      "21": 20,
-      "22": 6,
-      "23": 13,
-      "24": 9,
-      "25": 22,
-      "26": 15,
-      "27": 10,
-      "28": 16,
-      "29": 14,
-      "30": 10,
-      "31": 16,
-      "32": 16,
-      "33": 11,
-      "34": 9,
-      "35": 14,
-      "36": 14,
-      "37": 11,
-      "38": 13,
-      "39": 15,
-      "40": 17,
-      "41": 16,
-      "42": 15,
-      "43": 15,
-      "44": 11,
-      "45": 11,
-      "46": 14,
-      "47": 10,
-      "48": 16,
-      "49": 18,
-      "50": 12,
-      "51": 14,
-      "52": 15,
-      "53": 16,
-      "54": 14,
-      "55": 15,
-      "56": 15,
-      "57": 17,
-      "58": 13,
-      "59": 18,
-      "60": 16,
-      "61": 17,
-      "62": 17
-    }
-  }
+      "1": 28,
+      "2": 28,
+      "3": 28,
+      "4": 28,
+      "5": 28,
+      "6": 28,
+      "7": 28,
+      "8": 28,
+      "9": 28,
+      "10": 28,
+      "11": 28,
+      "12": 28,
+      "13": 28,
+      "14": 28,
+      "15": 28,
+      "16": 28,
+      "17": 28,
+      "18": 28,
+      "19": 28,
+      "20": 28,
+      "21": 28,
+      "22": 28,
+      "23": 28,
+      "24": 28,
+      "25": 28,
+      "26": 28,
+      "27": 28,
+      "28": 28,
+      "29": 28,
+      "30": 28,
+      "31": 28,
+      "32": 28,
+      "33": 28,
+      "34": 28,
+      "35": 28,
+      "36": 28,
+      "37": 28,
+      "38": 28,
+      "39": 28,
+      "40": 28,
+      "41": 28,
+      "42": 28,
+      "43": 28,
+      "44": 28,
+      "45": 28,
+      "46": 28,
+      "47": 28,
+      "48": 28,
+      "49": 28,
+      "50": 28,
+      "51": 28,
+      "52": 28,
+      "53": 28,
+      "54": 28,
+      "55": 28,
+      "56": 28,
+      "57": 28,
+      "58": 28,
+      "59": 28,
+      "60": 28,
+      "61": 28,
+      "62": 28
+    },
+    "trial_count": 372
+  },
+  "storage_format": "Compact summary; full paired trials are reproduced by the documented CLI.",
+  "full_report_sha256": "2f1443985f2f55b7b7a9f2b1c5ce14b8c58d48a117477c264116d61c69c8add2"
 }
