@@ -1,7 +1,7 @@
 [mode]
 id = "ram"
 name = "CBA Hero 4v4: RAM"
-version = "0.9.0"
+version = "0.10.0"
 description = "4v4 arena battles with center control, reinforcements, hero progression and custom voice announcements, including private team signals."
 authors = []
 tags = ["cba", "hero", "arena", "4v4"]
@@ -137,27 +137,383 @@ leader_group = 3
 [selection_audio]
 enabled = true
 
-# First conservative balance pass. Preserve each civilization's actual unit,
-# counter matchups, weapons, movement and attack animation.
+# Matchup review for all installed civilizations. Preserve native unit identities,
+# counters, weapons and animations; pace army size and replacements explicitly.
 [civilization_balance]
 enabled = true
 
 [[civilization_balance.adjustments]]
-civilization = 35
+civilization = 1
+army_cap = 76
+spawn_seconds = 9
+reason = "Small longbow field-cap increase gives a fragile ranged army more sustained team support."
+
+[[civilization_balance.adjustments]]
+civilization = 2
+army_cap = 76
+spawn_seconds = 8
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 3
+army_cap = 92
+spawn_seconds = 10
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 4
+army_cap = 76
+spawn_seconds = 8
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 5
+army_cap = 80
+spawn_seconds = 9
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 6
+army_cap = 76
+spawn_seconds = 8
+reason = "Retain current pacing; Multiple native projectiles and immediate Chemistry/Thumb Ring grants."
+
+[[civilization_balance.adjustments]]
+civilization = 7
+army_cap = 56
+spawn_seconds = 10
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 8
+army_cap = 36
+spawn_seconds = 14
+reason = "Reduce stacked elephant frontline mass modestly; retain each elephant's native HP, splash and spear/camel vulnerabilities."
+
+[[civilization_balance.adjustments]]
+civilization = 9
+army_cap = 56
+spawn_seconds = 14
+reason = "Live test found ranged-melee camel masses oppressive; lower field mass and replacement, preserving their cavalry counter."
+
+[[civilization_balance.adjustments]]
+civilization = 10
+army_cap = 50
+spawn_seconds = 9
+reason = "Retain current pacing; Gunpowder accuracy, automatic HP bonus and free startup Chemistry."
+
+[[civilization_balance.adjustments]]
+civilization = 11
+army_cap = 86
+spawn_seconds = 9
+reason = "Retain current pacing; Native regeneration and age-dependent infantry HP bonus."
+
+[[civilization_balance.adjustments]]
+civilization = 12
+army_cap = 56
+spawn_seconds = 9
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 13
+army_cap = 80
+spawn_seconds = 9
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 14
+army_cap = 48
+spawn_seconds = 12
+reason = "Live test found Spanish ranged cavalry oppressive; lower field mass and replacement while preserving native gunpowder damage and mobility."
+
+[[civilization_balance.adjustments]]
+civilization = 15
+army_cap = 92
+spawn_seconds = 8
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 16
+army_cap = 70
+spawn_seconds = 8
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 17
+army_cap = 80
+spawn_seconds = 13
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 18
+army_cap = 60
+spawn_seconds = 12
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 19
+army_cap = 76
+spawn_seconds = 9
+reason = "Small Genoese crossbow field-cap increase strengthens an existing anti-cavalry team response."
+
+[[civilization_balance.adjustments]]
+civilization = 20
 army_cap = 64
-hit_points_bonus = 8
-reason = "A modest durability and field-strength increase for Lithuanian elite cavalry."
+spawn_seconds = 12
+reason = "Small Ghulam field-cap increase strengthens native anti-archer frontline support; retain pass-through attack."
+
+[[civilization_balance.adjustments]]
+civilization = 21
+army_cap = 77
+spawn_seconds = 8
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 22
+army_cap = 80
+spawn_seconds = 12
+reason = "Modestly improve Magyar Huszar replacements while retaining their light-cavalry and anti-siege role."
+
+[[civilization_balance.adjustments]]
+civilization = 23
+army_cap = 56
+spawn_seconds = 10
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 24
+army_cap = 34
+spawn_seconds = 12
+reason = "Retain current pacing; Organ Gun spread and multiple-projectile contact require native playtests."
+
+[[civilization_balance.adjustments]]
+civilization = 25
+army_cap = 84
+spawn_seconds = 8
+reason = "Small Shotel field-cap increase supports fragile melee armies crossing ranged fire."
+
+[[civilization_balance.adjustments]]
+civilization = 26
+army_cap = 81
+spawn_seconds = 10
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 27
+army_cap = 64
+spawn_seconds = 10
+reason = "Small Camel Archer field-cap increase improves an existing response to enemy mounted archers."
+
+[[civilization_balance.adjustments]]
+civilization = 28
+army_cap = 31
+spawn_seconds = 14
+reason = "Retain current pacing; Ballista Elephant pass-through shots, high body size and multiple-target interactions."
+
+[[civilization_balance.adjustments]]
+civilization = 29
+army_cap = 88
+spawn_seconds = 6
+reason = "Small Karambit field-cap increase supports the native low-HP swarm role; replacement interval remains six seconds."
+
+[[civilization_balance.adjustments]]
+civilization = 30
+army_cap = 61
+spawn_seconds = 10
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 31
+army_cap = 84
+spawn_seconds = 10
+reason = "Small Rattan Archer field-cap increase supports native resistance to ranged fire."
+
+[[civilization_balance.adjustments]]
+civilization = 32
+army_cap = 41
+spawn_seconds = 12
+reason = "Retain current pacing; Konnik dismount provides a second body beyond this screen."
+
+[[civilization_balance.adjustments]]
+civilization = 33
+army_cap = 61
+spawn_seconds = 12
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 34
+army_cap = 61
+spawn_seconds = 12
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 35
+army_cap = 72
+spawn_seconds = 9
+hit_points_bonus = 18
+reason = "Live test found Lithuanian cavalry too weak; increase mounted frontline staying power and replacement without changing speed, armour-ignore attack or counters."
+
+[[civilization_balance.adjustments]]
+civilization = 36
+army_cap = 60
+spawn_seconds = 8
+reason = "Retain current pacing; Coustillier opening charge can dominate short fights."
+
+[[civilization_balance.adjustments]]
+civilization = 37
+army_cap = 92
+spawn_seconds = 8
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 38
+army_cap = 60
+spawn_seconds = 8
+reason = "Retain current pacing; Obuch armour stripping benefits allied attacks and is not fully simulated."
+
+[[civilization_balance.adjustments]]
+civilization = 39
+army_cap = 32
+spawn_seconds = 16
+reason = "Modestly reduce overlapping Hussite Wagon screens and ranged replacement; preserve native resistance and projectile mechanics."
+
+[[civilization_balance.adjustments]]
+civilization = 40
+army_cap = 60
+spawn_seconds = 8
+reason = "Retain current pacing; Urumi charge, splash and recovery are native special mechanics."
+
+[[civilization_balance.adjustments]]
+civilization = 41
+army_cap = 40
+spawn_seconds = 8
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
+
+[[civilization_balance.adjustments]]
+civilization = 42
+army_cap = 41
+spawn_seconds = 11
+reason = "Retain current pacing after review; no strong live evidence supports changing this native matchup role."
 
 [[civilization_balance.adjustments]]
 civilization = 43
+army_cap = 60
 spawn_seconds = 9
-reason = "Reduce the heavy Centurion replacement rate slightly; retain its native armour and cavalry role."
+reason = "Retain the previous conservative v0.9 pacing correction; no further automatic change."
+
+[[civilization_balance.adjustments]]
+civilization = 44
+army_cap = 80
+spawn_seconds = 8
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 45
+army_cap = 80
+spawn_seconds = 8
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 46
+army_cap = 70
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 47
+army_cap = 80
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 48
+army_cap = 80
+spawn_seconds = 8
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 49
+army_cap = 60
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 50
+army_cap = 60
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 51
+army_cap = 60
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 52
+army_cap = 80
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 53
+army_cap = 80
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 54
+army_cap = 70
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 55
+army_cap = 92
+spawn_seconds = 8
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 56
+army_cap = 72
+spawn_seconds = 9
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 57
+army_cap = 80
+spawn_seconds = 8
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 58
+army_cap = 80
+spawn_seconds = 10
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 59
+army_cap = 80
+spawn_seconds = 8
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 60
+army_cap = 80
+spawn_seconds = 8
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
 
 [[civilization_balance.adjustments]]
 civilization = 61
 army_cap = 72
 spawn_seconds = 9
-reason = "Fast ranged-melee Jarls should not receive the same mass and replacement rate as ordinary infantry."
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
+
+[[civilization_balance.adjustments]]
+civilization = 62
+army_cap = 80
+spawn_seconds = 8
+reason = "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption."
 
 [civilization_leaders]
 enabled = true
@@ -165,26 +521,17 @@ enabled = true
 # intact, without changing the ordinary hero units unlocked later in the match.
 unit_id = 2750
 
-[civilization_leaders.profiles.infantry]
-hit_points = 450
-attack = 35
-reload_seconds = 2.0
-melee_armour = 3
-pierce_armour = 3
-
-[civilization_leaders.profiles.melee_cavalry]
-hit_points = 420
-attack = 35
-reload_seconds = 2.0
-melee_armour = 3
-pierce_armour = 3
-
+# All commanders use native bows, crossbows or firearms with the same starting
+# combat envelope. The original eight-second HP/attack growth is unchanged.
 [civilization_leaders.profiles.ranged]
 hit_points = 300
 attack = 25
 reload_seconds = 2.0
 melee_armour = 2
 pierce_armour = 2
+range = 5.0
+speed = 1.4
+accuracy_percent = 100
 
 [civilization_leaders.profiles.ranged_cavalry]
 hit_points = 300
@@ -192,3 +539,6 @@ attack = 25
 reload_seconds = 2.0
 melee_armour = 2
 pierce_armour = 2
+range = 5.0
+speed = 1.4
+accuracy_percent = 100

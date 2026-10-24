@@ -22,9 +22,16 @@ from aoe2modes.config import load_mode_spec
 from aoe2modes.paths import paths
 
 if __package__:
+    from .build import CIV_SPAWN_RULES
     from .civilization_leaders import leaders_enabled, package_civilization_leaders
     from .selection_audio import package_selection_audio
 else:  # Support the documented python modes/ram/package.py entry point.
+    from aoe2modes import registry
+
+    # build.py uses relative imports and must be loaded through the mode loader.
+    from aoe2modes.builder import _load_build_module
+
+    CIV_SPAWN_RULES = _load_build_module(registry.get("ram")).CIV_SPAWN_RULES
     from civilization_leaders import leaders_enabled, package_civilization_leaders
     from selection_audio import package_selection_audio
 
@@ -65,7 +72,7 @@ def package_mod(scenario: Path, dataset: Path, output: Path, mode_dir: Path) -> 
     selection_files, selection_report = {}, None
     if config.get("selection_audio", {}).get("enabled", False):
         dataset_bytes, selection_files, selection_report = package_selection_audio(
-            dataset, mode_dir / "assets" / "selection_audio",
+            dataset, mode_dir / "assets" / "selection_audio", spawn_rules=CIV_SPAWN_RULES,
         )
     leader_files, leader_report = {}, None
     if leaders_enabled(mode_dir):

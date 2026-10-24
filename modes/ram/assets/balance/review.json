@@ -1,0 +1,2717 @@
+{
+  "schema_version": 1,
+  "status": "conservative playtest proposal, not verified equal win rates",
+  "civilization_count": 62,
+  "changed_from_v0_9": 13,
+  "rules": [
+    {
+      "civilization": 1,
+      "army_cap": 76,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Small longbow field-cap increase gives a fragile ranged army more sustained team support.",
+      "review_status": "small playtest adjustment",
+      "name": "British",
+      "unit_id": 530,
+      "unit_name": "ULGBW",
+      "previous": {
+        "army_cap": 72,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 40,
+        "speed": 0.9599999785423279,
+        "range": 6.0,
+        "reload": 2.0,
+        "accuracy": 0.8,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "27": 2,
+          "21": 0,
+          "3": 7,
+          "17": 0
+        },
+        "armour": {
+          "4": 0,
+          "15": 0,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 2,
+      "army_cap": 76,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "French",
+      "unit_id": 531,
+      "unit_name": "UTAXE",
+      "previous": {
+        "army_cap": 76,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 70,
+        "speed": 1.0,
+        "range": 6.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 2,
+          "21": 2,
+          "4": 8,
+          "15": 0,
+          "8": 0,
+          "30": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 3,
+      "army_cap": 92,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Goths",
+      "unit_id": 761,
+      "unit_name": "BHUSKX",
+      "previous": {
+        "army_cap": 92,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 70,
+        "speed": 1.0499999523162842,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          327
+        ],
+        "attack": {
+          "29": 3,
+          "21": 4,
+          "4": 12,
+          "15": 10,
+          "8": 0,
+          "30": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 0,
+          "3": 8,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 4,
+      "army_cap": 76,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Teutons",
+      "unit_id": 554,
+      "unit_name": "UTKNI",
+      "previous": {
+        "army_cap": 76,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 110,
+        "speed": 0.800000011920929,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 4,
+          "21": 4,
+          "4": 17,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 8,
+          "3": 2,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 5,
+      "army_cap": 80,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Japanese",
+      "unit_id": 560,
+      "unit_name": "USMUR",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 80,
+        "speed": 1.0,
+        "range": 0.0,
+        "reload": 1.4249999821186066,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 1,
+        "applied_technology_ids": [
+          341
+        ],
+        "attack": {
+          "29": 3,
+          "21": 3,
+          "4": 12,
+          "19": 12,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 6,
+      "army_cap": 76,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Multiple native projectiles and immediate Chemistry/Thumb Ring grants.",
+      "review_status": "retain deployed pacing",
+      "name": "Chinese",
+      "unit_id": 559,
+      "unit_name": "UCHUK",
+      "previous": {
+        "army_cap": 76,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 50,
+        "speed": 0.9599999785423279,
+        "range": 4.0,
+        "reload": 2.3999988603240965,
+        "accuracy": 1.0,
+        "projectiles": 5.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          47,
+          437
+        ],
+        "attack": {
+          "27": 2,
+          "21": 0,
+          "4": 0,
+          "8": 0,
+          "3": 11,
+          "17": 0
+        },
+        "armour": {
+          "4": 0,
+          "15": 0,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 7,
+      "army_cap": 56,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Byzantine",
+      "unit_id": 553,
+      "unit_name": "UCATA",
+      "previous": {
+        "army_cap": 56,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 150,
+        "speed": 1.350000023841858,
+        "range": 0.0,
+        "reload": 1.7000000476837158,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "1": 18,
+          "4": 12,
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 2,
+          "8": 16,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 8,
+      "army_cap": 36,
+      "spawn_seconds": 14,
+      "hit_points_bonus": 0,
+      "reason": "Reduce stacked elephant frontline mass modestly; retain each elephant's native HP, splash and spear/camel vulnerabilities.",
+      "review_status": "small playtest adjustment",
+      "name": "Persians",
+      "unit_id": 239,
+      "unit_name": "MPCAV",
+      "previous": {
+        "army_cap": 40,
+        "spawn_seconds": 13,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 450,
+        "speed": 0.800000011920929,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 0.0,
+        "splash": 0.5,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "11": 30,
+          "4": 15,
+          "13": 30,
+          "15": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "5": 0,
+          "4": 1,
+          "8": 0,
+          "3": 2,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 9,
+      "army_cap": 56,
+      "spawn_seconds": 14,
+      "hit_points_bonus": 0,
+      "reason": "Live test found ranged-melee camel masses oppressive; lower field mass and replacement, preserving their cavalry counter.",
+      "review_status": "empirical correction",
+      "name": "Saracens",
+      "unit_id": 556,
+      "unit_name": "UDERV",
+      "previous": {
+        "army_cap": 68,
+        "spawn_seconds": 12,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 100.0,
+        "speed": 1.399999976158142,
+        "range": 3.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          312
+        ],
+        "attack": {
+          "11": 0,
+          "4": 10,
+          "8": 12,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 1,
+          "35": 0,
+          "3": 0,
+          "30": 0,
+          "19": 0,
+          "31": 0,
+          "39": -3
+        }
+      }
+    },
+    {
+      "civilization": 10,
+      "army_cap": 50,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Gunpowder accuracy, automatic HP bonus and free startup Chemistry.",
+      "review_status": "retain deployed pacing",
+      "name": "Turks",
+      "unit_id": 46,
+      "unit_name": "JANNI",
+      "previous": {
+        "army_cap": 50,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 43.75,
+        "speed": 0.9599999785423279,
+        "range": 7.0,
+        "reload": 3.450000047683716,
+        "accuracy": 0.5,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          301
+        ],
+        "attack": {
+          "11": 0,
+          "3": 17,
+          "17": 2
+        },
+        "armour": {
+          "4": 1,
+          "15": 0,
+          "3": 0,
+          "19": 0,
+          "23": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 11,
+      "army_cap": 86,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Native regeneration and age-dependent infantry HP bonus.",
+      "review_status": "retain deployed pacing",
+      "name": "Vikings",
+      "unit_id": 694,
+      "unit_name": "UVBRK",
+      "previous": {
+        "army_cap": 86,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 74.40000295639038,
+        "speed": 1.0499999523162842,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          416
+        ],
+        "attack": {
+          "29": 3,
+          "21": 3,
+          "4": 14,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 2,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 12,
+      "army_cap": 56,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Mongols",
+      "unit_id": 561,
+      "unit_name": "UMOSU",
+      "previous": {
+        "army_cap": 56,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 60,
+        "speed": 1.399999976158142,
+        "range": 4.0,
+        "reload": 1.6799999487400044,
+        "accuracy": 0.95,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          394
+        ],
+        "attack": {
+          "27": 1,
+          "21": 0,
+          "3": 8,
+          "17": 0,
+          "20": 5,
+          "39": -3,
+          "15": 0,
+          "38": 0
+        },
+        "armour": {
+          "28": 0,
+          "4": 1,
+          "15": 0,
+          "8": 0,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 13,
+      "army_cap": 80,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Celts",
+      "unit_id": 534,
+      "unit_name": "UWBRS",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 85,
+        "speed": 1.287001135672742,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          393,
+          898
+        ],
+        "attack": {
+          "29": 3,
+          "21": 3,
+          "4": 15,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 0,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 14,
+      "army_cap": 48,
+      "spawn_seconds": 12,
+      "hit_points_bonus": 0,
+      "reason": "Live test found Spanish ranged cavalry oppressive; lower field mass and replacement while preserving native gunpowder damage and mobility.",
+      "review_status": "empirical correction",
+      "name": "Spanish",
+      "unit_id": 771,
+      "unit_name": "CONQI",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 55,
+        "speed": 1.2999999523162842,
+        "range": 6.0,
+        "reload": 2.9000000953674316,
+        "accuracy": 0.65,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "11": 0,
+          "3": 16,
+          "17": 4,
+          "39": -3
+        },
+        "armour": {
+          "4": 2,
+          "15": 0,
+          "8": 0,
+          "3": 1,
+          "19": 0,
+          "23": 0,
+          "28": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 15,
+      "army_cap": 92,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Aztecs",
+      "unit_id": 726,
+      "unit_name": "JAGUARX",
+      "previous": {
+        "army_cap": 92,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 75,
+        "speed": 1.0,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 2,
+          "21": 2,
+          "1": 6,
+          "4": 19,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 2,
+          "3": 2,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 16,
+      "army_cap": 70,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Mayan",
+      "unit_id": 765,
+      "unit_name": "UPLUM",
+      "previous": {
+        "army_cap": 70,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 65,
+        "speed": 1.2000000476837158,
+        "range": 5.0,
+        "reload": 1.899999976158142,
+        "accuracy": 0.9,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "27": 2,
+          "21": 0,
+          "1": 2,
+          "3": 5,
+          "17": 0
+        },
+        "armour": {
+          "4": 0,
+          "15": 0,
+          "3": 2,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 17,
+      "army_cap": 80,
+      "spawn_seconds": 13,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Huns",
+      "unit_id": 757,
+      "unit_name": "UTARK",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 13,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 150,
+        "speed": 1.399999976158142,
+        "range": 0.0,
+        "reload": 1.899999976158142,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "26": 10,
+          "11": 10,
+          "4": 11,
+          "15": 0,
+          "13": 12,
+          "22": 10,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 1,
+          "8": 0,
+          "3": 4,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 18,
+      "army_cap": 60,
+      "spawn_seconds": 12,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Koreans",
+      "unit_id": 829,
+      "unit_name": "UWAGO",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 12,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 200,
+        "speed": 1.2000000476837158,
+        "range": 5.0,
+        "reload": 2.5,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "21": 2,
+          "3": 9,
+          "27": 0,
+          "39": -3,
+          "15": 0,
+          "38": 0
+        },
+        "armour": {
+          "4": 0,
+          "15": 0,
+          "8": 0,
+          "3": 4,
+          "19": 0,
+          "28": -1,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 19,
+      "army_cap": 76,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Small Genoese crossbow field-cap increase strengthens an existing anti-cavalry team response.",
+      "review_status": "small playtest adjustment",
+      "name": "Italians",
+      "unit_id": 868,
+      "unit_name": "GENOE_E",
+      "previous": {
+        "army_cap": 72,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 50,
+        "speed": 0.9599999785423279,
+        "range": 4.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          901
+        ],
+        "attack": {
+          "3": 6,
+          "8": 7,
+          "16": 5,
+          "5": 7,
+          "21": 0,
+          "30": 6
+        },
+        "armour": {
+          "4": 2,
+          "3": 1,
+          "15": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 20,
+      "army_cap": 64,
+      "spawn_seconds": 12,
+      "hit_points_bonus": 0,
+      "reason": "Small Ghulam field-cap increase strengthens native anti-archer frontline support; retain pass-through attack.",
+      "review_status": "small playtest adjustment",
+      "name": "Hindustanis",
+      "unit_id": 1749,
+      "unit_name": "EGHULAM",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 12,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 70,
+        "speed": 1.2000000476837158,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 1.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 11,
+          "15": 6,
+          "21": 2,
+          "29": 2,
+          "8": 0,
+          "30": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 0,
+          "3": 6,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 21,
+      "army_cap": 77,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Incas",
+      "unit_id": 881,
+      "unit_name": "EKAMA",
+      "previous": {
+        "army_cap": 77,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 80,
+        "speed": 1.0,
+        "range": 1.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 8,
+          "8": 12,
+          "21": 0,
+          "30": 10,
+          "5": 20,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 22,
+      "army_cap": 80,
+      "spawn_seconds": 12,
+      "hit_points_bonus": 0,
+      "reason": "Modestly improve Magyar Huszar replacements while retaining their light-cavalry and anti-siege role.",
+      "review_status": "small playtest adjustment",
+      "name": "Magyars",
+      "unit_id": 871,
+      "unit_name": "UMAGYX",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 13,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 90,
+        "speed": 1.5,
+        "range": 0.0,
+        "reload": 1.7999999523162842,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 11,
+          "17": 2,
+          "20": 0,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "31": 0
+        },
+        "armour": {
+          "4": 0,
+          "3": 2,
+          "8": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 23,
+      "army_cap": 56,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Slavs",
+      "unit_id": 878,
+      "unit_name": "EBOYA",
+      "previous": {
+        "army_cap": 56,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 130,
+        "speed": 1.2999999523162842,
+        "range": 0.0,
+        "reload": 1.899999976158142,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 14,
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 8,
+          "8": 0,
+          "3": 3,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 24,
+      "army_cap": 34,
+      "spawn_seconds": 12,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Organ Gun spread and multiple-projectile contact require native playtests.",
+      "review_status": "retain deployed pacing",
+      "name": "Portuguese",
+      "unit_id": 1001,
+      "unit_name": "ORGAN",
+      "previous": {
+        "army_cap": 34,
+        "spawn_seconds": 12,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 50,
+        "speed": 0.8500000238418579,
+        "range": 7.0,
+        "reload": 3.450000047683716,
+        "accuracy": 0.0,
+        "projectiles": 5.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "1": 2,
+          "11": 0,
+          "3": 6,
+          "17": 1,
+          "38": 2,
+          "32": -2
+        },
+        "armour": {
+          "4": 2,
+          "20": 0,
+          "3": 4,
+          "19": 0,
+          "23": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 25,
+      "army_cap": 84,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Small Shotel field-cap increase supports fragile melee armies crossing ranged fire.",
+      "review_status": "small playtest adjustment",
+      "name": "Ethiopians",
+      "unit_id": 1018,
+      "unit_name": "ESHOTEL",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 50,
+        "speed": 1.2000000476837158,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 2,
+          "21": 1,
+          "4": 18,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 0,
+          "3": 1,
+          "19": 0,
+          "31": 0,
+          "39": -3
+        }
+      }
+    },
+    {
+      "civilization": 26,
+      "army_cap": 81,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Malians",
+      "unit_id": 1015,
+      "unit_name": "EGBETO",
+      "previous": {
+        "army_cap": 81,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 50,
+        "speed": 1.25,
+        "range": 6.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 1,
+          "21": 0,
+          "4": 13,
+          "15": 0,
+          "8": 0,
+          "30": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 0,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 27,
+      "army_cap": 64,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Small Camel Archer field-cap increase improves an existing response to enemy mounted archers.",
+      "review_status": "small playtest adjustment",
+      "name": "Berbers",
+      "unit_id": 1009,
+      "unit_name": "ECAMAR",
+      "previous": {
+        "army_cap": 61,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 60,
+        "speed": 1.399999976158142,
+        "range": 4.0,
+        "reload": 2.0,
+        "accuracy": 0.95,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "21": 0,
+          "3": 8,
+          "17": 0,
+          "1": 0,
+          "28": 6,
+          "27": 0,
+          "11": 0,
+          "39": -3,
+          "15": 0,
+          "38": 0
+        },
+        "armour": {
+          "4": 1,
+          "3": 1,
+          "19": 0,
+          "28": 0,
+          "30": 0,
+          "15": 0,
+          "31": 0,
+          "39": -3
+        }
+      }
+    },
+    {
+      "civilization": 28,
+      "army_cap": 31,
+      "spawn_seconds": 14,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Ballista Elephant pass-through shots, high body size and multiple-target interactions.",
+      "review_status": "retain deployed pacing",
+      "name": "Khmer",
+      "unit_id": 1122,
+      "unit_name": "EELEBALI",
+      "previous": {
+        "army_cap": 31,
+        "spawn_seconds": 14,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 280,
+        "speed": 0.800000011920929,
+        "range": 5.0,
+        "reload": 2.5,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "21": 4,
+          "3": 10,
+          "13": 4,
+          "27": 0,
+          "18": 100,
+          "11": 4,
+          "16": 8,
+          "38": 0,
+          "39": -3,
+          "31": 0
+        },
+        "armour": {
+          "4": 0,
+          "8": 0,
+          "3": 3,
+          "19": 0,
+          "5": 0,
+          "20": 0,
+          "31": 0,
+          "37": 10
+        }
+      }
+    },
+    {
+      "civilization": 29,
+      "army_cap": 88,
+      "spawn_seconds": 6,
+      "hit_points_bonus": 0,
+      "reason": "Small Karambit field-cap increase supports the native low-HP swarm role; replacement interval remains six seconds.",
+      "review_status": "small playtest adjustment",
+      "name": "Malay",
+      "unit_id": 1125,
+      "unit_name": "EKARAM",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 6,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 40,
+        "speed": 1.2000000476837158,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 2,
+          "21": 1,
+          "4": 8,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 30,
+      "army_cap": 61,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Burmese",
+      "unit_id": 1128,
+      "unit_name": "EARAMBAI",
+      "previous": {
+        "army_cap": 61,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 65,
+        "speed": 1.2999999523162842,
+        "range": 5.0,
+        "reload": 2.0,
+        "accuracy": 0.3,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "11": 0,
+          "3": 14,
+          "17": 2,
+          "1": 0,
+          "27": 0,
+          "21": 0,
+          "39": -3
+        },
+        "armour": {
+          "4": 0,
+          "3": 2,
+          "19": 0,
+          "28": 0,
+          "15": 0,
+          "8": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 31,
+      "army_cap": 84,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Small Rattan Archer field-cap increase supports native resistance to ranged fire.",
+      "review_status": "small playtest adjustment",
+      "name": "Vietnamese",
+      "unit_id": 1131,
+      "unit_name": "ERATAN",
+      "previous": {
+        "army_cap": 81,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 48.00000190734863,
+        "speed": 1.100000023841858,
+        "range": 5.0,
+        "reload": 2.0,
+        "accuracy": 0.9,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          632
+        ],
+        "attack": {
+          "27": 2,
+          "21": 0,
+          "1": 0,
+          "3": 7,
+          "17": 0
+        },
+        "armour": {
+          "4": 0,
+          "15": 0,
+          "3": 6,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 32,
+      "army_cap": 41,
+      "spawn_seconds": 12,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Konnik dismount provides a second body beyond this screen.",
+      "review_status": "retain deployed pacing",
+      "name": "Bulgarians",
+      "unit_id": 1227,
+      "unit_name": "EKONNIK",
+      "previous": {
+        "army_cap": 41,
+        "spawn_seconds": 12,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 120,
+        "speed": 1.350000023841858,
+        "range": 0.0,
+        "reload": 2.4000000953674316,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 14,
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 2,
+          "8": 0,
+          "3": 2,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 33,
+      "army_cap": 61,
+      "spawn_seconds": 12,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Tatars",
+      "unit_id": 1230,
+      "unit_name": "EKESHIK",
+      "previous": {
+        "army_cap": 61,
+        "spawn_seconds": 12,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 145,
+        "speed": 1.399999976158142,
+        "range": 0.0,
+        "reload": 1.899999976158142,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 11,
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 1,
+          "8": 0,
+          "3": 3,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 34,
+      "army_cap": 61,
+      "spawn_seconds": 12,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Cumans",
+      "unit_id": 1233,
+      "unit_name": "EKIPCHAK",
+      "previous": {
+        "army_cap": 61,
+        "spawn_seconds": 12,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 45,
+        "speed": 1.4699999082088482,
+        "range": 4.0,
+        "reload": 2.200000047683716,
+        "accuracy": 0.9,
+        "projectiles": 4.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [
+          711
+        ],
+        "attack": {
+          "27": 1,
+          "21": 0,
+          "3": 5,
+          "39": -3,
+          "15": 0,
+          "38": 0
+        },
+        "armour": {
+          "28": 0,
+          "4": 0,
+          "15": 0,
+          "8": 0,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 35,
+      "army_cap": 72,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 18,
+      "reason": "Live test found Lithuanian cavalry too weak; increase mounted frontline staying power and replacement without changing speed, armour-ignore attack or counters.",
+      "review_status": "empirical correction",
+      "name": "Lithuanians",
+      "unit_id": 1236,
+      "unit_name": "ELEITIS",
+      "previous": {
+        "army_cap": 64,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 8
+      },
+      "screen_stats": {
+        "hp": 130,
+        "speed": 1.399999976158142,
+        "range": 0.0,
+        "reload": 1.899999976158142,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "4": 16,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 2,
+          "8": 0,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 36,
+      "army_cap": 60,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Coustillier opening charge can dominate short fights.",
+      "review_status": "retain deployed pacing",
+      "name": "Burgundians",
+      "unit_id": 1657,
+      "unit_name": "ECOUSTILLIER",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 145,
+        "speed": 1.350000023841858,
+        "range": 0.0,
+        "reload": 1.899999976158142,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 1,
+        "applied_technology_ids": [],
+        "attack": {
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "4": 11,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 2,
+          "8": 0,
+          "3": 2,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 37,
+      "army_cap": 92,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Sicilians",
+      "unit_id": 1659,
+      "unit_name": "ESERJEANT",
+      "previous": {
+        "army_cap": 92,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 85,
+        "speed": 0.949999988079071,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 3,
+          "21": 3,
+          "4": 11,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 6,
+          "3": 3,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 38,
+      "army_cap": 60,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Obuch armour stripping benefits allied attacks and is not fully simulated.",
+      "review_status": "retain deployed pacing",
+      "name": "Poles",
+      "unit_id": 1703,
+      "unit_name": "EOBUCH",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 95,
+        "speed": 0.8999999761581421,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 3,
+          "21": 6,
+          "4": 10,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 2,
+          "3": 2,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 39,
+      "army_cap": 32,
+      "spawn_seconds": 16,
+      "hit_points_bonus": 0,
+      "reason": "Modestly reduce overlapping Hussite Wagon screens and ranged replacement; preserve native resistance and projectile mechanics.",
+      "review_status": "small playtest adjustment",
+      "name": "Bohemians",
+      "unit_id": 1706,
+      "unit_name": "EHUSSITEWAGON",
+      "previous": {
+        "army_cap": 35,
+        "spawn_seconds": 15,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 230,
+        "speed": 0.800000011920929,
+        "range": 6.0,
+        "reload": 3.450000047683716,
+        "accuracy": 0.9,
+        "projectiles": 6.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "11": 2,
+          "3": 13,
+          "17": 3
+        },
+        "armour": {
+          "4": 1,
+          "20": 0,
+          "3": 10,
+          "19": 0,
+          "23": 0,
+          "31": 0,
+          "37": 0
+        }
+      }
+    },
+    {
+      "civilization": 40,
+      "army_cap": 60,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing; Urumi charge, splash and recovery are native special mechanics.",
+      "review_status": "retain deployed pacing",
+      "name": "Dravidians",
+      "unit_id": 1737,
+      "unit_name": "EURUMI",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 65,
+        "speed": 1.100000023841858,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.75,
+        "charge_type": 3,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 11,
+          "29": 3,
+          "21": 2,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 41,
+      "army_cap": 40,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Bengalis",
+      "unit_id": 1761,
+      "unit_name": "ERATHA2",
+      "previous": {
+        "army_cap": 40,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 115,
+        "speed": 1.2999999523162842,
+        "range": 4.0,
+        "reload": 2.0,
+        "accuracy": 0.9,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "3": 6,
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "27": 2,
+          "39": -3,
+          "38": 0
+        },
+        "armour": {
+          "4": 3,
+          "8": 0,
+          "3": 3,
+          "15": 0,
+          "19": 0,
+          "28": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 42,
+      "army_cap": 41,
+      "spawn_seconds": 11,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing after review; no strong live evidence supports changing this native matchup role.",
+      "review_status": "retain deployed pacing",
+      "name": "Gurjaras",
+      "unit_id": 1743,
+      "unit_name": "ECHAKRAM",
+      "previous": {
+        "army_cap": 41,
+        "spawn_seconds": 11,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 50,
+        "speed": 1.149999976158142,
+        "range": 6.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 2,
+          "21": 2,
+          "4": 4,
+          "1": 1,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 43,
+      "army_cap": 60,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Retain the previous conservative v0.9 pacing correction; no further automatic change.",
+      "review_status": "retain deployed pacing",
+      "name": "Romans",
+      "unit_id": 1792,
+      "unit_name": "ECENTURION",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 155,
+        "speed": 1.350000023841858,
+        "range": 0.0,
+        "reload": 1.899999976158142,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 15,
+          "15": 0,
+          "11": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 3,
+          "8": 0,
+          "3": 3,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 44,
+      "army_cap": 80,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Armenians",
+      "unit_id": 1802,
+      "unit_name": "ECOMPBOW",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 50,
+        "speed": 0.9599999785423279,
+        "range": 4.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "27": 2,
+          "21": 0,
+          "3": 4,
+          "17": 0
+        },
+        "armour": {
+          "4": 2,
+          "15": 0,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 45,
+      "army_cap": 80,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Georgians",
+      "unit_id": 1805,
+      "unit_name": "EMONASPA",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 80,
+        "speed": 1.399999976158142,
+        "range": 0.0,
+        "reload": 1.7999999523162842,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 14,
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 5,
+          "8": 0,
+          "3": 2,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 46,
+      "army_cap": 70,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Achaemenids",
+      "unit_id": 2175,
+      "unit_name": "Elite Immortal Ranged",
+      "previous": {
+        "army_cap": 70,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 60,
+        "speed": 1.100000023841858,
+        "range": 5.0,
+        "reload": 1.7999999523162842,
+        "accuracy": 0.8,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "3": 6,
+          "8": 0,
+          "16": 0,
+          "5": 0,
+          "21": 0,
+          "30": 0,
+          "1": 0
+        },
+        "armour": {
+          "4": 1,
+          "3": 3,
+          "15": 0,
+          "19": 0,
+          "31": 0,
+          "1": 0
+        }
+      }
+    },
+    {
+      "civilization": 47,
+      "army_cap": 80,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Athenians",
+      "unit_id": 2105,
+      "unit_name": "Elite Strategos",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 65,
+        "speed": 0.8999999761581421,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 0,
+          "21": 0,
+          "4": 18,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 48,
+      "army_cap": 80,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Spartans",
+      "unit_id": 2108,
+      "unit_name": "Elite Hippeus",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 100,
+        "speed": 0.8500000238418579,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.5,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 0,
+          "21": 5,
+          "4": 11,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 2,
+          "3": 5,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 49,
+      "army_cap": 60,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Shu",
+      "unit_id": 1961,
+      "unit_name": "EWHTFTHRG",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 100,
+        "speed": 0.949999988079071,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 4,
+          "21": 2,
+          "4": 8,
+          "8": 8,
+          "30": 7,
+          "5": 8,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 0,
+          "3": 3,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 50,
+      "army_cap": 60,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Wu",
+      "unit_id": 1970,
+      "unit_name": "EFIREARCHER",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 40,
+        "speed": 0.9599999785423279,
+        "range": 10.0,
+        "reload": 3.5,
+        "accuracy": 0.85,
+        "projectiles": 1.0,
+        "splash": 0.25,
+        "charge_type": 6,
+        "applied_technology_ids": [],
+        "attack": {
+          "27": 2,
+          "21": 4,
+          "3": 6,
+          "17": 0,
+          "20": 1,
+          "16": 4
+        },
+        "armour": {
+          "4": 0,
+          "15": 0,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 51,
+      "army_cap": 60,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Wei",
+      "unit_id": 1951,
+      "unit_name": "ETIGERCAV",
+      "previous": {
+        "army_cap": 60,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 125,
+        "speed": 1.350000023841858,
+        "range": 0.0,
+        "reload": 1.899999976158142,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 13,
+          "15": 7,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 0,
+          "8": 0,
+          "3": 5,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 52,
+      "army_cap": 80,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Jurchens",
+      "unit_id": 1910,
+      "unit_name": "EIRONPAG",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 140,
+        "speed": 1.399999976158142,
+        "range": 0.0,
+        "reload": 1.7200001019239437,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 5,
+        "applied_technology_ids": [
+          994
+        ],
+        "attack": {
+          "4": 13,
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "20": 0,
+          "31": 0
+        },
+        "armour": {
+          "4": 2,
+          "8": 0,
+          "3": 3,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 53,
+      "army_cap": 80,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Khitans",
+      "unit_id": 1922,
+      "unit_name": "ELIAODAO",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 85,
+        "speed": 1.0,
+        "range": 0.0,
+        "reload": 2.4000000953674316,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 3,
+          "21": 3,
+          "4": 13,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 3,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 54,
+      "army_cap": 70,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Macedonians",
+      "unit_id": 2383,
+      "unit_name": "Elite Companion Cavalry",
+      "previous": {
+        "army_cap": 70,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 120,
+        "speed": 1.399999976158142,
+        "range": 0.0,
+        "reload": 1.899999976158142,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 13,
+          "15": 0,
+          "11": 0,
+          "21": 0,
+          "38": 0,
+          "39": -3,
+          "19": 7
+        },
+        "armour": {
+          "4": 1,
+          "8": 0,
+          "3": 4,
+          "31": 0,
+          "19": 0
+        }
+      }
+    },
+    {
+      "civilization": 55,
+      "army_cap": 92,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Thracians",
+      "unit_id": 2387,
+      "unit_name": "Elite Rhomphaia Warrior",
+      "previous": {
+        "army_cap": 92,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 60,
+        "speed": 1.100000023841858,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 2,
+          "21": 8,
+          "4": 10,
+          "8": 22,
+          "30": 18
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 56,
+      "army_cap": 72,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Puru",
+      "unit_id": 2389,
+      "unit_name": "Elite Pattiyodha Longbowman",
+      "previous": {
+        "army_cap": 72,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 60,
+        "speed": 0.8999999761581421,
+        "range": 4.0,
+        "reload": 2.200000047683716,
+        "accuracy": 0.6,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "27": 2,
+          "21": 0,
+          "3": 8,
+          "17": 0,
+          "5": 4
+        },
+        "armour": {
+          "4": 2,
+          "15": 0,
+          "3": 0,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 57,
+      "army_cap": 80,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Muisca",
+      "unit_id": 2587,
+      "unit_name": "Elite Temple Guard",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 115,
+        "speed": 0.949999988079071,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 14,
+          "8": 8,
+          "30": 6,
+          "5": 8,
+          "16": 6,
+          "21": 2
+        },
+        "armour": {
+          "1": 0,
+          "4": 2,
+          "3": 2,
+          "19": 0,
+          "31": 0,
+          "29": 0
+        }
+      }
+    },
+    {
+      "civilization": 58,
+      "army_cap": 80,
+      "spawn_seconds": 10,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Mapuche",
+      "unit_id": 2571,
+      "unit_name": "EBOLASR",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 10,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 65,
+        "speed": 1.5,
+        "range": 5.0,
+        "reload": 2.0,
+        "accuracy": 0.95,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 6,
+        "applied_technology_ids": [],
+        "attack": {
+          "11": 0,
+          "3": 6,
+          "17": 2,
+          "1": 0,
+          "27": 0,
+          "21": 0,
+          "39": -3,
+          "8": 3,
+          "30": 3
+        },
+        "armour": {
+          "4": 0,
+          "3": 2,
+          "19": 0,
+          "28": 0,
+          "15": 0,
+          "8": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 59,
+      "army_cap": 80,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Tupi",
+      "unit_id": 2584,
+      "unit_name": "EIBIRAP",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 90,
+        "speed": 1.0,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 1.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 11,
+          "29": 3,
+          "21": 2,
+          "8": 0,
+          "30": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 2,
+          "3": 1,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 60,
+      "army_cap": 80,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Saxons",
+      "unit_id": 2706,
+      "unit_name": "Elite Hearth Troop",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 85,
+        "speed": 0.8999999761581421,
+        "range": 0.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 0.0,
+        "splash": 0.0,
+        "charge_type": 6,
+        "applied_technology_ids": [],
+        "attack": {
+          "29": 1,
+          "21": 2,
+          "4": 12,
+          "8": 0,
+          "30": 0,
+          "15": 0
+        },
+        "armour": {
+          "1": 0,
+          "4": 1,
+          "3": 4,
+          "19": 0,
+          "31": 0
+        }
+      }
+    },
+    {
+      "civilization": 61,
+      "army_cap": 72,
+      "spawn_seconds": 9,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Varangians",
+      "unit_id": 2709,
+      "unit_name": "Elite Jarl",
+      "previous": {
+        "army_cap": 72,
+        "spawn_seconds": 9,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 75,
+        "speed": 1.350000023841858,
+        "range": 5.0,
+        "reload": 2.0,
+        "accuracy": 1.0,
+        "projectiles": 1.0,
+        "splash": 0.0,
+        "charge_type": 0,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 10,
+          "15": 0,
+          "21": 0,
+          "38": 0,
+          "20": 0,
+          "1": 4,
+          "39": -3
+        },
+        "armour": {
+          "4": 2,
+          "8": 0,
+          "3": 1,
+          "19": 0,
+          "31": 0,
+          "36": 0
+        }
+      }
+    },
+    {
+      "civilization": 62,
+      "army_cap": 80,
+      "spawn_seconds": 8,
+      "hit_points_bonus": 0,
+      "reason": "Retain current pacing: newer civilization/special unit lacks native matchup evidence; no automatic equal-power assumption.",
+      "review_status": "retain deployed pacing",
+      "name": "Danes",
+      "unit_id": 2712,
+      "unit_name": "Elite Jomsviking",
+      "previous": {
+        "army_cap": 80,
+        "spawn_seconds": 8,
+        "hit_points_bonus": 0
+      },
+      "screen_stats": {
+        "hp": 75,
+        "speed": 0.9599999785423279,
+        "range": 0.0,
+        "reload": 1.7999999523162842,
+        "accuracy": 1.0,
+        "projectiles": 0.0,
+        "splash": 0.0,
+        "charge_type": 6,
+        "applied_technology_ids": [],
+        "attack": {
+          "4": 9,
+          "8": 15,
+          "30": 12,
+          "5": 15,
+          "21": 9,
+          "29": 2,
+          "15": 0,
+          "20": 0
+        },
+        "armour": {
+          "19": 0,
+          "1": 0,
+          "4": 2,
+          "3": 2,
+          "31": 0
+        }
+      }
+    }
+  ],
+  "screen_assumptions": [
+    "Native Feudal-age automatically reachable bonuses and explicit Chinese/Turk startup grants are inventoried.",
+    "Armour and attack bonus classes, Leitis melee-armour bypass, ordinary accuracy, reduced secondary projectile damage, simple melee frontage and finite range lead-in are screened.",
+    "Mixed-team screening includes distinct 1v1, 2v2 and 4v4 lineups with simultaneous damage and four-Castle replacements.",
+    "Native team bonuses, manually researched upgrades, hero tiers, Castle fire, micro, terrain/pathfinding, dismounts, armour stripping, reflection, most new charge/ability types and perfect kiting are not reproduced.",
+    "Where simplified screen disagrees with live gameplay, live evidence takes priority; Spanish/Saracen corrections and Lithuanian strengthening are explicit empirical decisions.",
+    "Newer and special-mechanic civilizations retain deployed pacing pending native playtests; all 62 have explicit reviewed decisions."
+  ]
+}

@@ -102,6 +102,10 @@ float xsGetUnitAttribute(int reference,int attribute,int damageClass) {
 void xsEffectAmount(int kind,int reference,int attribute,int amount,int player) {
     assert(kind==cAddUnitAttribute && attribute==9 && player==0);
     damage.emplace_back(reference,amount);
+    int damageClass=amount/256, increment=amount%256;
+    assert(increment==3);
+    if(damageClass==3) units.at(reference).pierce+=increment;
+    else { assert(damageClass==4); units.at(reference).melee+=increment; }
 }
 bool xsSetUnitName(int reference,const string& name) {
     if(rejectNextName) { rejectNextName=false; return false; }
@@ -116,20 +120,20 @@ int main() {
     units[108]={7,100,0,12}; // Wrong owner must not get color 8's name.
     variables[34]=1; variables[39]=1;
     ramCivilizationLeaderNames();
-    assert(names.size()==1 && names.at(103)=="King Arthur");
+    assert(names.size()==1 && names.at(103)=="Robin Hood");
     assert(!names.count(101) && !names.count(108));
     variables[32]=1;
     rejectNextName=true;
     ramCivilizationLeaderNames();
     assert(!names.count(101)); // A failed native setter remains retryable.
     ramCivilizationLeaderNames();
-    assert(names.at(101)=="Vytautas the Great");
+    assert(names.at(101)=="Lithuanian Grand Duke");
     units.at(108).owner=4; units.at(108).hp=0;
     ramCivilizationLeaderNames();
     assert(!names.count(108)); // Existing but dead reference stays untouched.
     units.at(108).hp=100;
     ramCivilizationLeaderNames();
-    assert(names.at(108)=="Jarl");
+    assert(names.at(108)=="Danish Bow Jarl");
     for(int tick=0;tick<20;tick++) ramCivilizationLeaderNames();
     assert(nameWrites.at(101)==1 && nameWrites.at(103)==1 && nameWrites.at(108)==1);
     ramGrowLeader101();
@@ -137,9 +141,13 @@ int main() {
     assert(damage.size()==2);
     assert(damage.at(0)==std::make_tuple(101,4*256+3));
     assert(damage.at(1)==std::make_tuple(108,3*256+3));
+    assert(units.at(101).melee==19 && units.at(108).pierce==15);
+    for(int cycle=0;cycle<7;cycle++) { ramGrowLeader101(); ramGrowLeader108(); }
+    assert(units.at(101).melee==16+8*3 && units.at(108).pierce==12+8*3);
+    assert(damage.size()==16);
     units.at(103).hp=0;
     ramGrowLeader103(); ramGrowLeader102();
-    assert(damage.size()==2);
+    assert(damage.size()==16);
     // Persisted XS arrays and exact references resume without births or renaming.
     auto savedArrays=arrays;
     int savedHandle=gRamNamedLeaders;
@@ -156,3 +164,28 @@ CATALOGUE_CHECKS
     subprocess.run([compiler, "-std=c++17", "-O0", str(cpp), "-o", str(executable)],
                    check=True, capture_output=True, text=True)
     subprocess.run([str(executable)], check=True, capture_output=True, text=True)
+
+
+def test_native_eight_second_plus_five_hp_growth_survives_leader_rebinding():
+    from AoE2ScenarioParser.datasets.conditions import ConditionId
+    from AoE2ScenarioParser.scenarios.aoe2_de_scenario import AoE2DEScenario
+
+    _emitted_runtime()
+    part = importlib.import_module("ram_leader_runtime_test_package.scenario.triggers.part_005")
+    scenario = AoE2DEScenario.from_default()
+    part.emit(scenario.trigger_manager)
+    growth, = [t for t in scenario.trigger_manager.triggers if t.name == "ge kan"]
+    timer, = [c for c in growth.conditions if c.condition_type == ConditionId.TIMER]
+    assert growth.looping and timer.timer == 8
+    hp = [e for e in growth.effects if e.effect_type == EffectId.CHANGE_OBJECT_HP]
+    assert len(hp) == 8 and all(e.quantity == 5 for e in hp)
+    before = [(e.quantity, e.operation, e.source_player, list(e.selected_object_ids)) for e in hp]
+    units = {color: [SimpleNamespace(unit_const=731, reference_id=effect.selected_object_ids[0])]
+             for color, effect in enumerate(hp, 1)}
+    runtime = importlib.import_module("ram_leader_runtime_test_package.leader_runtime")
+    runtime.configure_civilization_leaders(SimpleNamespace(
+        mode_dir=MODE, um=SimpleNamespace(units=units),
+        tm=SimpleNamespace(triggers=[growth]), add_xs=lambda *_args, **_kwargs: None))
+    after = [(e.quantity, e.operation, e.source_player, list(e.selected_object_ids))
+             for e in growth.effects if e.effect_type == EffectId.CHANGE_OBJECT_HP]
+    assert after == before and timer.timer == 8 and growth.looping

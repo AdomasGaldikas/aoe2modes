@@ -292,7 +292,9 @@ def test_generated_bindings_leave_stock_tables_and_civilians_untouched(selection
     def unit(name, kind, selection):
         return SimpleNamespace(
             type=70, class_=kind, name=name, selection_sound=selection, wwise_selection_sound_id=12345,
-            bird=SimpleNamespace(run_pattern=255), creatable=SimpleNamespace(hero_mode=0),
+            bird=SimpleNamespace(run_pattern=255, move_sound=200, attack_sound=201,
+                                 wwise_move_sound_id=12346, wwise_attack_sound_id=12347),
+            creatable=SimpleNamespace(hero_mode=0),
             type_50=SimpleNamespace(projectile_unit_id=363),
         )
 
@@ -306,6 +308,64 @@ def test_generated_bindings_leave_stock_tables_and_civilians_untouched(selection
     changes = selection_audio._apply_selection_bindings(civilizations, catalog, {(1, "archer"): 900})
     assert len(changes) == 1 and changes[0]["civilization_id"] == 1
     assert generated_archer.selection_sound == 900
+    assert generated_archer.bird.move_sound == generated_archer.bird.attack_sound == 900
     assert stock_archer.selection_sound == 102 and generated_civilian.selection_sound == 101
+    assert all(u.bird.move_sound == 200 and u.bird.attack_sound == 201
+               for u in (stock_archer, generated_civilian))
     assert all(u.wwise_selection_sound_id == 12345 and u.bird.run_pattern == 255
                for u in (generated_archer, generated_civilian, stock_archer))
+    assert all(u.bird.wwise_move_sound_id == 12346 and u.bird.wwise_attack_sound_id == 12347
+               for u in (generated_archer, generated_civilian, stock_archer))
+
+
+def test_aliases_are_short_stable_and_do_not_change_accepted_audio(selection_audio):
+    _manifest, clips, _licenses = selection_audio.load_selection_assets(ASSETS)
+    assert len({clip["filename"] for clip in clips}) == len(clips)
+    for clip in clips:
+        assert clip["filename"] == (
+            f"rsv{clip['civilization_id']:02d}{selection_audio.ROLES.index(clip['role'])}v1"
+        )
+        assert len(clip["filename"]) <= 10 and "." not in clip["filename"]
+        assert hashlib.sha256(clip["data"]).hexdigest() == clip["sha256"]
+
+
+@pytest.mark.parametrize("civilization_id, unit_id, native_class", [(24, 1001, 13), (39, 1706, 55)])
+def test_castle_siege_crews_speak_without_replacing_other_siege_audio(
+    selection_audio, civilization_id, unit_id, native_class,
+):
+    siege = SimpleNamespace(type=70, class_=native_class)
+    assert selection_audio.role_for(unit_id, siege, civilization_id=civilization_id) == "infantry"
+    assert selection_audio.role_for(unit_id, siege, civilization_id=35) is None
+    assert selection_audio.role_for(280, siege, civilization_id=civilization_id) is None
+    assert selection_audio.role_for(unit_id, siege) is None
+
+
+def test_castle_wave_audit_requires_actual_routes_and_explicit_stock_coverage(selection_audio):
+    def unit(name, selection, movement, attack):
+        return SimpleNamespace(type=70, class_=12, name=name, selection_sound=selection,
+                               wwise_selection_sound_id=12345,
+                               bird=SimpleNamespace(move_sound=movement, attack_sound=attack,
+                                                    wwise_move_sound_id=12346,
+                                                    wwise_attack_sound_id=12347),
+                               creatable=SimpleNamespace(hero_mode=0), type_50=None)
+
+    generated = unit("actual Elite Leitis", 900, 900, 900)
+    stock = unit("stock wave", 325, 326, 326)
+    data = SimpleNamespace(civs=[SimpleNamespace(units=[]), SimpleNamespace(units=[generated]),
+                                SimpleNamespace(units=[stock])])
+    catalog = {1: {"name": "generated", "mode": "generated"},
+               2: {"name": "stock", "mode": "stock", "reason": "Preserve native audio"}}
+    rules = {1: (0, 60, 10), 2: (0, 60, 10)}
+    groups = {(1, "cavalry"): 900}
+    rows = selection_audio.audit_spawn_bindings(data, catalog, groups, rules)
+    assert [row["mode"] for row in rows] == ["generated", "stock"]
+    assert rows[0]["unit_name"] == "actual Elite Leitis"
+    assert rows[1]["wwise_selection_sound_id"] == 12345
+    assert rows[1]["wwise_move_sound_id"] == 12346
+    assert rows[1]["wwise_attack_sound_id"] == 12347
+    assert (stock.selection_sound, stock.bird.move_sound, stock.bird.attack_sound) == (325, 326, 326)
+    generated.bird.attack_sound = 326
+    with pytest.raises(ValueError, match="Castle wave voice routing is missing"):
+        selection_audio.audit_spawn_bindings(data, catalog, groups, rules)
+    with pytest.raises(ValueError, match="complete selection civilization catalog"):
+        selection_audio.audit_spawn_bindings(data, catalog, groups, {1: rules[1]})

@@ -6,6 +6,36 @@ Goal: audit the maintained RA source and serialized scenario, fix confirmed logi
 and map-design defects, validate the changes, and push a reproducible candidate.
 Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
+## 2026-10-24 RAM v0.10.0 candidate after live v0.9.0 feedback
+
+The user reported missing Lithuanian speech, weak Lithuanian armies, and dominant
+Spanish/Saracen armies. RAM v0.10.0 is a local test candidate; the user opted to
+perform fresh-match testing. The existing public human lobby is left untouched.
+
+- [x] Trace actual Lithuanian Castle births to Elite Leitis 1236 and inspect its
+  installed selection Sound group; the unit ID was correctly bound in v0.9.0.
+- [x] Cover selection and both legacy command-response slots, preserving Wwise
+  fallbacks, weapon/death audio, original voice bytes and old resource aliases.
+- [x] Require voice coverage of all 62 actual civilization Castle-wave IDs;
+  retain explicit native-language fallbacks where no accepted custom voice exists.
+- [x] Review all 62 civilization pacing decisions, with bounded changes and
+  explicit user-reported Lithuanian/Spanish/Saracen corrections.
+- [x] Use native bow/crossbow/firearm starting commanders for every civilization,
+  with common starting combat profiles and separate double-click selection.
+- [x] Preserve the original exact-reference eight-second +5 HP / +3 attack growth.
+- [x] Run candidate tests, Ruff, embedded XS validation and written-file strict audit.
+  89 distinct current cases covered (87 full-suite cases plus the final 20-case
+  audio subset, including two newly added crew cases); strict audit 0/0.
+- [ ] Fresh-match Lithuanian selection and command-response playback.
+- [ ] Fresh-match all-leader ranged attacks, growth, selection, save/load and
+  native animation, plus representative mixed-team balance tests.
+- [ ] Second-client audio delivery and playback after the candidate is accepted.
+
+Short extensionless filenames are a compatibility adjustment, not a proven cause
+of the reported silence. Static Sound assignments and DAT readback do not prove
+native playback or fair win rates. Publish only after the reported native failure
+has been resolved by the user's fresh-match test.
+
 ## 2026-10-12 simplified hero ladder
 
 RA v1.9 and Speed v0.1.4 remove the 100-kill Archer of the Eyes and 700-kill

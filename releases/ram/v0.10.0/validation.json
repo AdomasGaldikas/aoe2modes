@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-24",
+  "status": "local test candidate",
+  "version": "0.10.0",
+  "automated_tests": {
+    "complete_ram_suite_before_two_added_crew_cases": 87,
+    "final_selection_voice_subset": 20,
+    "distinct_current_cases_covered": 89,
+    "result": "passed"
+  },
+  "ruff": "passed",
+  "embedded_xs_validation": "passed",
+  "written_scenario_strict_audit": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "scenario_sha256": "9b68224b74a5d64f75836beabbb5b0ee926d76e89d91435b82677ba42db1e7c6",
+  "native_gameplay": {
+    "selection_and_command_audio": "awaiting user fresh-match test",
+    "all_leader_firing_growth_selection_and_save_load": "awaiting user fresh-match test",
+    "balance": "initial playtest settings, equal win rates not established"
+  },
+  "published_to_aoe_mod_listing": false,
+  "package": {
+    "files": 910,
+    "sha256": "08795c386e5b506710d19e2fa45efb8fc4f7e0b8621878941a563f4d2217a112",
+    "zip_crc_and_every_file_sha256": "passed",
+    "old_audio_files_preserved_exactly": 509,
+    "castle_wave_voices_audited": 62,
+    "ranged_commanders": 62,
+    "dat_original_restore_and_modified_reload": "passed",
+    "source_game_dat_unchanged": true
+  }
+}

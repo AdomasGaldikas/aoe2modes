@@ -132,6 +132,11 @@ def test_ram_starting_civilization_leaders_get_a_separate_instance_selection_gro
             assert effect.operation == Operation.SET and effect.quantity == 3
     # The leader that receives the growing HP/attack bonus remains the same unit.
     growth, = [t for t in scenario.trigger_manager.triggers if t.name == "ge kan"]
+    assert growth.enabled and growth.looping
+    timer, = growth.conditions
+    assert timer.condition_type == ConditionId.TIMER and timer.timer == 8
+    health = [effect for effect in growth.effects if effect.effect_type == EffectId.CHANGE_OBJECT_HP]
+    assert len(health) == 8 and all(effect.quantity == 5 for effect in health)
     assert {r for e in growth.effects for r in e.selected_object_ids} == refs
     assert refs == {109739, 109740, 109741, 109742, 98497, 98498, 98499, 98500}
     calls = [e.message for e in growth.effects if e.effect_type == EffectId.SCRIPT_CALL]
@@ -142,19 +147,27 @@ def test_ram_starting_civilization_leaders_get_a_separate_instance_selection_gro
                in call for call in calls)
     assert not any(e.effect_type == EffectId.CHANGE_OBJECT_ATTACK for e in growth.effects)
     source = next(t for t in scenario.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
-    assert 'if (civilization == 1) return("King Arthur");' in source
-    assert 'if (civilization == 35) return("Vytautas the Great");' in source
+    assert 'if (civilization == 1) return("Robin Hood");' in source
+    assert 'if (civilization == 35) return("Lithuanian Grand Duke");' in source
     assert "if (xsGetUnitOwner(reference) != owner) return;" in source
 
 
 def test_ram_civilization_balance_is_embedded_in_the_delivered_xs(ram):
     source = next(t for t in ram[2].trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
-    assert "xsArraySetInt(gCbaCapByCiv, 35, 64);" in source
-    assert "xsArraySetInt(gCbaIntervalByCiv, 35, 10);" in source
-    assert "xsArraySetInt(gCbaIntervalByCiv, 43, 9);" in source
-    assert "xsArraySetInt(gCbaCapByCiv, 61, 72);" in source
-    assert "xsArraySetInt(gCbaIntervalByCiv, 61, 9);" in source
-    assert "xsEffectAmount(cAddAttribute, 1236, 0, 8, worldPlayer);" in source
+    config = tomllib.loads((ram[0].directory / "mode.toml").read_text())
+    rows = config["civilization_balance"]["adjustments"]
+    assert {row["civilization"] for row in rows} == set(range(1, 63))
+    for row in rows:
+        civ = row["civilization"]
+        assert f"xsArraySetInt(gCbaCapByCiv, {civ}, {row['army_cap']});" in source
+        assert f"xsArraySetInt(gCbaIntervalByCiv, {civ}, {row['spawn_seconds']});" in source
+    assert "xsArraySetInt(gCbaCapByCiv, 35, 72);" in source
+    assert "xsArraySetInt(gCbaIntervalByCiv, 35, 9);" in source
+    assert "xsArraySetInt(gCbaCapByCiv, 14, 48);" in source
+    assert "xsArraySetInt(gCbaIntervalByCiv, 14, 12);" in source
+    assert "xsArraySetInt(gCbaCapByCiv, 9, 56);" in source
+    assert "xsArraySetInt(gCbaIntervalByCiv, 9, 14);" in source
+    assert "xsEffectAmount(cAddAttribute, 1236, 0, 18, worldPlayer);" in source
 
 
 def test_ram_audio_targets_every_color_once(ram):
