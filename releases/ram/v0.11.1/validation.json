@@ -1,7 +1,7 @@
 {
   "date": "2026-10-26",
   "version": "0.11.1",
-  "status": "native attack-growth candidate; installation/test pending game closure",
+  "status": "scenario installed while game remains open at explicit user request; user will test",
   "tests": {
     "passed": 96,
     "elapsed_seconds": 223.27
@@ -29,7 +29,13 @@
     "health_increment": 5,
     "custom_attack_script_callbacks": 0
   },
-  "native_gameplay": "not yet verified; requires fresh match",
-  "installed": false,
+  "native_gameplay": "awaiting user fresh-match test",
+  "installed": {
+    "scenario": "/home/mo/.steam/debian-installation/steamapps/compatdata/813780/pfx/drive_c/users/steamuser/Games/Age of Empires 2 DE/76561198817496389/resources/_common/scenario/CBA Hero 4v4 RAM v0.11.1.aoe2scenario",
+    "date": "2026-10-26",
+    "existing_datamod": "RAM v0.11.0",
+    "dat_compatibility": "byte-identical to v0.11.1",
+    "game_restart": false
+  },
   "published": false
 }

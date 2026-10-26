@@ -22,10 +22,14 @@ The eight-second timer and eight +5 HP effects are preserved exactly.
   match v0.11.0.
 - [ ] Fresh native match: displayed total attack increases at 8/16/24 game seconds
   while later spawned heroes remain unaffected. Observe multiple ranged actors.
-- [ ] Install and update the existing unlisted listing after native acceptance.
+- [x] Install the new v0.11.1 scenario while the game remains open at the user
+  explicit request. Keep the loaded v0.11.0 Data Mod: its DAT is byte-identical.
+- [ ] Update the existing unlisted listing after user native acceptance.
 
-Do not interrupt the user's open lobby. The native-failure acceptance check
-remains open until a fresh match exercises the written candidate.
+The user explicitly chose manual testing without closing the game. The new
+scenario is installed atomically under its versioned name; no game input or
+Data Mod reload is performed. The native-failure acceptance check remains open
+until the user tests a fresh v0.11.1 match.
 
 ## 2026-10-24 RAM v0.11.0 whole-roster balance candidate
 

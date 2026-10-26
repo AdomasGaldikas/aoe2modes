@@ -9,8 +9,11 @@ object references, national ranged actors and separate selection are preserved.
 Later spawned hero armies are not targeted.
 
 The Data Mod DAT, all voices, balance targets, center rules and other gameplay
-are retained. Select the matching version and start a fresh match; existing
-matches and saves retain their embedded trigger script/effects.
+are retained. The v0.11.1 scenario is installed for manual testing without
+closing the game, as the user requested. Use the already-loaded RAM v0.11.0
+Data Mod: its DAT and audio are byte-identical. Reopen the scenario list, select
+v0.11.1 and start a fresh match; existing matches and saves retain their old
+embedded trigger script/effects.
 
 The prior C++ callback test modeled an engine behavior that native playtesting
 did not confirm. It is replaced by explicit native-effect serialization checks;
