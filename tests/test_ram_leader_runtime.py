@@ -1,4 +1,4 @@
-"""Execute the emitted leader XS with independent sparse-player engine state."""
+"""Native leader-growth wiring and owner-resolved naming contracts."""
 
 import importlib
 import json
@@ -29,13 +29,13 @@ def _emitted_runtime():
     effects = [SimpleNamespace(effect_type=EffectId.CHANGE_OBJECT_ATTACK),
                SimpleNamespace(effect_type=EffectId.CHANGE_OBJECT_HP)]
 
-    def script_call(**kwargs):
-        effect = SimpleNamespace(effect_type=EffectId.SCRIPT_CALL, **kwargs)
+    def change_object_attack(**kwargs):
+        effect = SimpleNamespace(effect_type=EffectId.CHANGE_OBJECT_ATTACK, **kwargs)
         growth.effects.append(effect)
         return effect
 
     growth = SimpleNamespace(name="ge kan", effects=effects,
-                             new_effect=SimpleNamespace(script_call=script_call))
+                             new_effect=SimpleNamespace(change_object_attack=change_object_attack))
     emitted = []
     ctx = SimpleNamespace(mode_dir=MODE, um=SimpleNamespace(units=units),
                           tm=SimpleNamespace(triggers=[growth]),
@@ -44,20 +44,20 @@ def _emitted_runtime():
     assert len(emitted) == 1
     assert all(group[0].unit_const == 2750 and group[0].reference_id == 100 + color
                for color, group in units.items())
-    assert not any(e.effect_type == EffectId.CHANGE_OBJECT_ATTACK for e in growth.effects)
+    attacks = [e for e in growth.effects if e.effect_type == EffectId.CHANGE_OBJECT_ATTACK]
+    assert len(attacks) == 8
     assert sum(e.effect_type == EffectId.CHANGE_OBJECT_HP for e in growth.effects) == 1
-    wrappers = [e.message for e in growth.effects if e.effect_type == EffectId.SCRIPT_CALL]
-    assert len(wrappers) == 8
-    assert all(re.fullmatch(r"void ramGrowLeader\d+\(\)\s*\{.*\}", w, flags=re.S)
-               for w in wrappers)
-    return emitted[0], wrappers
+    assert not any(e.effect_type == EffectId.SCRIPT_CALL for e in growth.effects)
+    assert {tuple(e.selected_object_ids) for e in attacks} == {(100 + color,) for color in range(1, 9)}
+    assert all(e.armour_attack_class == 3 and e.armour_attack_quantity == 3 for e in attacks)
+    return emitted[0]
 
 
-def test_emitted_leader_xs_sparse_identity_damage_growth_and_persistent_names(tmp_path):
+def test_emitted_leader_xs_sparse_identity_and_persistent_names(tmp_path):
     compiler = shutil.which("g++")
     if compiler is None:
         pytest.skip("g++ is needed to execute emitted XS against independent engine state")
-    source, wrappers = _emitted_runtime()
+    source = _emitted_runtime()
     source = re.sub(r"rule ramCivilizationLeaderNames\s+active\s+minInterval 1",
                     "void ramCivilizationLeaderNames()", source)
     rows = json.loads((MODE / "assets/leaders/catalog.json").read_text())["civilizations"]
@@ -78,11 +78,9 @@ std::vector<std::vector<int>> arrays;
 std::map<int,int> variables;
 std::map<int,string> names;
 std::map<int,int> nameWrites;
-std::vector<std::tuple<int,int>> damage;
 int owners[9] = {0,7,0,2,0,0,0,0,4};
 std::map<int,int> civilizations = {{7,35},{2,1},{4,62}};
 bool rejectNextName = false;
-const int cAddUnitAttribute = 5;
 int cbaWorldPlayerForColor(int color) { return owners[color]; }
 int xsTriggerVariable(int id) { return variables[id]; }
 int xsArrayCreateInt(int count,int value,const char*) {
@@ -94,19 +92,6 @@ bool xsDoesUnitExist(int reference) { return units.count(reference)>0; }
 float xsGetUnitHitpoints(int reference) { return units.at(reference).hp; }
 int xsGetUnitOwner(int reference) { return units.at(reference).owner; }
 int xsGetPlayerCivilization(int owner) { return civilizations.at(owner); }
-float xsGetUnitAttribute(int reference,int attribute,int damageClass) {
-    assert(attribute==9);
-    assert(damageClass==3 || damageClass==4);
-    return damageClass==4 ? units.at(reference).melee : units.at(reference).pierce;
-}
-void xsEffectAmount(int kind,int reference,int attribute,int amount,int player) {
-    assert(kind==cAddUnitAttribute && attribute==9 && player==0);
-    damage.emplace_back(reference,amount);
-    int damageClass=amount/256, increment=amount%256;
-    assert(increment==3);
-    if(damageClass==3) units.at(reference).pierce+=increment;
-    else { assert(damageClass==4); units.at(reference).melee+=increment; }
-}
 bool xsSetUnitName(int reference,const string& name) {
     if(rejectNextName) { rejectNextName=false; return false; }
     names[reference]=name; nameWrites[reference]++; return true;
@@ -136,18 +121,6 @@ int main() {
     assert(names.at(108)=="Danish Bow Jarl");
     for(int tick=0;tick<20;tick++) ramCivilizationLeaderNames();
     assert(nameWrites.at(101)==1 && nameWrites.at(103)==1 && nameWrites.at(108)==1);
-    ramGrowLeader101();
-    ramGrowLeader108();
-    assert(damage.size()==2);
-    assert(damage.at(0)==std::make_tuple(101,4*256+3));
-    assert(damage.at(1)==std::make_tuple(108,3*256+3));
-    assert(units.at(101).melee==19 && units.at(108).pierce==15);
-    for(int cycle=0;cycle<7;cycle++) { ramGrowLeader101(); ramGrowLeader108(); }
-    assert(units.at(101).melee==16+8*3 && units.at(108).pierce==12+8*3);
-    assert(damage.size()==16);
-    units.at(103).hp=0;
-    ramGrowLeader103(); ramGrowLeader102();
-    assert(damage.size()==16);
     // Persisted XS arrays and exact references resume without births or renaming.
     auto savedArrays=arrays;
     int savedHandle=gRamNamedLeaders;
@@ -159,7 +132,7 @@ CATALOGUE_CHECKS
 }
 '''.replace("CATALOGUE_CHECKS", catalogue_checks)
     cpp = tmp_path / "leaders.cpp"
-    cpp.write_text(prelude + source + "\n" + "\n".join(wrappers) + main)
+    cpp.write_text(prelude + source + main)
     executable = tmp_path / "leaders"
     subprocess.run([compiler, "-std=c++17", "-O0", str(cpp), "-o", str(executable)],
                    check=True, capture_output=True, text=True)
@@ -189,3 +162,12 @@ def test_native_eight_second_plus_five_hp_growth_survives_leader_rebinding():
     after = [(e.quantity, e.operation, e.source_player, list(e.selected_object_ids))
              for e in growth.effects if e.effect_type == EffectId.CHANGE_OBJECT_HP]
     assert after == before and timer.timer == 8 and growth.looping
+
+    from AoE2ScenarioParser.datasets.trigger_lists import DamageClass, Operation
+
+    attacks = [e for e in growth.effects if e.effect_type == EffectId.CHANGE_OBJECT_ATTACK]
+    assert len(attacks) == 8
+    assert {tuple(e.selected_object_ids) for e in attacks} == {tuple(e.selected_object_ids) for e in hp}
+    assert all(e.armour_attack_class == DamageClass.BASE_PIERCE
+               and e.armour_attack_quantity == 3 and e.operation == Operation.ADD for e in attacks)
+    assert not any(e.effect_type == EffectId.SCRIPT_CALL for e in growth.effects)

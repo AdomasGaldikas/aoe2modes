@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-26",
+  "version": "0.11.1",
+  "status": "native attack-growth candidate; installation/test pending game closure",
+  "tests": {
+    "passed": 96,
+    "elapsed_seconds": 223.27
+  },
+  "ruff": "passed",
+  "embedded_xs": "passed",
+  "written_strict_audit": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "scenario_sha256": "509b2f07c5ede3dcfc7199207cbd1310c262098bd4283d20b034fd850f12d6db",
+  "package": {
+    "sha256": "e10444fc0b8305b3f0955b3f110023b8b6c9ad4a82fb1e42a36710c26fb2c291",
+    "file_count": 910,
+    "zip_crc_and_full_file_hashes": "passed",
+    "unchanged_audio_files": 893,
+    "dat_unchanged_from_v0_11_0": true
+  },
+  "growth_contract": {
+    "interval_game_seconds": 8,
+    "native_attack_effects": 8,
+    "attack_class": 3,
+    "attack_increment": 3,
+    "health_effects_preserved": 8,
+    "health_increment": 5,
+    "custom_attack_script_callbacks": 0
+  },
+  "native_gameplay": "not yet verified; requires fresh match",
+  "installed": false,
+  "published": false
+}

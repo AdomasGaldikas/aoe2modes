@@ -5,6 +5,7 @@ import json
 from AoE2ScenarioParser.datasets.effects import EffectId
 from AoE2ScenarioParser.datasets.heroes import HeroInfo
 from AoE2ScenarioParser.datasets.players import PlayerId
+from AoE2ScenarioParser.datasets.trigger_lists import DamageClass, Operation
 
 from .civilization_leaders import leader_unit_id, leaders_enabled, load_leader_catalog
 
@@ -25,17 +26,14 @@ def configure_civilization_leaders(ctx):
     growth, = [t for t in ctx.tm.triggers if t.name == "ge kan"]
     growth.effects = [e for e in growth.effects if e.effect_type != EffectId.CHANGE_OBJECT_ATTACK]
     for reference in leaders.values():
-        # Native Script Call snippets precede the bundled script. Keep each
-        # parameterless entry point self-contained; forward calls fail in DE.
-        growth.new_effect.script_call(
-            message=f"""void ramGrowLeader{reference}() {{
-    int reference = {reference};
-    if (xsDoesUnitExist(reference) == false) return;
-    if (xsGetUnitHitpoints(reference) <= 0) return;
-    int damageClass = 3;
-    if (xsGetUnitAttribute(reference, 9, 4) > 0) damageClass = 4;
-    xsEffectAmount(cAddUnitAttribute, reference, 9, damageClass * 256 + 3, 0);
-}}""",
+        # Every reserved commander has base pierce attack. Use the same native,
+        # exact-reference path as the original Khan instead of an XS unit mutation.
+        growth.new_effect.change_object_attack(
+            armour_attack_quantity=3,
+            armour_attack_class=DamageClass.BASE_PIERCE,
+            operation=Operation.ADD,
+            source_player=PlayerId.GAIA,
+            selected_object_ids=[reference],
         )
     growth.effect_order = list(range(len(growth.effects)))
 

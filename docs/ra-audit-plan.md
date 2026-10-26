@@ -6,6 +6,27 @@ Goal: audit the maintained RA source and serialized scenario, fix confirmed logi
 and map-design defects, validate the changes, and push a reproducible candidate.
 Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
+## 2026-10-26 RAM v0.11.1 starting-leader attack growth
+
+The user reports that v0.11.0 leaders still do not gain attack over time. The
+previous simulated XS callbacks did not establish native behavior. This patch
+restores native exact-reference Change Object Attack effects and explicitly
+selects base pierce class 3 for all eight normalized ranged starting leaders.
+The eight-second timer and eight +5 HP effects are preserved exactly.
+
+- [x] Remove custom attack mutation callbacks and their simulated engine model.
+- [x] Require eight native ADD +3 effects, explicit pierce class and the original
+  starting references; retain separate selection and national names.
+- [x] Finish tests, Ruff, embedded XS, strict artifact audit and package hashes:
+  96 passed, strict audit 0/0, all 910 files verified; DAT and 893 audio files
+  match v0.11.0.
+- [ ] Fresh native match: displayed total attack increases at 8/16/24 game seconds
+  while later spawned heroes remain unaffected. Observe multiple ranged actors.
+- [ ] Install and update the existing unlisted listing after native acceptance.
+
+Do not interrupt the user's open lobby. The native-failure acceptance check
+remains open until a fresh match exercises the written candidate.
+
 ## 2026-10-24 RAM v0.11.0 whole-roster balance candidate
 
 The user rejected limiting the balance pass to the reported problem civilizations.

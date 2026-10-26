@@ -139,13 +139,12 @@ def test_ram_starting_civilization_leaders_get_a_separate_instance_selection_gro
     assert len(health) == 8 and all(effect.quantity == 5 for effect in health)
     assert {r for e in growth.effects for r in e.selected_object_ids} == refs
     assert refs == {109739, 109740, 109741, 109742, 98497, 98498, 98499, 98500}
-    calls = [e.message for e in growth.effects if e.effect_type == EffectId.SCRIPT_CALL]
-    assert len(calls) == 8
-    assert {int(re.search(r"int reference = (\d+);", call)[1]) for call in calls} == refs
-    assert all("if (xsGetUnitAttribute(reference, 9, 4) > 0) damageClass = 4;" in call for call in calls)
-    assert all("xsEffectAmount(cAddUnitAttribute, reference, 9, damageClass * 256 + 3, 0);"
-               in call for call in calls)
-    assert not any(e.effect_type == EffectId.CHANGE_OBJECT_ATTACK for e in growth.effects)
+    attacks = [e for e in growth.effects if e.effect_type == EffectId.CHANGE_OBJECT_ATTACK]
+    assert len(attacks) == 8
+    assert {tuple(effect.selected_object_ids) for effect in attacks} == {(reference,) for reference in refs}
+    assert all(effect.armour_attack_quantity == 3 and effect.armour_attack_class == 3
+               and effect.operation == Operation.ADD for effect in attacks)
+    assert not any(effect.effect_type == EffectId.SCRIPT_CALL for effect in growth.effects)
     source = next(t for t in scenario.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
     assert 'if (civilization == 1) return("Robin Hood");' in source
     assert 'if (civilization == 35) return("Lithuanian Grand Duke");' in source
