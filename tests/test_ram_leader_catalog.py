@@ -25,6 +25,41 @@ def test_every_leader_keeps_the_original_population_cost_without_economic_prices
     assert original[0].amount == 55 and original[1].amount == 65
 
 
+def _storage(kind, amount, flag):
+    return SimpleNamespace(type=kind, amount=amount, flag=flag)
+
+
+def test_half_population_donor_inherits_khan_accounting_and_preserves_other_resources():
+    donor = (_storage(4, -0.5, 2), _storage(11, 0.5, 2), _storage(19, 0.5, 1),
+             _storage(3, 42, 7))
+    khan = (_storage(4, -1.0, 2), _storage(11, 1.0, 2), _storage(19, 1.0, 1),
+            _storage(3, 99, 5))
+    result = leaders._leader_population_storages(donor, khan)
+    assert [(s.type, s.amount, s.flag) for s in result] == [
+        (4, -1.0, 2), (11, 1.0, 2), (19, 1.0, 1), (3, 42, 7),
+    ]
+    assert [(s.type, s.amount, s.flag) for s in donor[:3]] == [
+        (4, -0.5, 2), (11, 0.5, 2), (19, 0.5, 1),
+    ]
+    result[0].amount = -2
+    assert khan[0].amount == -1.0 and donor[0].amount == -0.5
+
+
+@pytest.mark.parametrize(
+    "bad_storage", ["donor_missing", "donor_duplicate", "khan_missing", "khan_duplicate"],
+)
+def test_population_storage_rejects_missing_or_duplicate_types(bad_storage):
+    donor = [_storage(4, -0.5, 2), _storage(11, 0.5, 2), _storage(19, 0.5, 1)]
+    khan = [_storage(4, -1.0, 2), _storage(11, 1.0, 2), _storage(19, 1.0, 1)]
+    target = donor if bad_storage.startswith("donor") else khan
+    if bad_storage.endswith("missing"):
+        target.pop()
+    else:
+        target.append(_storage(4, -1.0, 2))
+    with pytest.raises(ValueError, match="(Missing|Duplicate) leader population storage"):
+        leaders._leader_population_storages(donor, khan)
+
+
 def test_complete_catalog_and_requested_native_leaders():
     rows = leaders.load_leader_catalog(MODE)
     catalog = {row["civilization"]: row for row in rows}

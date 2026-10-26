@@ -22,6 +22,8 @@ WEAPONS = {"bow", "crossbow", "firearm"}
 ARROW_PROJECTILES = {363, 364, 373, 477, 478, 503, 507, 510, 511, 1781, 2608, 2609}
 FIREARM_PROJECTILES = {380}
 GENGHIS_ID = 731
+# Native unit resource storages control population consumption and counters.
+POPULATION_STORAGE_TYPES = frozenset({4, 11, 19})
 # Native donor combat/movement tasks; remove auras, conversion and special actions.
 COMBAT_ACTIONS = {3, 7, 13, 109}
 
@@ -198,6 +200,35 @@ def _leader_costs(original_leader_costs):
     return costs
 
 
+def _population_storage_snapshot(storages) -> dict[int, tuple[float, int]]:
+    """Capture the three native population storages without hiding duplicates."""
+    result = {}
+    for storage in storages:
+        if storage.type not in POPULATION_STORAGE_TYPES:
+            continue
+        if storage.type in result:
+            raise ValueError(f"Duplicate leader population storage type {storage.type}")
+        result[storage.type] = (storage.amount, storage.flag)
+    if set(result) != POPULATION_STORAGE_TYPES:
+        missing = sorted(POPULATION_STORAGE_TYPES - result.keys())
+        raise ValueError(f"Missing leader population storage types: {missing}")
+    return result
+
+
+def _leader_population_storages(donor_storages, original_leader_storages):
+    """Copy the original leader's population accounting, preserving other fields.
+
+    DE's unit table has a fixed-size resource storage array. Reject missing or
+    duplicate types instead of silently replacing a potentially unrelated entry.
+    """
+    _population_storage_snapshot(donor_storages)
+    _population_storage_snapshot(original_leader_storages)
+    original = {entry.type: entry for entry in original_leader_storages
+                if entry.type in POPULATION_STORAGE_TYPES}
+    return tuple(deepcopy(original[entry.type] if entry.type in original else entry)
+                 for entry in donor_storages)
+
+
 def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[bytes, dict, dict]:
     """Append one isolated unit to every table and prove all original bytes survive."""
     if not leaders_enabled(mode_dir):
@@ -248,6 +279,12 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
         # different anti-unit armour classes or class-based civilization bonuses.
         original_khan = civ.units[GENGHIS_ID]
         _copy_counter_template(clone, original_khan)
+        clone.resource_storages = _leader_population_storages(
+            clone.resource_storages, original_khan.resource_storages,
+        )
+        if (_population_storage_snapshot(clone.resource_storages)
+                != _population_storage_snapshot(original_khan.resource_storages)):
+            raise ValueError(f"Leader population storage differs from original: {civ_id}")
         clone.id = clone.copy_id = clone.base_id = reserved
         clone.enabled, clone.disabled = 1, 0
         clone.name = f"RAM LEADER {civ_id}"
@@ -305,6 +342,11 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
             "minimum_range": combat.min_range, "accuracy_percent": combat.accuracy_percent,
             "line_of_sight": clone.line_of_sight,
             "population_cost": sum(cost.amount for cost in c.resource_costs if cost.type == 4),
+            "population_storages": [
+                {"type": storage.type, "amount": storage.amount, "flag": storage.flag}
+                for storage in clone.resource_storages if storage.type in POPULATION_STORAGE_TYPES
+            ],
+            "population_storages_match_original_khan": True,
             "removed_special_task_actions": dict(sorted(removed_tasks.items())),
             "retained_native_tasks": len(clone.bird.tasks),
             "disabled_native_trait": donor.trait,
@@ -320,6 +362,9 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
     for civ in reloaded.civs:
         if len(civ.units) != reserved + 1 or civ.units[-1].id != reserved:
             raise ValueError("Leader clone table append was not serialized correctly")
+        if (_population_storage_snapshot(civ.units[-1].resource_storages)
+                != _population_storage_snapshot(civ.units[GENGHIS_ID].resource_storages)):
+            raise ValueError("Serialized leader population storage differs from original Khan")
         civ.units.pop()
     if reloaded.to_bytes() != raw:
         raise ValueError("Removing appended leaders did not restore every original DAT byte")
@@ -341,6 +386,7 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
         "restored_original_bytes_exactly": True, "modified_reload_stable": True,
         "native_graphics_movement_animations_and_projectile_preserved": True,
         "shared_genghis_class_and_counter_armour_template": True,
+        "all_serialized_population_storages_match_original_khan": True,
         "all_native_bow_crossbow_or_firearm_donors_validated": True,
         "equal_starting_stats_range_accuracy_and_movement_speed": True,
         "main_pierce_attack_class": 3,

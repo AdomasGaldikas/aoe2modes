@@ -6,6 +6,23 @@ Goal: audit the maintained RA source and serialized scenario, fix confirmed logi
 and map-design defects, validate the changes, and push a reproducible candidate.
 Automated checks cannot certify DE pathfinding or multiplayer scheduling.
 
+## 2026-10-26 RAM v0.11.2 audit and playtest release
+
+The user asked to install and publish the audited candidate for their own test.
+The earlier instruction to wait for native acceptance before publication is
+superseded by that request; native acceptance remains open.
+
+- [x] Correct Inca, Muisca and Mapuche special-leader population storage and
+  verify the original Khan values across all 63 serialized player tables.
+- [x] Reject stale or changed package output and check all 910 packaged files;
+  retain the existing 893 sound files byte-for-byte.
+- [x] 111 RAM tests, Ruff, embedded XS and strict written audit passed.
+- [x] Install and enable the matching v0.11.2 Data Mod and scenario; preserve the
+  previous subscribed folder and mod-status settings in a separate backup.
+- [x] Publish v0.11.2 to the existing unlisted listing for user playtesting.
+- [ ] User fresh-match acceptance of leader attack growth, voices and center
+  rewards; multiplayer distribution and balance remain unverified.
+
 ## 2026-10-26 RAM v0.11.1 starting-leader attack growth
 
 The user reports that v0.11.0 leaders still do not gain attack over time. The

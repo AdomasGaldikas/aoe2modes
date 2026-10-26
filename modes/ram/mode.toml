@@ -1,7 +1,7 @@
 [mode]
 id = "ram"
 name = "CBA Hero 4v4: RAM"
-version = "0.11.1"
+version = "0.11.2"
 description = "4v4 arena battles with center control, reinforcements, hero progression and custom voice announcements, including private team signals."
 authors = []
 tags = ["cba", "hero", "arena", "4v4"]

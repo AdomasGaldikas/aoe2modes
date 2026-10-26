@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-26",
+  "version": "0.11.2",
+  "status": "installed and published for user playtest",
+  "tests": {
+    "passed": 111,
+    "elapsed_seconds": 195.26
+  },
+  "ruff": "passed",
+  "embedded_xs": "passed",
+  "written_strict_audit": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "scenario_sha256": "75c1c0aaba82e65babd7daaec04ac87e6cddbe5c135d75cb67f66046862239af",
+  "package": {
+    "sha256": "d8734ae9f33db78322439fa32b3abaff98cc2b54022f55cb242f4846185ef915",
+    "file_count": 910,
+    "zip_crc_and_full_file_hashes": "passed",
+    "unchanged_audio_files": 893,
+    "serialized_leader_population_storage_matches_original_khan": true
+  },
+  "leader_growth": {
+    "interval_game_seconds": 8,
+    "native_attack_effects": 8,
+    "attack_class": 3,
+    "attack_increment": 3,
+    "native_gameplay": "awaiting user fresh-match test"
+  },
+  "center_and_audio": "fresh match and multiplayer playback not independently verified",
+  "installed": {
+    "mod_id": 551448,
+    "title": "CBA Hero 4v4 RAM v0.11.2",
+    "enabled": true,
+    "files_verified": true,
+    "backup": "/home/mo/.local/share/aoe2-ai-testing/ram-v0.11.2-update-backup"
+  },
+  "published": {
+    "listing": "https://www.ageofempires.com/mods/details/551448/",
+    "service_version": "1.9",
+    "visibility": "unlisted",
+    "preview": "unchanged"
+  }
+}
