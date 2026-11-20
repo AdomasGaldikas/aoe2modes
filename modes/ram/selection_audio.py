@@ -197,34 +197,51 @@ def role_for(unit_id: int, unit, *, civilization_id: int | None = None) -> str |
     return CLASS_ROLE.get(unit.class_)
 
 
+# Matches DE unit definitions with no legacy or Wwise command reply.
+MUTED_COMMAND_SOUNDS = {
+    "move_sound": -1,
+    "attack_sound": -1,
+    "wwise_move_sound_id": 0,
+    "wwise_attack_sound_id": 0,
+}
+
+
+def command_sounds(unit) -> dict:
+    if unit.bird is None:
+        return {}
+    return {field: getattr(unit.bird, field) for field in MUTED_COMMAND_SOUNDS}
+
+
+def mute_command_sounds(unit) -> None:
+    if unit.bird is not None:
+        for field, value in MUTED_COMMAND_SOUNDS.items():
+            setattr(unit.bird, field, value)
+
+
 def _apply_selection_bindings(civilizations, catalog: dict[int, dict], groups: dict) -> list[dict]:
-    """Patch only explicitly generated tables; stock decisions never reach a unit."""
+    """Keep stock selection voices where required and mute military command replies."""
     changes = []
     for civ_id, row in catalog.items():
-        if row["mode"] != "generated":
-            continue
         for unit_id, unit in enumerate(civilizations[civ_id].units):
             role = role_for(unit_id, unit, civilization_id=civ_id)
             if role is None:
                 continue
-            new = groups[(civ_id, role)]
+            old_selection = unit.selection_sound
+            old_commands = command_sounds(unit)
+            if row["mode"] == "generated":
+                unit.selection_sound = groups[(civ_id, role)]
+            mute_command_sounds(unit)
+            new_commands = command_sounds(unit)
+            if unit.selection_sound == old_selection and new_commands == old_commands:
+                continue
             changes.append({
                 "civilization_id": civ_id, "unit_id": unit_id, "unit_name": unit.name,
-                "class": unit.class_, "role": role, "selection_sound_before": unit.selection_sound,
-                "selection_sound_after": new, "wwise_selection_sound_id": unit.wwise_selection_sound_id,
-                "move_sound_before": unit.bird.move_sound if unit.bird else None,
-                "attack_sound_before": unit.bird.attack_sound if unit.bird else None,
-                "move_sound_after": new if unit.bird else None,
-                "attack_sound_after": new if unit.bird else None,
-                "wwise_move_sound_id": unit.bird.wwise_move_sound_id if unit.bird else None,
-                "wwise_attack_sound_id": unit.bird.wwise_attack_sound_id if unit.bird else None,
+                "class": unit.class_, "role": role, "selection_sound_before": old_selection,
+                "selection_sound_after": unit.selection_sound,
+                "wwise_selection_sound_id": unit.wwise_selection_sound_id,
+                "command_sounds_before": old_commands, "command_sounds_after": new_commands,
                 "run_pattern": unit.bird.run_pattern if unit.bird else None,
             })
-            unit.selection_sound = new
-            # These are legacy command-response slots (genieutils' field names).
-            # Weapon impacts, projectile/graphic frame and death audio are separate.
-            if unit.bird is not None:
-                unit.bird.move_sound = unit.bird.attack_sound = new
     return changes
 
 
@@ -239,12 +256,10 @@ def audit_spawn_bindings(data, catalog, groups, spawn_rules) -> list[dict]:
         mode = catalog[civ_id]["mode"]
         if unit is None or unit.bird is None:
             raise ValueError(f"Castle wave has no command-capable unit: {civ_id}/{unit_id}")
-        if mode == "generated":
-            expected = groups.get((civ_id, role))
-            if expected is None or any(value != expected for value in (
-                unit.selection_sound, unit.bird.move_sound, unit.bird.attack_sound,
-            )):
-                raise ValueError(f"Castle wave voice routing is missing: {civ_id}/{unit_id}/{role}")
+        if mode == "generated" and unit.selection_sound != groups.get((civ_id, role)):
+            raise ValueError(f"Castle wave selection voice is missing: {civ_id}/{unit_id}/{role}")
+        if command_sounds(unit) != MUTED_COMMAND_SOUNDS:
+            raise ValueError(f"Castle wave command replies are not muted: {civ_id}/{unit_id}")
         rows.append({"civilization_id": civ_id, "civilization": catalog[civ_id]["name"],
                      "unit_id": unit_id, "unit_name": unit.name, "mode": mode, "role": role,
                      "selection_sound": unit.selection_sound, "move_sound": unit.bird.move_sound,
@@ -260,8 +275,8 @@ def package_selection_audio(
 ) -> tuple[bytes, dict[str, bytes], dict]:
     """Return patched DAT bytes, extra package files, and the complete mutation proof.
 
-    Only generated-civilization selection and command fields and appended Sound groups
-    may differ. Explicit stock tables and the installed source DAT stay unchanged.
+    Only generated selection bindings, military command replies and appended Sound
+    groups may differ. Stock selection voices and the source DAT stay unchanged.
     """
     try:
         from genieutils.common import ByteHandler
@@ -325,13 +340,12 @@ def package_selection_audio(
     )
     patched = data.to_bytes()
     # Revert only permitted fields/groups. Complete raw-byte equality proves all
-    # other civs, original sounds, stats, Wwise IDs, and RUN_PATTERN stay untouched.
+    # original sounds, stats, selection Wwise IDs, and RUN_PATTERN stay untouched.
     for row in changes:
         unit = data.civs[row["civilization_id"]].units[row["unit_id"]]
         unit.selection_sound = row["selection_sound_before"]
-        if unit.bird is not None:
-            unit.bird.move_sound = row["move_sound_before"]
-            unit.bird.attack_sound = row["attack_sound_before"]
+        for field, value in row["command_sounds_before"].items():
+            setattr(unit.bird, field, value)
     del data.sounds[sound_count:]
     if data.to_bytes() != baseline:
         raise ValueError("Unexpected DAT mutation outside authorized selection fields/groups")
@@ -342,15 +356,10 @@ def package_selection_audio(
         unit = reloaded.civs[row["civilization_id"]].units[row["unit_id"]]
         if (unit.selection_sound != row["selection_sound_after"]
                 or unit.wwise_selection_sound_id != row["wwise_selection_sound_id"]
-                or (unit.bird.move_sound if unit.bird else None)
-                != (row["selection_sound_after"] if unit.bird else None)
-                or (unit.bird.attack_sound if unit.bird else None)
-                != (row["selection_sound_after"] if unit.bird else None)
-                or (unit.bird.wwise_move_sound_id if unit.bird else None) != row["wwise_move_sound_id"]
-                or (unit.bird.wwise_attack_sound_id if unit.bird else None) != row["wwise_attack_sound_id"]
+                or command_sounds(unit) != row["command_sounds_after"]
                 or (unit.bird.run_pattern if unit.bird else None) != row["run_pattern"]):
             raise ValueError("Reload changed selection binding, Wwise fallback, or double-click group")
-    compressed = zlib.compress(patched, level=-1, wbits=-15) if clips else original_compressed
+    compressed = zlib.compress(patched, level=-1, wbits=-15) if changes or clips else original_compressed
     if dataset.read_bytes() != original_compressed:
         raise ValueError("Source DAT changed while selection voices were being packaged")
 
@@ -368,8 +377,8 @@ def package_selection_audio(
         "dataset_version": str(data.version), "civilizations": len(data.civs),
         "sounds_before": sound_count, "sounds_after": sound_count + len(clips),
         "changed_unit_rows": len(changes),
-        "command_routes": ["selection", "command_acknowledgements"],
-        "legacy_command_fields": ["bird.move_sound", "bird.attack_sound"],
+        "voice_routes": ["selection"],
+        "muted_command_fields": {f"bird.{field}": value for field, value in MUTED_COMMAND_SOUNDS.items()},
         "castle_wave_coverage": wave_coverage,
         "civilization_coverage": coverage,
         "coverage_summary": {"installed_non_gaia": len(data.civs) - 1,
@@ -380,8 +389,8 @@ def package_selection_audio(
                    for (civ, role), count in sorted(counts.items())],
         "proof": {
             "baseline_uncompressed_byte_equal": True, "authorized_field_restore_equals_baseline": True,
-            "modified_roundtrip_stable": True, "wwise_fallbacks_unchanged": True,
-            "run_patterns_unchanged": True, "uncovered_civs_units_and_original_sounds_unchanged": True,
+            "modified_roundtrip_stable": True, "wwise_selection_fallbacks_unchanged": True,
+            "run_patterns_unchanged": True, "uncovered_units_and_original_sounds_unchanged": True,
             "new_sound_groups": len(clips), "native_gameplay_playback_verified": False,
             "castle_wave_units_audited": len(wave_coverage),
             "weapon_graphics_projectile_and_death_sounds_unchanged": True,

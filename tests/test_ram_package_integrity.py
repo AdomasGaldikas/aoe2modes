@@ -63,7 +63,12 @@ def test_repackage_rejects_conflicts_before_any_output_writes(packaged, tmp_path
     elif conflict == "symlink":
         protected = tmp_path / "outside.wav"
         protected.write_bytes(b"user-owned outside")
-        (folder / "resources/_common/drs/sounds/link.wav").symlink_to(protected)
+        try:
+            (folder / "resources/_common/drs/sounds/link.wav").symlink_to(protected)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 1314:
+                raise
+            pytest.skip("Windows account cannot create symbolic links")
     elif conflict == "archive":
         protected = archive
         protected.write_bytes(b"user-owned archive")

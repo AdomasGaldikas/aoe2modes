@@ -1,20 +1,21 @@
 """The complete leader catalog must select land combat units and flag proxies."""
 
-import importlib.util
 import json
 import math
 import tomllib
 from copy import deepcopy
+from importlib import import_module
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from aoe2modes import registry
+from aoe2modes.builder import _load_build_module
+
 ROOT = Path(__file__).resolve().parents[1]
 MODE = ROOT / "modes/ram"
-SPEC = importlib.util.spec_from_file_location("ram_leaders", MODE / "civilization_leaders.py")
-leaders = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(leaders)
+leaders = import_module(_load_build_module(registry.get("ram")).__name__ + ".civilization_leaders")
 
 
 def test_every_leader_keeps_the_original_population_cost_without_economic_prices():
@@ -72,7 +73,7 @@ def test_complete_catalog_and_requested_native_leaders():
     assert not {203, 844} & {row["source_unit_id"] for row in rows}  # Both are ships.
     assert all(row["note"] for row in rows if row["fallback"])
     assert {row["role"] for row in rows} == {"ranged", "ranged_cavalry"}
-    voices = json.loads((MODE / "assets/selection_audio/manifest.json").read_text())
+    voices = json.loads((MODE / "assets/selection_audio/manifest.json").read_text(encoding="utf-8"))
     assert {row["civilization"]: row["civilization_name"] for row in rows} == {
         row["id"]: row["name"] for row in voices["civilizations"]
     }
@@ -80,7 +81,7 @@ def test_complete_catalog_and_requested_native_leaders():
 
 @pytest.mark.parametrize("change", ["duplicate", "invalid_role", "missing_note"])
 def test_rejects_ambiguous_or_undocumented_catalog(tmp_path, change):
-    data = json.loads((MODE / "assets/leaders/catalog.json").read_text())
+    data = json.loads((MODE / "assets/leaders/catalog.json").read_text(encoding="utf-8"))
     if change == "duplicate":
         data["civilizations"].append(data["civilizations"][0])
     elif change == "invalid_role":
@@ -134,7 +135,7 @@ def _donor():
 
 
 def test_equal_profiles_and_native_visuals_survive_common_counter_normalization():
-    settings = tomllib.loads((MODE / "mode.toml").read_text())["civilization_leaders"]
+    settings = tomllib.loads((MODE / "mode.toml").read_text(encoding="utf-8"))["civilization_leaders"]
     assert leaders._profiles(settings) == {role: _profile() for role in leaders.ROLES}
     donor = _donor()
     original_visuals = leaders._native_visuals(donor)
@@ -157,14 +158,13 @@ def test_equal_profiles_and_native_visuals_survive_common_counter_normalization(
     assert donor.class_ == 0 and donor.hit_points == 45 and donor.type_50.attacks[0].amount == 8
 
 
-def test_three_custom_acknowledgements_leave_native_wwise_fallbacks_untouched():
-    clone, voice = _donor(), _donor()
-    voice.selection_sound, voice.bird.move_sound, voice.bird.attack_sound = 701, 702, 703
-    voice.wwise_selection_sound_id, voice.bird.wwise_move_sound_id = 9991, 9992
-    voice.bird.wwise_attack_sound_id = 9993
-    leaders._copy_acknowledgements(clone, voice)
-    assert leaders._acknowledgement_groups(clone) == {"selection": 701, "move": 702, "attack": 703}
-    assert leaders._wwise_fallbacks(clone) == {"selection": 111, "move": 222, "attack": 333}
+def test_leader_command_mute_keeps_selection_and_native_attack_tasks():
+    clone = _donor()
+    tasks = clone.bird.tasks
+    leaders.mute_command_sounds(clone)
+    assert leaders.command_sounds(clone) == leaders.MUTED_COMMAND_SOUNDS
+    assert (clone.selection_sound, clone.wwise_selection_sound_id) == (11, 111)
+    assert clone.bird.tasks is tasks
 
 
 @pytest.mark.parametrize(("field", "value"), [("range", 0), ("range", 21), ("speed", 0),

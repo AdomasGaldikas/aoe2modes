@@ -134,12 +134,12 @@ def _archived_source_copy(tmp_path):
     copied = tmp_path / "selection_audio"
     shutil.copytree(ASSETS, copied)
     path = copied / "manifest.json"
-    manifest = json.loads(path.read_text())
+    manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest["clips"] = [clip for clip in manifest["clips"] if clip["id"] in EXPECTED_CLIPS]
     manifest["civilizations"] = _catalog()
     for clip in manifest["clips"]:
         clip.pop("voice_profile", None)
-    path.write_text(json.dumps(manifest, ensure_ascii=False))
+    path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
     return copied
 
 
@@ -188,7 +188,8 @@ def test_ram_selection_source_assets_are_exact_current_native_voices(selection_a
     assert b"non-commercial" in licenses["HIGGS-LICENSE.txt"].lower()
     assert b"CC-BY-NC" in licenses["OMNIVOICE-LICENSE.txt"]
     assert b"CC BY 4.0" in licenses["NATIVE_REFERENCE_ATTRIBUTION.txt"]
-    assert "This audio was created with Boson AI's Higgs Audio" in (ASSETS / "LICENSES.txt").read_text()
+    attribution = (ASSETS / "LICENSES.txt").read_text(encoding="utf-8")
+    assert "This audio was created with Boson AI's Higgs Audio" in attribution
 
 
 def test_ram_selection_assets_rebuild_from_isolated_source_copy(selection_audio, tmp_path):
@@ -216,7 +217,7 @@ def test_ram_selection_assets_rebuild_from_isolated_source_copy(selection_audio,
 def test_ram_selection_assets_reject_corruption(selection_audio, tmp_path, corruption, message):
     copied = _archived_source_copy(tmp_path)
     manifest_path = copied / "manifest.json"
-    manifest = json.loads(manifest_path.read_text())
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if corruption == "wav":
         (copied / manifest["clips"][0]["file"]).write_bytes(b"corrupted WAV")
     elif corruption == "missing_role":
@@ -227,7 +228,7 @@ def test_ram_selection_assets_reject_corruption(selection_audio, tmp_path, corru
         manifest["clips"][0]["file"] = str((copied / "audio/absolute.wav").resolve())
     elif corruption == "license":
         (copied / manifest["license_files"][0]["file"]).write_text("truncated license")
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False))
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
     with pytest.raises(ValueError, match=message):
         selection_audio.load_selection_assets(copied)
 
@@ -268,11 +269,11 @@ def test_civilization_catalog_rejects_ambiguous_coverage(selection_audio, corrup
 def test_stock_fallback_cannot_accidentally_receive_generated_clips(selection_audio, tmp_path):
     copied = _archived_source_copy(tmp_path)
     path = copied / "manifest.json"
-    manifest = json.loads(path.read_text())
+    manifest = json.loads(path.read_text(encoding="utf-8"))
     civ_id = manifest["clips"][0]["civilization_id"]
     row = next(row for row in manifest["civilizations"] if row["id"] == civ_id)
     row.update(mode="stock", reason="Native-language pronunciation is not accepted for this civilization.")
-    path.write_text(json.dumps(manifest, ensure_ascii=False))
+    path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
     with pytest.raises(ValueError, match="Unsupported selection civilization/role"):
         selection_audio.load_selection_assets(copied)
 
@@ -280,15 +281,15 @@ def test_stock_fallback_cannot_accidentally_receive_generated_clips(selection_au
 def test_all_stock_catalog_is_explicit_and_needs_no_clip_bindings(selection_audio, tmp_path):
     copied = _archived_source_copy(tmp_path)
     path = copied / "manifest.json"
-    manifest = json.loads(path.read_text())
+    manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest.update(civilizations=_catalog(generated=()), clips=[])
-    path.write_text(json.dumps(manifest, ensure_ascii=False))
+    path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
     loaded, clips, _licenses = selection_audio.load_selection_assets(copied)
     assert clips == []
     assert all(row["mode"] == "stock" and row["reason"] for row in loaded["civilizations"])
 
 
-def test_generated_bindings_leave_stock_tables_and_civilians_untouched(selection_audio):
+def test_selection_bindings_mute_military_replies_and_preserve_stock_selection(selection_audio):
     def unit(name, kind, selection):
         return SimpleNamespace(
             type=70, class_=kind, name=name, selection_sound=selection, wwise_selection_sound_id=12345,
@@ -306,15 +307,16 @@ def test_generated_bindings_leave_stock_tables_and_civilians_untouched(selection
                      SimpleNamespace(units=[stock_archer])]
     catalog = {1: {"mode": "generated"}, 2: {"mode": "stock"}}
     changes = selection_audio._apply_selection_bindings(civilizations, catalog, {(1, "archer"): 900})
-    assert len(changes) == 1 and changes[0]["civilization_id"] == 1
+    assert [change["civilization_id"] for change in changes] == [1, 2]
     assert generated_archer.selection_sound == 900
-    assert generated_archer.bird.move_sound == generated_archer.bird.attack_sound == 900
     assert stock_archer.selection_sound == 102 and generated_civilian.selection_sound == 101
-    assert all(u.bird.move_sound == 200 and u.bird.attack_sound == 201
-               for u in (stock_archer, generated_civilian))
+    for unit in (generated_archer, stock_archer):
+        assert selection_audio.command_sounds(unit) == selection_audio.MUTED_COMMAND_SOUNDS
+    assert selection_audio.command_sounds(generated_civilian) == {
+        "move_sound": 200, "attack_sound": 201,
+        "wwise_move_sound_id": 12346, "wwise_attack_sound_id": 12347,
+    }
     assert all(u.wwise_selection_sound_id == 12345 and u.bird.run_pattern == 255
-               for u in (generated_archer, generated_civilian, stock_archer))
-    assert all(u.bird.wwise_move_sound_id == 12346 and u.bird.wwise_attack_sound_id == 12347
                for u in (generated_archer, generated_civilian, stock_archer))
 
 
@@ -357,15 +359,17 @@ def test_castle_wave_audit_requires_actual_routes_and_explicit_stock_coverage(se
                2: {"name": "stock", "mode": "stock", "reason": "Preserve native audio"}}
     rules = {1: (0, 60, 10), 2: (0, 60, 10)}
     groups = {(1, "cavalry"): 900}
+    selection_audio.mute_command_sounds(generated)
+    selection_audio.mute_command_sounds(stock)
     rows = selection_audio.audit_spawn_bindings(data, catalog, groups, rules)
     assert [row["mode"] for row in rows] == ["generated", "stock"]
     assert rows[0]["unit_name"] == "actual Elite Leitis"
     assert rows[1]["wwise_selection_sound_id"] == 12345
-    assert rows[1]["wwise_move_sound_id"] == 12346
-    assert rows[1]["wwise_attack_sound_id"] == 12347
-    assert (stock.selection_sound, stock.bird.move_sound, stock.bird.attack_sound) == (325, 326, 326)
+    assert rows[1]["wwise_move_sound_id"] == 0
+    assert rows[1]["wwise_attack_sound_id"] == 0
+    assert (stock.selection_sound, stock.bird.move_sound, stock.bird.attack_sound) == (325, -1, -1)
     generated.bird.attack_sound = 326
-    with pytest.raises(ValueError, match="Castle wave voice routing is missing"):
+    with pytest.raises(ValueError, match="Castle wave command replies are not muted"):
         selection_audio.audit_spawn_bindings(data, catalog, groups, rules)
     with pytest.raises(ValueError, match="complete selection civilization catalog"):
         selection_audio.audit_spawn_bindings(data, catalog, groups, {1: rules[1]})

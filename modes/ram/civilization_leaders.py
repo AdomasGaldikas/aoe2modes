@@ -17,10 +17,13 @@ from copy import deepcopy
 from importlib.metadata import version
 from pathlib import Path
 
+from .selection_audio import MUTED_COMMAND_SOUNDS, command_sounds, mute_command_sounds
+
 ROLES = {"ranged", "ranged_cavalry"}
 WEAPONS = {"bow", "crossbow", "firearm"}
 ARROW_PROJECTILES = {363, 364, 373, 477, 478, 503, 507, 510, 511, 1781, 2608, 2609}
 FIREARM_PROJECTILES = {380}
+
 GENGHIS_ID = 731
 # Native unit resource storages control population consumption and counters.
 POPULATION_STORAGE_TYPES = frozenset({4, 11, 19})
@@ -167,26 +170,6 @@ def _normalise_ranged_stats(clone, profile: dict) -> None:
     clone.creatable.displayed_pierce_armour = profile["pierce_armour"]
 
 
-def _acknowledgement_groups(unit) -> dict:
-    return {"selection": unit.selection_sound, "move": unit.bird.move_sound,
-            "attack": unit.bird.attack_sound}
-
-
-def _wwise_fallbacks(unit) -> dict:
-    return {"selection": unit.wwise_selection_sound_id, "move": unit.bird.wwise_move_sound_id,
-            "attack": unit.bird.wwise_attack_sound_id}
-
-
-def _copy_acknowledgements(clone, voice_source) -> None:
-    """Use accepted national replies but retain each donor's native Wwise fallback."""
-    fallback = _wwise_fallbacks(clone)
-    clone.selection_sound = voice_source.selection_sound
-    clone.bird.move_sound = voice_source.bird.move_sound
-    clone.bird.attack_sound = voice_source.bird.attack_sound
-    if _wwise_fallbacks(clone) != fallback:
-        raise ValueError("Copying leader acknowledgements changed native Wwise fallbacks")
-
-
 def _json_bytes(value: dict) -> bytes:
     return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
@@ -255,9 +238,11 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
     profiles = _profiles(_settings(mode_dir))
     selection_path = Path(mode_dir) / "assets/selection_audio/manifest.json"
     generated = set()
-    if selection_path.is_file():
-        generated = {row["id"] for row in json.loads(selection_path.read_text())["civilizations"]
-                     if row["mode"] == "generated"}
+    with (Path(mode_dir) / "mode.toml").open("rb") as handle:
+        selection_enabled = tomllib.load(handle).get("selection_audio", {}).get("enabled", False)
+    if selection_enabled:
+        voice_catalog = json.loads(selection_path.read_text(encoding="utf-8"))["civilizations"]
+        generated = {row["id"] for row in voice_catalog if row["mode"] == "generated"}
     original_header_count = len(data.unit_headers)
     source_rows = []
     clones = []
@@ -272,7 +257,7 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
                             "source_attack_graphic": donor.type_50.attack_graphic}
         _validate_ranged_donor(donor, donor_row, civ_id)
         native_visuals = _native_visuals(donor)
-        native_fallbacks = _wwise_fallbacks(donor)
+        native_selection_fallback = donor.wwise_selection_sound_id
         clone = deepcopy(donor)
         # Every national actor keeps the old Khan's counter/bonus envelope.
         # Native cavalry, foot, elephant and wagon visuals must not grant
@@ -319,9 +304,12 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
         main_class = 3
         _normalise_ranged_stats(clone, profile)
         if civ_id in generated:
-            _copy_acknowledgements(clone, civ.units[GENGHIS_ID])
-        if _native_visuals(clone) != native_visuals or _wwise_fallbacks(clone) != native_fallbacks:
-            raise ValueError(f"Leader normalization changed native visuals or Wwise fallback: {civ_id}")
+            clone.selection_sound = original_khan.selection_sound
+        if selection_enabled:
+            mute_command_sounds(clone)
+        if (_native_visuals(clone) != native_visuals
+                or clone.wwise_selection_sound_id != native_selection_fallback):
+            raise ValueError(f"Leader normalization changed native visuals or selection fallback: {civ_id}")
         clones.append(clone)
         source_rows.append({
             **(row or {"civilization": 0, "civilization_name": civ.name,
@@ -334,11 +322,11 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
                                              for armour in combat.armours],
             "range": combat.max_range, "projectile": combat.projectile_unit_id,
             "selection_sound": clone.selection_sound,
-            "acknowledgement_sound_groups": _acknowledgement_groups(clone),
-            "native_wwise_fallbacks": native_fallbacks,
-            "acknowledgements_copied_from_generated_genghis": civ_id in generated,
+            "command_sounds": command_sounds(clone),
+            "native_wwise_selection_fallback": native_selection_fallback,
+            "selection_copied_from_generated_genghis": civ_id in generated,
             "native_visuals": native_visuals,
-            "native_visuals_and_wwise_fallbacks_preserved": True,
+            "native_visuals_and_wwise_selection_fallback_preserved": True,
             "minimum_range": combat.min_range, "accuracy_percent": combat.accuracy_percent,
             "line_of_sight": clone.line_of_sight,
             "population_cost": sum(cost.amount for cost in c.resource_costs if cost.type == 4),
@@ -365,6 +353,8 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
         if (_population_storage_snapshot(civ.units[-1].resource_storages)
                 != _population_storage_snapshot(civ.units[GENGHIS_ID].resource_storages)):
             raise ValueError("Serialized leader population storage differs from original Khan")
+        if selection_enabled and command_sounds(civ.units[-1]) != MUTED_COMMAND_SOUNDS:
+            raise ValueError("Serialized leader command replies are not muted")
         civ.units.pop()
     if reloaded.to_bytes() != raw:
         raise ValueError("Removing appended leaders did not restore every original DAT byte")
@@ -390,16 +380,17 @@ def package_civilization_leaders(dataset_bytes: bytes, mode_dir: Path) -> tuple[
         "all_native_bow_crossbow_or_firearm_donors_validated": True,
         "equal_starting_stats_range_accuracy_and_movement_speed": True,
         "main_pierce_attack_class": 3,
-        "native_wwise_acknowledgement_fallbacks_preserved": True,
-        "three_custom_acknowledgement_groups_copied_for_generated_civilizations": True,
+        "native_wwise_selection_fallbacks_preserved": True,
+        "command_replies_muted": selection_enabled,
         "special_auras_charge_splash_conversion_and_weapon_switching_disabled": True,
         "live_match_verified": False,
     }
     text = ["RAM CIVILIZATION LEADERS", "", f"Reserved leader object ID: {reserved}",
             "Native bow/crossbow/firearm appearances and weapons; identical starting combat profiles.",
             "Range, accuracy and movement speed are equal; original movement/weapon animations survive.",
-            "Generated national selection, move and attack replies share accepted role groups.",
-            "Native donor Wwise sound fallbacks are preserved.",
+            "Generated national selection replies use the existing leader role groups.",
+            "Native donor Wwise selection fallbacks are preserved.",
+            f"Move and attack order replies muted: {'yes' if selection_enabled else 'no'}.",
             "Original game unit definitions and global legacy task headers are unchanged.",
             "Special auras, charge, splash, conversion and weapon switching are disabled.", ""]
     text.extend(f"{row['civilization_name']}: {row['leader_name']} ({row['role']})"

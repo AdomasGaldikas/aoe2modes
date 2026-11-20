@@ -26,14 +26,19 @@ if __package__:
     from .civilization_leaders import leaders_enabled, package_civilization_leaders
     from .selection_audio import package_selection_audio
 else:  # Support the documented python modes/ram/package.py entry point.
+    from importlib import import_module
+
     from aoe2modes import registry
 
     # build.py uses relative imports and must be loaded through the mode loader.
     from aoe2modes.builder import _load_build_module
 
-    CIV_SPAWN_RULES = _load_build_module(registry.get("ram")).CIV_SPAWN_RULES
-    from civilization_leaders import leaders_enabled, package_civilization_leaders
-    from selection_audio import package_selection_audio
+    mode = _load_build_module(registry.get("ram"))
+    CIV_SPAWN_RULES = mode.CIV_SPAWN_RULES
+    leader_module = import_module(mode.__name__ + ".civilization_leaders")
+    leaders_enabled = leader_module.leaders_enabled
+    package_civilization_leaders = leader_module.package_civilization_leaders
+    package_selection_audio = import_module(mode.__name__ + ".selection_audio").package_selection_audio
 
 
 def startup_audio(settings: dict) -> bytes:
@@ -235,6 +240,7 @@ def package_mod(scenario: Path, dataset: Path, output: Path, mode_dir: Path) -> 
             "source_dataset_sha256": selection_report["source_dataset_sha256"],
             "output_dataset_sha256": selection_report["output_dataset_sha256"],
             "changed_unit_rows": selection_report["changed_unit_rows"],
+            "muted_command_fields": selection_report["muted_command_fields"],
             "proof": selection_report["proof"],
             "coverage_summary": selection_report["coverage_summary"],
         }

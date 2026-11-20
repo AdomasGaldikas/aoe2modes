@@ -1,4 +1,18 @@
-# CBA Hero 4v4: RAM v0.9.0
+# CBA Hero 4v4: RAM v0.11.3 playtest
+
+Military units and starting leaders now retain their selection voices while the
+DAT disables move and attack order replies. Civilizations with stock selection
+voices retain those voices. Weapon, projectile, death and announcer audio use
+their existing data. Check the playback on the matching Data Mod and scenario
+in a fresh DE match before publishing.
+
+Use v0.11.2 as the baseline when comparing the update. This candidate changes
+unit voice routing and Windows packaging. Center rewards, leader growth and
+army balance use the same rules as v0.11.2.
+
+For historical release details, see [v0.11.2](../../releases/ram/v0.11.2/README.md).
+
+## Older releases
 
 ## RAM v0.9.0 civilization leaders and first balance pass
 
