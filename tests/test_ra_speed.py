@@ -1,6 +1,7 @@
 """Serialized base parity and executable contracts for the independent Speed mode."""
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -16,11 +17,20 @@ from ascendants_runtime import xs_source
 
 
 @pytest.fixture(scope="module")
+def cpp_compiler():
+    if compiler := shutil.which("g++"):
+        return [compiler]
+    if zig := shutil.which("zig"):
+        return [zig, "c++", "-Wno-nullability-completeness", "-UNDEBUG"]
+    pytest.fail("Install g++ or Zig to run the Speed XS execution tests")
+
+
+@pytest.fixture(scope="module")
 def candidates(repo, tmp_path_factory):
     directory = tmp_path_factory.mktemp("ra-speed")
     result = {}
     for mode in ("evolution_alpha", "ra_speed"):
-        artifact = build_mode(registry.get(mode, repo), out_dir=directory, xs_check=False)
+        artifact = build_mode(registry.get(mode, repo), out_dir=directory, xs_check=mode == "ra_speed")
         result[mode] = AoE2DEScenario.from_file(str(artifact.output))
     return result
 
@@ -60,10 +70,8 @@ def test_speed_passes_strict_serialized_audit(candidates):
 
 
 def test_speed_emitted_state_machine_handles_losses_refresh_expiry_and_independent_owners(
-    candidates, repo, tmp_path,
+    candidates, repo, tmp_path, cpp_compiler,
 ):
-    compiler = shutil.which("g++")
-    assert compiler, "g++ is required to execute the emitted Speed runtime contracts"
     source = xs_source(candidates["ra_speed"])
     runtime = "// RA Speed Rush:" + source.split("// RA Speed Rush:", 1)[1].split("void cbaCreateWave(", 1)[0]
     runtime = re.sub(r"for \((\w+) = (\d+); <= (\d+)\)",
@@ -71,9 +79,9 @@ def test_speed_emitted_state_machine_handles_losses_refresh_expiry_and_independe
     harness = (repo.root / "tests/ra_speed_runtime.cpp").read_text()
     output = tmp_path / "speed-runtime.cpp"
     output.write_text(harness.replace("// GENERATED_RUNTIME", runtime))
-    binary = tmp_path / "speed-runtime"
+    binary = tmp_path / ("speed-runtime.exe" if os.name == "nt" else "speed-runtime")
     compiled = subprocess.run(
-        [compiler, "-std=c++17", "-O2", "-Wall", "-Werror", str(output), "-o", str(binary)],
+        [*cpp_compiler, "-std=c++17", "-O2", "-Wall", "-Werror", str(output), "-o", str(binary)],
         capture_output=True, text=True, timeout=60,
     )
     assert compiled.returncode == 0, compiled.stderr
@@ -103,7 +111,9 @@ def test_speed_rejects_invalid_settings(field, value, repo, tmp_path):
 
 
 @pytest.mark.parametrize("mode", ["evolution_alpha", "ra_speed"])
-def test_same_type_selection_initializes_every_runtime_owner_and_future_type(candidates, mode, tmp_path):
+def test_same_type_selection_initializes_every_runtime_owner_and_future_type(
+    candidates, mode, tmp_path, cpp_compiler,
+):
     source = xs_source(candidates[mode])
     marker = "int objectCount = xsGetPlayerNumberOfObjects(worldPlayer);"
     assert source.count(marker) == 1
@@ -143,10 +153,8 @@ int main() {
 '''
     cpp = tmp_path / "selection.cpp"
     cpp.write_text(harness.replace("// INITIALIZATION", initialization))
-    binary = tmp_path / "selection"
-    compiler = shutil.which("g++")
-    assert compiler, "g++ is required for the emitted selection initialization test"
-    result = subprocess.run([compiler, "-std=c++17", "-Wall", "-Werror", str(cpp), "-o", str(binary)],
+    binary = tmp_path / ("selection.exe" if os.name == "nt" else "selection")
+    result = subprocess.run([*cpp_compiler, "-std=c++17", "-Wall", "-Werror", str(cpp), "-o", str(binary)],
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stderr
     subprocess.run([str(binary)], check=True, timeout=15)

@@ -1,4 +1,9 @@
-# CBA Hero 4v4: RA Speed v0.1.4
+# CBA Hero 4v4: RA Speed v0.1.5 playtest
+
+The match announces when each team's Speed Rush starts, refreshes or ends.
+The Objectives countdown gives the remaining game seconds. The existing
+15-minute unlock, five-minute duration, and movement/attack bonuses are
+the v0.1.4 balance baseline for playtesting.
 
 The current hero ladder starts at 200 kills. Archer of the Eyes and Subotai are
 removed; Harald Hardrada unlocks at 800 kills (every five seconds). Charles Martel

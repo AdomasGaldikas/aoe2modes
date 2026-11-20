@@ -66,13 +66,16 @@ int main() {
     assert(!boosted(3) && boosted(8) && vars[154]==300 && vars[153]==0); checkFactors(owners[8],2,3);
     int first=calls; for(now=906;now<1205;++now) cbaSpeedTick(); assert(calls==first);
     now=1205; cbaSpeedTick(); assert(!boosted(8) && vars[154]==0); checkFactors(owners[8],1,1);
-    first=calls; now=1400; cbaSpeedTick(); assert(calls==first);
+    assert(chats.size()==2 && chats.back()=="[RA Speed] Team 2 rush ended.");
+    first=calls; now=1400; cbaSpeedTick(); assert(calls==first && chats.size()==2);
 
     clear(); now=900; lose(1); lose(2); cbaSpeedTick();
     assert(boosted(3) && boosted(4) && !boosted(5));
-    assert(chats.size()==1); checkFactors(owners[3],2,3); checkFactors(owners[4],2,3);
+    assert(chats.size()==1 && chats[0].find("Team 1 rush started:")!=string::npos);
+    checkFactors(owners[3],2,3); checkFactors(owners[4],2,3);
     first=calls; now=1199; lose(3); cbaSpeedTick(); assert(calls==first+first/2);
     assert(xsArrayGetInt(gRaSpeedUntil,1)==1499 && boosted(4) && !boosted(3));
+    assert(chats.size()==2 && chats[1].find("Team 1 rush refreshed:")!=string::npos);
     checkFactors(owners[4],2,3); // Refresh never re-multiplies the survivor.
     now=1200; cbaSpeedTick(); assert(boosted(4));
     now=1499; cbaSpeedTick(); assert(!boosted(4)); checkFactors(owners[4],1,1);

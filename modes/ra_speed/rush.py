@@ -26,7 +26,7 @@ def load_settings(directory):
 def render_runtime(unit_ids, settings, *, occupied_base, eliminated_base, countdown_base):
     speed = float(settings["movement_multiplier"])
     fire_rate = float(settings["fire_rate_multiplier"])
-    announcement = f"{speed:g}x move, {fire_rate:g}x fire, {settings['duration_seconds']}s (refreshed)."
+    announcement = f"{speed:g}x movement, {fire_rate:g}x attack rate for {settings['duration_seconds']}s."
     effects = []
     for unit_id in sorted(set(unit_ids)):
         for attribute, factor in (("cMovementSpeed", "movement"),
@@ -47,6 +47,11 @@ void cbaSpeedInitialize() {{
 int cbaSpeedTeam(int color = 0) {{
     if (color <= 4) return(1);
     return(2);
+}}
+
+string cbaSpeedTeamName(int team = 0) {{
+    if (team == 1) return("[RA Speed] Team 1");
+    return("[RA Speed] Team 2");
 }}
 
 bool cbaSpeedColorAlive(int color = 0) {{
@@ -86,17 +91,26 @@ void cbaSpeedTick() {{
             if (now >= {settings['delay_seconds']} && cbaSpeedTeamHasSurvivor(team)) {{
                 // Extend the deadline only: another loss does not reapply the bonus.
                 int deadline = now + {settings['duration_seconds']};
-                if (xsArrayGetInt(gRaSpeedUntil, team) != deadline) {{
+                int previousDeadline = xsArrayGetInt(gRaSpeedUntil, team);
+                if (previousDeadline != deadline) {{
                     xsArraySetInt(gRaSpeedUntil, team, deadline);
-                    if (team == 1) xsChatData("[RA Speed] Team 1: {announcement}");
-                    else xsChatData("[RA Speed] Team 2: {announcement}");
+                    string status = " rush started: ";
+                    if (previousDeadline > now) status = " rush refreshed: ";
+                    xsChatData(cbaSpeedTeamName(team) + status + "{announcement}");
                 }}
             }}
         }}
     }}
     for (team = 1; <= 2) {{
-        if (cbaSpeedTeamHasSurvivor(team) == false) xsArraySetInt(gRaSpeedUntil, team, 0);
-        int remaining = xsArrayGetInt(gRaSpeedUntil, team) - now;
+        int teamDeadline = xsArrayGetInt(gRaSpeedUntil, team);
+        if (cbaSpeedTeamHasSurvivor(team) == false) {{
+            teamDeadline = 0;
+        }} else if (teamDeadline > 0 && now >= teamDeadline) {{
+            xsChatData(cbaSpeedTeamName(team) + " rush ended.");
+            teamDeadline = 0;
+        }}
+        xsArraySetInt(gRaSpeedUntil, team, teamDeadline);
+        int remaining = teamDeadline - now;
         if (remaining < 0) remaining = 0;
         xsSetTriggerVariable({countdown_base} + team - 1, remaining);
     }}
@@ -140,7 +154,7 @@ def configure_speed_rush(ctx, unit_ids, shared):
             f"Speed Rush HUD Team {team}", enabled=1, display_on_screen=1,
             description_order=9 - team, header=0, mute_objectives=1,
             description_stid=0, short_description_stid=0,
-            short_description=f"rush t{team}: <speed_t{team}seconds>s (0 = off)",
+            short_description=f"t{team} speed rush: <speed_t{team}seconds>s left",
         )
         row.new_condition.player_defeated(source_player=PlayerId.GAIA)
     shared._assert_variable_ids_are_contiguous(ctx)
