@@ -101,7 +101,7 @@ void reset(){
     notices.clear();ramMoves.clear();localPlayer=0;
     seconds=0;nextRef=200000;obstructed=false;
     gRamPresence=-1;gRamSurvey=-1;gRamLast=-1;gRamBalance=0;gRamOwner=0;gRamPayoutClock=0;
-    gRamVoiceState=4;
+    gRamTeamOneBank=0;gRamTeamTwoBank=0;gRamVoiceState=4;
     gCbaUnitByCiv=xsArrayCreateInt(9,4,"army");
     variables[56]=1;
     for(int c=1;c<=8;c++){
@@ -115,74 +115,71 @@ int combat(int c,int kind=906,Vec p=Vec(72,72,-1),bool hero=false){
 }
 void advance(int count){for(int i=0;i<count;i++){seconds++;ramCenterTick();nativeCenterRewards();}}
 int credit(int c){return variables[153+c-1];}
-void teamwideSnapshotPayouts(){
+void teamwideAccruedPayouts(){
     reset();combat(1);advance(179);
     for(int c=1;c<=8;c++)assert(credit(c)==0&&kills[owners[c]]==0);
     assert(variables[178]==100&&variables[169]==0&&variables[170]==1);
-    assert(variables[171]==25&&variables[172]==0&&births.size()==4);
+    assert(variables[171]==20&&variables[172]==0&&births.size()==4);
     advance(1);assert(gRamPayoutClock==0&&variables[170]==180&&notices.size()==4);
+    assert(variables[175]==20&&variables[171]==0&&gRamTeamOneBank==48750);
     for(int c=1;c<=4;c++){
-        assert(credit(c)==25&&kills[owners[c]]==25);
-        assert(notices[c-1].recipient==owners[c]&&notices[c-1].amount==25);
-        assert(notices[c-1].killsAfterAward==25);
-        assert(variables[189+selectors[c]-1]==25);
+        assert(credit(c)==20&&kills[owners[c]]==20);
+        assert(notices[c-1].recipient==owners[c]&&notices[c-1].amount==20);
+        assert(notices[c-1].killsAfterAward==20);
+        assert(variables[189+selectors[c]-1]==20);
     }
     for(int c=5;c<=8;c++)assert(credit(c)==0&&kills[owners[c]]==0);
-    // Backline teammates get kills, while the existing unit bonus is for holders.
     for(int r:births)assert(objects[r].owner==owners[1]);
     assert(orders==births&&variables[197]==1&&variables[198]==0);
     assert(objects[cRamTeamOneFlag].owner==0&&objects[cRamTeamTwoFlag].owner==0);
     assert(properties[std::make_pair(cRamTeamOneFlag,13)]==0);
     assert(properties[std::make_pair(cRamTeamTwoFlag,13)]==8);
-    assert(names[cRamTeamOneFlag].find("100% | +25 kills per teammate")!=string::npos);
+    assert(names[cRamTeamOneFlag].find("100% | +0 earned per teammate")!=string::npos);
     advance(180);assert(notices.size()==8&&births.size()==8);
-    for(int c=1;c<=4;c++)assert(credit(c)==50&&kills[owners[c]]==50);
-    int value=credit(1),clock=gRamPayoutClock;ramCenterTick();
-    assert(credit(1)==value&&gRamPayoutClock==clock); // No duplicate same-second tick.
-
-    // The selected design is a snapshot, not accumulated or averaged control.
-    reset();combat(1);combat(5);advance(179); // Entire window was neutral.
-    gRamBalance=cRamControlScale*42/100;advance(1); // Contest reduces this to 125/300.
-    assert(variables[178]==70&&variables[169]==30&&variables[175]==10);
-    for(int c=1;c<=4;c++)assert(kills[owners[c]]==10);
-    for(int c=5;c<=8;c++)assert(kills[owners[c]]==0);
-    reset();combat(1);advance(179);gRamBalance=0;combat(5);advance(1);
-    assert(notices.empty()); // Strong earlier control cannot pay at 50/50.
+    for(int c=1;c<=4;c++)assert(credit(c)==45&&kills[owners[c]]==45);
+    int value=credit(1),clock=gRamPayoutClock,bank=gRamTeamOneBank;
+    ramCenterTick();
+    assert(credit(1)==value&&gRamPayoutClock==clock&&gRamTeamOneBank==bank);
 }
-void payoutScale(){
-    reset();
-    // Explicit user examples, for either team. Minority and empty teams get zero.
-    int lead[]={0,10,20,40,50,60,80,100};
-    int amount[]={0,2,5,10,12,15,20,25};
-    for(int i=0;i<8;i++){
-        gRamBalance=cRamControlScale*lead[i]/100;
-        assert(ramIncomeFor(1,1)==amount[i]&&ramIncomeFor(2,1)==0);
-        assert(ramIncomeFor(1,0)==0);
-        gRamBalance=0-gRamBalance;
-        assert(ramIncomeFor(2,1)==amount[i]&&ramIncomeFor(1,1)==0);
-        assert(ramIncomeFor(2,0)==0);
-    }
+void controlWindows(){
+    // One full-control second at the deadline earns a fraction, never +25.
+    reset();advance(179);int holder=combat(1);gRamBalance=cRamControlScale;
+    advance(1);assert(notices.empty()&&gRamTeamOneBank==7500);
+    objects[holder].hp=0;advance(180);
+    assert(notices.empty()&&gRamTeamOneBank==7500);
+
+    // Both teams may earn a payout in the same window, even after losing control.
+    reset();holder=combat(1);gRamBalance=cRamControlScale;advance(90);
+    assert(variables[171]==12&&variables[172]==0);
+    objects[holder].hp=0;int secondHolder=combat(5);gRamBalance=-cRamControlScale;
+    advance(90);assert(variables[175]==12&&variables[176]==12);
+    for(int c=1;c<=8;c++)assert(credit(c)==12&&kills[owners[c]]==12);
+    assert(gRamTeamOneBank==cRamCreditUnit/2&&gRamTeamTwoBank==cRamCreditUnit/2);
+    // Another half window combines with the carried half kill; contest adds none.
+    advance(90);combat(1);advance(90);
+    assert(variables[175]==0&&variables[176]==13&&gRamTeamTwoBank==0);
+    assert(credit(1)==12&&credit(5)==25&&objects[secondHolder].hp>0);
 }
 void contestedEqualization(){
     reset();combat(1);advance(180);combat(8,925,Vec(72,72,-1),true);
     for(int i=0;i<100;i++)combat(1); // A huge army cannot overpower a contested point.
     int count=births.size();advance(60);
     assert(gRamBalance==cRamControlScale*80/100);
-    assert(variables[178]==90&&variables[169]==10&&variables[171]==20);
+    assert(variables[178]==90&&variables[169]==10&&variables[171]==0);
     assert(variables[177]==3&&variables[205]==3);
     advance(120);assert(variables[178]==70&&variables[169]==30);
-    for(int c=1;c<=4;c++)assert(credit(c)==35&&kills[owners[c]]==35);
+    for(int c=1;c<=4;c++)assert(credit(c)==20&&kills[owners[c]]==20);
     for(int c=5;c<=8;c++)assert(credit(c)==0);
     assert(births.size()==count);
     advance(120);assert(gRamBalance==0&&gRamOwner==0);
     assert(variables[178]==50&&variables[169]==50&&variables[171]==0&&variables[172]==0);
     advance(360); // Neutral contest stays neutral indefinitely, without minimum rewards.
-    for(int c=1;c<=4;c++)assert(credit(c)==35);
+    for(int c=1;c<=4;c++)assert(credit(c)==20);
     for(int c=5;c<=8;c++)assert(credit(c)==0);
     // Team 2 gains control only after Team 1 actually leaves.
     for(auto& [r,u]:objects)if(u.owner==owners[1]&&u.kind==906)u.hp=0;
-    advance(60);assert(gRamBalance==0-cRamControlScale&&variables[172]==25);
-    advance(120);for(int c=5;c<=8;c++)assert(credit(c)==25&&kills[owners[c]]==25);
+    advance(60);assert(gRamBalance==0-cRamControlScale&&variables[176]==4);
+    advance(180);for(int c=5;c<=8;c++)assert(credit(c)==29&&kills[owners[c]]==29);
 
     // Symmetric approach to neutral from the other side, with no crossing.
     reset();combat(8);advance(60);combat(1);
@@ -190,8 +187,8 @@ void contestedEqualization(){
     advance(50);assert(gRamBalance==0);
     // Reversing full enemy control takes two capture intervals.
     reset();int holder=combat(1);advance(60);objects[holder].hp=0;combat(5);
-    advance(60);assert(gRamBalance==0&&variables[171]==0&&variables[172]==0);
-    advance(60);assert(gRamBalance==0-cRamControlScale&&variables[172]==25);
+    advance(60);assert(gRamBalance==0&&variables[171]==4&&variables[172]==0);
+    advance(60);assert(gRamBalance==0-cRamControlScale&&variables[175]==4&&variables[176]==4);
 }
 void filteringAndIdentity(){
     reset();
@@ -215,7 +212,7 @@ void filteringAndIdentity(){
     variables[32]=1;variables[137]=0;assert(ramPresenceFor(1)==0);
     variables[137]=1000+owners[1];connected[owners[1]]=false;assert(ramPresenceFor(1)==0);
     reset();variables[33]=0;connected[owners[3]]=false;variables[140]=0;
-    combat(1);advance(180);assert(credit(1)==25&&notices.size()==1);
+    combat(1);advance(180);assert(credit(1)==20&&notices.size()==1);
     for(int c=2;c<=8;c++)assert(credit(c)==0);
     // A defeat between queueing and native delivery blocks the actual kill effect.
     reset();variables[33]=0;variables[181]=25;nativeCenterRewards();
@@ -236,7 +233,7 @@ void boundedDeliveryAndReset(){
     reset();int r=combat(1);advance(180);objects[r].position=Vec(0,0,-1);
     advance(1);assert(variables[171]==0&&variables[172]==0);
     advance(299);assert(gRamBalance==0&&gRamOwner==0&&variables[205]==4);
-    assert(births.size()==4&&credit(1)==25&&xsArrayGetInt(gRamPending,1)==0);
+    assert(births.size()==4&&credit(1)==20&&xsArrayGetInt(gRamPending,1)==0);
     int clock=gRamPayoutClock;seconds+=1000;ramCenterTick();
     assert(gRamPayoutClock==clock+1); // A gap is one observation, never fabricated ownership.
 }
@@ -309,6 +306,6 @@ void physicalControlMeter(){
     objects.erase(reference);count=objects.size();int next=nextRef;
     ramMoveCenterRam();assert(objects.size()==count&&nextRef==next);
 }
-int main(){teamwideSnapshotPayouts();payoutScale();contestedEqualization();filteringAndIdentity();boundedDeliveryAndReset();
+int main(){teamwideAccruedPayouts();controlWindows();contestedEqualization();filteringAndIdentity();boundedDeliveryAndReset();
     payoutNotifications();physicalControlMeter();
     std::cout<<"RAM center contracts passed\n";}

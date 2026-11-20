@@ -51,6 +51,9 @@ def configure_center_control(ctx, *, spawn_positions):
                         settings["empty_reset_seconds"])
     if control_scale * max(100, settings["credit_cap"]) > 2_000_000_000:
         raise ValueError("Center timings exceed the fixed-point control range")
+    credit_unit = control_scale * settings["payout_seconds"]
+    if credit_unit * (settings["credit_cap"] + 1) > 2_000_000_000:
+        raise ValueError("Center payout interval or cap exceeds the fixed-point credit range")
     if not 0 < settings["x1"] < settings["x2"] < ctx.map_size:
         raise ValueError("invalid center X bounds")
     if not 0 < settings["y1"] < settings["y2"] < ctx.map_size:
@@ -173,7 +176,7 @@ def configure_center_control(ctx, *, spawn_positions):
         row = ctx.tm.add_trigger(
             f"RAM Center HUD {label}", enabled=int(state == 0), display_on_screen=1,
             short_description="Center T1 <rammeter>% / T2 <ramteam2share>%\n"
-                              f"{label} | +<ramteam1rate>/+<ramteam2rate> kills | <ramcenterleft>s",
+                              f"{label} | +<ramteam1rate>/+<ramteam2rate> earned | <ramcenterleft>s",
             description_order=21, mute_objectives=1,
         )
         row.new_condition.player_defeated(source_player=0)
@@ -214,7 +217,7 @@ def configure_center_control(ctx, *, spawn_positions):
                          TEAM1_RATE=TEAM1_RATE, TEAM2_RATE=TEAM2_RATE,
                          TEAM1_PRESENT=TEAM1_PRESENT, TEAM2_PRESENT=TEAM2_PRESENT,
                          TEAM1_LAST=TEAM1_LAST, TEAM2_LAST=TEAM2_LAST,
-                         CONTROL_SCALE=control_scale, CONTROL_MINIMUM=-control_scale,
+                         CONTROL_SCALE=control_scale, CONTROL_MINIMUM=-control_scale, CREDIT_UNIT=credit_unit,
                          STATE=STATE, METER=METER, BONUS=BONUS,
                          TEAM1_FLAG=team_flags[0], TEAM2_FLAG=team_flags[1],
                          CENTER_RAM=indicator, CENTER_RAM_MID_X=(left + right) / 2,
@@ -233,11 +236,11 @@ def configure_center_control(ctx, *, spawn_positions):
         f"takes {settings['capture_seconds']}s; reversing full enemy control takes twice as long. "
         f"Both teams present always equalize slowly toward 50/50, regardless of numbers or power "
         f"({settings['equalize_seconds']}s from full to neutral). Every {settings['payout_seconds']}s, "
-        f"the control percentage at that instant awards kills to EVERY active teammate of the "
-        f"leading team, provided that team has combat units in the center. At 55/45: +2, "
-        f"60/40: +5, 75/25: +12, and 100/0: +{settings['credit_cap']} per teammate. "
-        f"50/50 pays nobody. Empty center pays nothing and returns toward 50/50 over "
-        f"{settings['empty_reset_seconds']}s. The HUD shows both shares, current payout and countdown. "
+        f"each team pays the kills it earned to EVERY active teammate, even if control changed. "
+        f"Each uncontested second earns credit based on the control lead. Full control for the "
+        f"whole interval pays +{settings['credit_cap']} per teammate. An empty or contested center "
+        f"earns no new credit. Empty control returns to 50/50 over {settings['empty_reset_seconds']}s. "
+        f"The HUD shows both shares, earned whole kills, and time to the next payout. "
         f"Present players still receive {settings['reinforcement_units']} civ army units at surviving "
         f"Castles per {settings['reinforcement_seconds']} full, uncontested held seconds, "
         "subject to population/space. "
@@ -247,4 +250,4 @@ def configure_center_control(ctx, *, spawn_positions):
         "An indestructible neutral ram marks control physically: midway at 50/50, "
         "at Team 1's flag for 100/0 and Team 2's flag for 0/100. It never blocks troops."
     )
-    ctx.log(f"RAM center: team-wide snapshot kills, 50/50 neutral; removed {len(retired)} old indicators")
+    ctx.log(f"RAM center: team-wide accrued kills, 50/50 neutral; removed {len(retired)} old indicators")

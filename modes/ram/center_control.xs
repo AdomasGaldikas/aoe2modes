@@ -7,9 +7,12 @@ int gRamLast = -1;
 int gRamBalance = 0;
 int gRamOwner = 0;
 int gRamPayoutClock = 0;
+int gRamTeamOneBank = 0;
+int gRamTeamTwoBank = 0;
 int gRamVoiceState = 4;
 // Fixed-point steps divide exactly: capture/equalization never overshoot 50/50.
 const int cRamControlScale = ${CONTROL_SCALE};
+const int cRamCreditUnit = ${CREDIT_UNIT};
 const int cRamControlMinimum = ${CONTROL_MINIMUM};
 const int cRamTeamOneFlag = ${TEAM1_FLAG};
 const int cRamTeamTwoFlag = ${TEAM2_FLAG};
@@ -119,14 +122,6 @@ int ramPresenceFor(int color = 0) {
     return(0);
 }
 
-int ramIncomeFor(int team = 0, int present = 0) {
-    if (present <= 0) return(0);
-    int advantage = gRamBalance;
-    if (team == 2) advantage = 0 - advantage;
-    if (advantage <= 0) return(0);
-    return(advantage * ${CREDIT_CAP} / cRamControlScale);
-}
-
 void ramEqualize(int seconds = 1) {
     int step = cRamControlScale / seconds;
     if (gRamBalance > 0) {
@@ -168,9 +163,9 @@ void ramIndicators(int state = 0) {
     if (gRamOwner == 2) ramColor = 5;
     ramTint(cRamCenterRam, ramColor);
     ramName(cRamTeamOneFlag, "Team 1 (P1-P4): " + xsTriggerVariable(${METER})
-        + "% | +" + xsTriggerVariable(${TEAM1_RATE}) + " kills per teammate / ${PAYOUT_SECONDS}s");
+        + "% | +" + xsTriggerVariable(${TEAM1_RATE}) + " earned per teammate");
     ramName(cRamTeamTwoFlag, "Team 2 (P5-P8): " + xsTriggerVariable(${TEAM2_SHARE})
-        + "% | +" + xsTriggerVariable(${TEAM2_RATE}) + " kills per teammate / ${PAYOUT_SECONDS}s");
+        + "% | +" + xsTriggerVariable(${TEAM2_RATE}) + " earned per teammate");
 }
 
 void ramCenterTick() {
@@ -220,24 +215,28 @@ void ramCenterTick() {
             xsArraySetInt(gRamPending, color, 0);
         }
     }
-    int firstRate = ramIncomeFor(1, first);
-    int secondRate = ramIncomeFor(2, second);
+    // Each uncontested second contributes its share of a full-window award.
+    // Integer units preserve fractional credit across payout windows and saves.
+    if (solo == 1 && gRamBalance > 0) gRamTeamOneBank = gRamTeamOneBank + gRamBalance * ${CREDIT_CAP};
+    if (solo == 2 && gRamBalance < 0) gRamTeamTwoBank = gRamTeamTwoBank - gRamBalance * ${CREDIT_CAP};
     gRamPayoutClock = gRamPayoutClock + 1;
     if (gRamPayoutClock >= ${PAYOUT_SECONDS}) {
-        // Snapshot at the payout tick, deliberately not a time average.
-        // One holder earns the SAME award for every living teammate.
+        int firstAward = gRamTeamOneBank / cRamCreditUnit;
+        int secondAward = gRamTeamTwoBank / cRamCreditUnit;
+        gRamTeamOneBank = gRamTeamOneBank - firstAward * cRamCreditUnit;
+        gRamTeamTwoBank = gRamTeamTwoBank - secondAward * cRamCreditUnit;
         for (color = 1; <= 8) {
             if (ramCenterEligible(color) == false) continue;
-            int award = firstRate;
-            if (ramTeam(color) == 2) award = secondRate;
+            int award = firstAward;
+            if (ramTeam(color) == 2) award = secondAward;
             if (award <= 0) continue;
             int earned = xsTriggerVariable(${CREDIT_BASE} + color - 1);
             xsSetTriggerVariable(${CREDIT_BASE} + color - 1, earned + award);
             int queued = xsTriggerVariable(${KILL_PENDING_BASE} + color - 1);
             xsSetTriggerVariable(${KILL_PENDING_BASE} + color - 1, queued + award);
         }
-        xsSetTriggerVariable(${TEAM1_LAST}, firstRate);
-        xsSetTriggerVariable(${TEAM2_LAST}, secondRate);
+        xsSetTriggerVariable(${TEAM1_LAST}, firstAward);
+        xsSetTriggerVariable(${TEAM2_LAST}, secondAward);
         gRamPayoutClock = 0;
     }
     bool holding = false;
@@ -267,13 +266,15 @@ void ramCenterTick() {
     int firstShare = 50 + gRamBalance * 50 / cRamControlScale;
     xsSetTriggerVariable(${METER}, firstShare);
     xsSetTriggerVariable(${TEAM2_SHARE}, 100 - firstShare);
-    xsSetTriggerVariable(${TEAM1_RATE}, firstRate);
-    xsSetTriggerVariable(${TEAM2_RATE}, secondRate);
+    int firstBanked = gRamTeamOneBank / cRamCreditUnit;
+    int secondBanked = gRamTeamTwoBank / cRamCreditUnit;
+    xsSetTriggerVariable(${TEAM1_RATE}, firstBanked);
+    xsSetTriggerVariable(${TEAM2_RATE}, secondBanked);
     xsSetTriggerVariable(${TEAM1_PRESENT}, first);
     xsSetTriggerVariable(${TEAM2_PRESENT}, second);
     xsSetTriggerVariable(${COUNTDOWN}, ${PAYOUT_SECONDS} - gRamPayoutClock);
     xsSetTriggerVariable(${STATE}, state);
-    xsSetTriggerVariable(${BONUS}, firstRate + secondRate);
+    xsSetTriggerVariable(${BONUS}, firstBanked + secondBanked);
     if (${CENTER_AUDIO_ENABLED} == 1) {
         int speechState = 0;
         if (contested) speechState = 3;

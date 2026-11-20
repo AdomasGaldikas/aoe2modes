@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -306,9 +307,12 @@ def test_ram_center_serialized_wiring(ram):
 
 
 def test_ram_center_emitted_runtime(ram, tmp_path):
-    compiler = shutil.which("g++")
-    if compiler is None:
-        pytest.skip("RAM XS execution harness requires g++")
+    if gxx := shutil.which("g++"):
+        compiler = [gxx]
+    elif zig := shutil.which("zig"):
+        compiler = [zig, "c++", "-Wno-nullability-completeness", "-UNDEBUG"]
+    else:
+        pytest.skip("RAM XS execution harness requires g++ or Zig")
     scenario = ram[2]
     source = next(t for t in scenario.trigger_manager.triggers if t.name == "XS SCRIPT").effects[0].message
     center = source.split("// RAM_CENTER_BEGIN", 1)[1].split("// RAM_CENTER_END", 1)[0]
@@ -357,9 +361,9 @@ def test_ram_center_emitted_runtime(ram, tmp_path):
                 f"930, 70, 100, Vec({unit.x}, {unit.y}, -1)}};"
             )
     (tmp_path / "ram-initial.h").write_text("\n".join(initial))
-    executable = tmp_path / "ram-center"
+    executable = tmp_path / ("ram-center.exe" if os.name == "nt" else "ram-center")
     result = subprocess.run(
-        [compiler, "-std=c++17", "-O2", "-I", str(tmp_path),
+        [*compiler, "-std=c++17", "-O2", "-I", str(tmp_path),
          str(Path(__file__).with_name("ram_center_runtime.cpp")), "-o", str(executable)],
         capture_output=True, text=True, timeout=60,
     )

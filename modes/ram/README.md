@@ -1,4 +1,14 @@
-# CBA Hero 4v4: RAM v0.11.3 playtest
+# CBA Hero 4v4: RAM v0.12.0
+
+Every uncontested game second earns center credit in proportion to your team's
+control lead. Every 180 game seconds, each active teammate receives the team's
+whole earned kills. A full window at 100/0 pays 25, and 90 seconds at full
+control earns 12.5. Fractional kills carry into the next window. A contest or
+an empty center pauses earnings, and teams keep credit earned before losing
+the hill. The HUD shows whole kills currently earned and the payout timer.
+Center reinforcements use their existing full-control rules.
+
+## RAM v0.11.3 selection voices
 
 Military units and starting leaders now retain their selection voices while the
 DAT disables move and attack order replies. Civilizations with stock selection
