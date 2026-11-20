@@ -27,6 +27,7 @@ Eight modes ship with the repo, illustrating both authoring styles:
 | --- | --- | --- |
 | [`cba_hero`](modes/cba_hero/) | blank build | 8-player 4v4 hero arena. 45 triggers, 16 units, XS wave clock — everything is Python. The canonical example. |
 | [`cba_hero_duel`](modes/cba_hero_duel/) | blank build | 1v1 sudden-death cut of the above, on a smaller map. Same library, different pacing. |
+| [`cba_naval`](modes/cba_naval/) | code-defined | **Naval Admirals v0.5.1** — isolated harbors, automatic fleets, flagship progression, and kill-earned construction. |
 | [`cba_royale`](modes/cba_royale/) | code-defined | **Last Caravan v0.1.1 prototype** — 4v4 moving command wagons, randomized shrinking firestorm, teammate rescues, supply objectives and limited construction. [Playable download](releases/cba-royale/v0.1.1/); live DE acceptance and human balance pending. |
 | [`big_ytri`](modes/big_ytri/) | decompiled | Big_Ytri's Royal 4v4, decompiled to Python: 2993 triggers, 3314 conditions, 7814 effects, 1123 units, 20736 terrain tiles. `verify` compares 100,857 fields against the original. |
 | [`ram`](modes/ram/) | code-defined + Data Mod | **RAM v0.9.0** — center-control 4v4 arena, civilization leaders, team kill rewards, private signals and civilization selection voices. Matching Data Mod required; native leader gameplay and balance acceptance pending. |

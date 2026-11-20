@@ -1,0 +1,63 @@
+[mode]
+id = "cba_naval"
+name = "CBA Naval: Admirals"
+version = "0.5.1"
+description = "Sea CBA with narrow island harbors, kill-earned builders, additional ports, towers and shore archers."
+tags = ["cba", "naval", "4v4"]
+
+[scenario]
+version = "1.58"
+filename = "CBA Naval Admirals v{version}"
+
+[map]
+size = 144
+terrain = "WATER_MEDIUM"
+elevation = 0
+
+[players]
+count = 8
+teams = [[1, 2, 3, 4], [5, 6, 7, 8]]
+starting_age = "FEUDAL_AGE"
+population_cap = 200
+lock_civilization = false
+
+[players.resources]
+food = 0
+wood = 0
+gold = 0
+stone = 0
+
+[xs]
+scripts = ["xs/main.xs"]
+
+# Mode-local tuning. Construction supplies are earned; no gathering or ship training.
+[naval]
+wave_interval = 15
+launch_clearance = 3
+ships_per_port = 1
+fleet_cap = 120
+port_hp = 3000
+tower_hp = 1100
+repair_hp = 1
+repair_radius = 14
+rank_kills = [20, 60, 120]
+flagship_interval = 30
+siege_interval = 75
+center_bonus_interval = 30
+center_bonus = 15
+center_cannon_interval = 90
+lobby_settle_seconds = 3
+victory_delay = 5
+builder_kills = 30
+builder_rewards = 4
+builder_wood = 400
+builder_stone = 150
+extra_ports = 2
+extra_towers = 4
+archery_ranges = 1
+archer_cap = 12
+port_wood = 300
+tower_wood = 100
+tower_stone = 100
+range_wood = 200
+archer_wood = 50
